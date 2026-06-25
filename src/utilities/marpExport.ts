@@ -1,9 +1,9 @@
-import marpCli, { CLIError, CLIErrorCode } from '@marp-team/marp-cli'
 import { TFile, App } from 'obsidian';
 import { MarpSlidesSettings } from './settings';
 import { FilePath } from './filePath';
 import { existsSync, writeFileSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 export class MarpCLIError extends Error {}
 
@@ -32,6 +32,31 @@ interface ElectronModule {
 
 type ElectronRequire = (moduleName: string) => ElectronModule;
 
+type MarpCliFunction = (argv: string[], opts: Record<string, unknown>) => Promise<number>;
+type NodeRequireFunction = (moduleName: string) => unknown;
+type NodeCreateRequire = (filename: string | URL) => NodeRequireFunction;
+
+interface NodeModuleApi {
+    createRequire: NodeCreateRequire;
+}
+
+type ProcessWithPkg = typeof process & { pkg?: unknown };
+
+interface MarpCliError extends Error {
+    errorCode?: string | number;
+}
+
+interface MarpCliModule {
+    default?: MarpCliFunction;
+    marpCli?: MarpCliFunction;
+    CLIError: new (...args: unknown[]) => MarpCliError;
+    CLIErrorCode: {
+        NOT_FOUND_CHROMIUM: string | number;
+    };
+}
+
+let marpCliModulePromise: Promise<MarpCliModule> | null = null;
+
 const EXPORT_EXTENSIONS: Record<string, string> = {
     pdf: 'pdf',
     'pdf-with-notes': 'pdf',
@@ -39,6 +64,75 @@ const EXPORT_EXTENSIONS: Record<string, string> = {
     png: 'png',
     html: 'html',
 };
+
+function normalizeCreateRequireFilename(filename: string | URL): string | URL {
+    const value = filename instanceof URL ? filename.href : filename;
+    const appUrlMatch = value.split('?')[0].match(/^app:\/\/[^/]+\/(.*)$/i);
+
+    if (appUrlMatch) {
+        const decoded = decodeURIComponent(appUrlMatch[1]);
+        if (decoded.startsWith('/') || /^[A-Za-z]:[\\/]/.test(decoded)) {
+            return decoded;
+        }
+        return `/${decoded}`;
+    }
+
+    if (typeof value === 'string' && /^file:\/\//i.test(value)) {
+        return fileURLToPath(value.split('?')[0]);
+    }
+
+    return filename;
+}
+
+async function withNormalizedCreateRequire<T>(callback: () => Promise<T>): Promise<T> {
+    const nodeModule = require('node:module') as NodeModuleApi;
+    const originalCreateRequire = nodeModule.createRequire;
+
+    nodeModule.createRequire = ((filename: string | URL) => (
+        originalCreateRequire(normalizeCreateRequireFilename(filename))
+    )) as NodeCreateRequire;
+
+    try {
+        return await callback();
+    } finally {
+        nodeModule.createRequire = originalCreateRequire;
+    }
+}
+
+async function withMarpCliExecutionPatches<T>(callback: () => Promise<T>): Promise<T> {
+    const runtimeProcess = process as ProcessWithPkg;
+    const hadPkg = Object.prototype.hasOwnProperty.call(runtimeProcess, 'pkg');
+    const originalPkg = runtimeProcess.pkg;
+
+    // Obsidian's renderer cannot dynamically import file-system engine paths
+    // from the app:// plugin bundle, but CommonJS require() can load them.
+    // Marp CLI uses this flag to fall back to require() for engine loading.
+    runtimeProcess.pkg = originalPkg ?? {};
+
+    try {
+        return await withNormalizedCreateRequire(callback);
+    } finally {
+        if (hadPkg) {
+            runtimeProcess.pkg = originalPkg;
+        } else {
+            delete runtimeProcess.pkg;
+        }
+    }
+}
+
+async function loadMarpCliModule(): Promise<MarpCliModule> {
+    if (!marpCliModulePromise) {
+        marpCliModulePromise = importMarpCliModule();
+    }
+
+    return marpCliModulePromise;
+}
+
+async function importMarpCliModule(): Promise<MarpCliModule> {
+    return withNormalizedCreateRequire(async () => (
+        await import('@marp-team/marp-cli') as unknown as MarpCliModule
+    ));
+}
 
 export class MarpExport {
 
@@ -50,11 +144,11 @@ export class MarpExport {
         this.app = app;
     }
 
-    async export(file: TFile, type: string){
+    async export(file: TFile, type: string): Promise<string | null>{
         const filesTool = new FilePath(this.settings);
         const outputPath = await this.getOutputPath(file, type, filesTool);
         if (this.shouldChooseExportDirectory(type) && outputPath == null) {
-            return;
+            return null;
         }
 
         await filesTool.removeFileFromRoot(file);
@@ -91,6 +185,8 @@ export class MarpExport {
                 argv.push(...themePaths);
             }
 
+            this.pushBrowserPath(argv);
+
             switch (type) {
                 case 'pdf':
                     argv.push('--pdf');
@@ -107,8 +203,8 @@ export class MarpExport {
                     this.pushOutputPath(argv, outputPath);
                     break;
                 case 'png':
-                    argv.push('--images');
-                    argv.push('--png');
+                    argv.push('--image');
+                    argv.push('png');
                     this.pushOutputPath(argv, outputPath);
                     break;
                 case 'html':
@@ -134,25 +230,31 @@ export class MarpExport {
                     //argv.push('--watch');
             }
             await this.run(argv, resourcesPath);
+            return outputPath;
         } 
+
+        return null;
 
     }
 
     //async exportPdf(argv: string[], opts?: MarpCLIAPIOptions | undefined){
     private async run(argv: string[], resourcesPath: string){
         const { CHROME_PATH } = process.env;
+        let marpCliModule: MarpCliModule | null = null;
 
         try {
             process.env.CHROME_PATH = this.settings.CHROME_PATH || CHROME_PATH;
 
-            await this.runMarpCli(argv, resourcesPath);
+            marpCliModule = await loadMarpCliModule();
+            await this.runMarpCli(argv, resourcesPath, marpCliModule);
             
         } catch (e) {
             console.error(e)
 
             if (
-                e instanceof CLIError &&
-                e.errorCode === CLIErrorCode.NOT_FOUND_CHROMIUM
+                marpCliModule &&
+                e instanceof marpCliModule.CLIError &&
+                e.errorCode === marpCliModule.CLIErrorCode.NOT_FOUND_CHROMIUM
             ) {
                 const browsers = ['[Google Chrome](https://www.google.com/chrome/)']
 
@@ -174,21 +276,26 @@ export class MarpExport {
         }
     }
 
-    private async runMarpCli(argv: string[], resourcesPath: string) {
+    private async runMarpCli(argv: string[], resourcesPath: string, marpCliModule: MarpCliModule) {
         //console.info(`Execute Marp CLI [${argv.join(' ')}] (${JSON.stringify(opts)})`)
         console.info(`Execute Marp CLI [${argv.join(' ')}]`);
         const temp__dirname = __dirname;
+        const marpCli = marpCliModule.default ?? marpCliModule.marpCli;
+
+        if (!marpCli) {
+            throw new MarpCLIError('Marp CLI API is unavailable.');
+        }
 
         try {    
             // eslint-disable-next-line no-global-assign
             __dirname = resourcesPath;
-            const exitCode = await marpCli(argv, {});
+            const exitCode = await withMarpCliExecutionPatches(() => marpCli(argv, {}));
 
             if (exitCode > 0) {
-                console.error(`Failure (Exit status: ${exitCode})`)
+                throw new MarpCLIError(`Marp CLI failed with exit status ${exitCode}.`)
             }
         } catch(e) {
-            if (e instanceof CLIError){
+            if (e instanceof marpCliModule.CLIError){
                 console.error(`CLIError code: ${e.errorCode}, message: ${e.message}`);
             } else {
                 console.error("Generic Error!");
@@ -228,10 +335,19 @@ export class MarpExport {
         argv.push(outputPath);
     }
 
+    private pushBrowserPath(argv: string[]): void {
+        if (!this.settings.CHROME_PATH) {
+            return;
+        }
+
+        argv.push('--browser-path');
+        argv.push(this.settings.CHROME_PATH);
+    }
+
     private async chooseExportDirectory(sourceFilePath: string): Promise<string | null> {
         const dialog = this.getElectronDialog();
         if (!dialog) {
-            throw new MarpCLIError('Folder picker is unavailable in this environment.');
+            return sourceFilePath ? dirname(sourceFilePath) : null;
         }
 
         const options: ElectronOpenDialogOptions = {

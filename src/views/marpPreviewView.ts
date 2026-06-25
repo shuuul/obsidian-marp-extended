@@ -1,4 +1,4 @@
-import { ItemView, WorkspaceLeaf, MarkdownView, TFile, setIcon } from 'obsidian';
+import { ItemView, WorkspaceLeaf, MarkdownView, TFile, setIcon, Notice } from 'obsidian';
 import { Marp } from '@marp-team/marp-core'
 import { browser, type MarpCoreBrowser } from '@marp-team/marp-core/browser'
 
@@ -22,7 +22,7 @@ export class MarpPreviewView extends ItemView  {
     private syncPreviewEnabled = true;
     private settings : MarpSlidesSettings;
 
-    private file : TFile;
+    private file : TFile | null = null;
 
     constructor(settings: MarpSlidesSettings, leaf: WorkspaceLeaf) {
         super(leaf);
@@ -181,13 +181,24 @@ export class MarpPreviewView extends ItemView  {
       }
 
     private async exportFile(type: string) {
-        if (!this.file) {
+        const file = this.file ?? this.app.workspace.getActiveFile();
+        if (!file) {
+            new Notice('Open a Markdown file before exporting Marp slides.', 5000);
             return;
         }
 
-        const { MarpExport } = await import('../utilities/marpExport');
-        const marpCli = new MarpExport(this.settings, this.app);
-        await marpCli.export(this.file, type);
+        try {
+            const { MarpExport } = await import('../utilities/marpExport');
+            const marpCli = new MarpExport(this.settings, this.app);
+            const outputPath = await marpCli.export(file, type);
+            if (outputPath) {
+                new Notice(`Exported Marp slides to ${outputPath}`, 7000);
+            }
+        } catch (error) {
+            const message = error instanceof Error ? error.message : String(error);
+            console.error('Marp export failed:', error);
+            new Notice(`Marp export failed: ${message}`, 8000);
+        }
     }
     
     async displaySlides(view : MarkdownView) {

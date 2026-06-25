@@ -1,6 +1,7 @@
 import { Vault, normalizePath, FileSystemAdapter, TFile, App } from 'obsidian';
 import { MarpSlidesSettings } from './settings';
 import { DEFAULT_THEME_DIRECTORY } from './defaultThemes';
+import { normalize as normalizeFilePath } from 'node:path';
 
 export class FilePath  {
 
@@ -24,20 +25,53 @@ export class FilePath  {
         }
     }
 
-    private getRootPath(file: TFile): string {
-        
-		let basePath = (file.vault.adapter as FileSystemAdapter).getBasePath();
-        if (basePath.startsWith('/')){
-            basePath = `/${normalizePath(basePath)}/`;
-        }
-        else
-        {
-            basePath = `${normalizePath(basePath)}/`;
+    private getVaultPath(vault: Vault, normalizedPath: string): string {
+        const adapter = vault.adapter as FileSystemAdapter;
+        const path = normalizePath(normalizedPath);
+
+        // Obsidian's desktop adapter can provide the real filesystem path.
+        // Use it for Marp CLI because resource URLs like app://... are only
+        // valid inside Obsidian's WebView and are rejected by Node APIs.
+        if (adapter.getFullPath) {
+            return this.normalizeFileSystemPath(adapter.getFullPath(path));
         }
 
-        //console.log(`Root Path: ${basePath}`);
-        return basePath;
-	}
+        if (adapter.getFilePath) {
+            return this.normalizeFileSystemPath(adapter.getFilePath(path));
+        }
+
+        return this.normalizeFileSystemPath(`${adapter.getBasePath()}/${path}`);
+    }
+
+    private normalizeFileSystemPath(path: string): string {
+        const cleanPath = path.split('?')[0];
+
+        if (/^app:\/\//i.test(cleanPath)) {
+            const match = cleanPath.match(/^app:\/\/[^/]+\/(.*)$/i);
+            if (match) {
+                const decoded = decodeURIComponent(match[1]);
+                if (decoded.startsWith('/') || /^[A-Za-z]:\//.test(decoded)) {
+                    return this.normalizeFilePathSeparators(decoded);
+                }
+                return this.normalizeFilePathSeparators(`/${decoded}`);
+            }
+        }
+
+        if (/^file:\/\//i.test(cleanPath)) {
+            const url = new URL(cleanPath);
+            const decoded = decodeURIComponent(url.pathname);
+            if (/^\/[A-Za-z]:\//.test(decoded)) {
+                return this.normalizeFilePathSeparators(decoded.slice(1));
+            }
+            return this.normalizeFilePathSeparators(decoded);
+        }
+
+        return this.normalizeFilePathSeparators(cleanPath);
+    }
+
+    private normalizeFilePathSeparators(path: string): string {
+        return normalizeFilePath(path.replace(/\\/g, '/'));
+    }
 
 	public getCompleteFileBasePath(file: TFile): string{
         let resourcePath = [""];
@@ -56,9 +90,9 @@ export class FilePath  {
 
     public getCompleteFilePath(file: TFile) : string{
 
-        let basePath = `${this.getRootPath(file)}${normalizePath(file.path)}`;
+        let basePath = this.getVaultPath(file.vault, file.path);
         if(this.isAbsoluteLinkFormat(file)){
-            basePath = `${this.getRootPath(file)}${normalizePath(file.name)}`;
+            basePath = this.getVaultPath(file.vault, file.name);
         }
         //console.log(`Complete File Path: ${basePath}`);
         return basePath;
@@ -79,7 +113,7 @@ export class FilePath  {
     }
 
     public getDefaultThemePath(file: TFile): string{
-        return `${this.getRootPath(file)}${normalizePath(DEFAULT_THEME_DIRECTORY)}`;
+        return this.getVaultPath(file.vault, DEFAULT_THEME_DIRECTORY);
     }
 
     public getThemePaths(file: TFile): string[]{
@@ -87,8 +121,7 @@ export class FilePath  {
     }
 
     private getPluginDirectory(vault: Vault): string {
-        const fileSystem = vault.adapter as FileSystemAdapter;
-        const path = `${fileSystem.getBasePath()}/${normalizePath(vault.configDir)}/plugins/marp-extended/`;
+        const path = `${this.getVaultPath(vault, `${vault.configDir}/plugins/marp-extended`)}/`;
         //console.log(path);
         return path;
 	}

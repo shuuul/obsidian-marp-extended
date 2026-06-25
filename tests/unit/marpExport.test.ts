@@ -2,7 +2,7 @@ import marpCli from '@marp-team/marp-cli';
 import { TFile } from 'obsidian';
 import { expect, jest, test, beforeEach, afterEach } from '@jest/globals';
 
-import { MarpExport } from '@/utilities/marpExport';
+import { MarpCLIError, MarpExport } from '@/utilities/marpExport';
 import { DEFAULT_SETTINGS } from '@/utilities/settings';
 
 jest.mock('@marp-team/marp-cli', () => ({
@@ -102,4 +102,97 @@ test('HTML export uses selected folder for output file', async () => {
 		'-o',
 		'/tmp/export/deck.html',
 	]));
+});
+
+test('PNG export writes the selected PNG output file', async () => {
+	mockFolderPicker({ canceled: false, filePaths: ['/tmp/export'] });
+	const exporter = new MarpExport(DEFAULT_SETTINGS);
+
+	await exporter.export(createFile(), 'png');
+
+	expect(marpCliMock.mock.calls[0][0]).toEqual(expect.arrayContaining([
+		'--image',
+		'png',
+		'-o',
+		'/tmp/export/deck.png',
+	]));
+	expect(marpCliMock.mock.calls[0][0]).not.toContain('--images');
+	expect(marpCliMock.mock.calls[0][0]).not.toContain('--png');
+});
+
+test('export falls back to the source folder when native folder picker is unavailable', async () => {
+	const exporter = new MarpExport(DEFAULT_SETTINGS);
+
+	const outputPath = await exporter.export(createFile(), 'html');
+
+	expect(outputPath).toBe('vault/slides/deck.html');
+	expect(marpCliMock.mock.calls[0][0]).toEqual(expect.arrayContaining([
+		'-o',
+		'vault/slides/deck.html',
+	]));
+});
+
+test('export passes configured browser path to Marp CLI', async () => {
+	mockFolderPicker({ canceled: false, filePaths: ['/tmp/export'] });
+	const exporter = new MarpExport({
+		...DEFAULT_SETTINGS,
+		CHROME_PATH: '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
+	});
+
+	await exporter.export(createFile(), 'pdf');
+
+	expect(marpCliMock.mock.calls[0][0]).toEqual(expect.arrayContaining([
+		'--browser-path',
+		'/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
+	]));
+});
+
+test('export throws when Marp CLI returns a failing exit status', async () => {
+	mockFolderPicker({ canceled: false, filePaths: ['/tmp/export'] });
+	marpCliMock.mockResolvedValue(1);
+	const exporter = new MarpExport(DEFAULT_SETTINGS);
+
+	await expect(exporter.export(createFile(), 'html')).rejects.toThrow(MarpCLIError);
+});
+
+test('export keeps Obsidian app URL createRequire patch while Marp CLI runs', async () => {
+	mockFolderPicker({ canceled: false, filePaths: ['/tmp/export'] });
+	marpCliMock.mockImplementation(async () => {
+		const nodeModule = require('node:module') as typeof import('node:module');
+
+		expect(() => nodeModule.createRequire('app://obsidian.md/marp-cli-qbOdG7H_.js')).not.toThrow();
+
+		return 0;
+	});
+	const exporter = new MarpExport(DEFAULT_SETTINGS);
+
+	await exporter.export(createFile(), 'html');
+
+	expect(marpCliMock).toHaveBeenCalledTimes(1);
+});
+
+test('export forces CommonJS engine resolution only while Marp CLI runs', async () => {
+	const runtimeProcess = process as typeof process & { pkg?: unknown };
+	const hadPkg = Object.prototype.hasOwnProperty.call(runtimeProcess, 'pkg');
+	const originalPkg = runtimeProcess.pkg;
+	mockFolderPicker({ canceled: false, filePaths: ['/tmp/export'] });
+	delete runtimeProcess.pkg;
+	marpCliMock.mockImplementation(async () => {
+		expect(Object.prototype.hasOwnProperty.call(runtimeProcess, 'pkg')).toBe(true);
+
+		return 0;
+	});
+	const exporter = new MarpExport(DEFAULT_SETTINGS);
+
+	try {
+		await exporter.export(createFile(), 'html');
+
+		expect(Object.prototype.hasOwnProperty.call(runtimeProcess, 'pkg')).toBe(false);
+	} finally {
+		if (hadPkg) {
+			runtimeProcess.pkg = originalPkg;
+		} else {
+			delete runtimeProcess.pkg;
+		}
+	}
 });

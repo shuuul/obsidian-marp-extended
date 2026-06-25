@@ -1,4 +1,6 @@
 /* @theme kami */
+/* @size 16:9 1280px 720px */
+/* @size 4:3 960px 720px */
 /* Kami Marp theme (CN). Mirrors slides-weasy.html tokens. */
 
 @font-face {
@@ -40,8 +42,8 @@
 }
 
 section {
-  width: 280mm;
-  height: 158mm;
+  width: 1280px;
+  height: 720px;
   padding: 16mm 20mm;
   background: var(--parchment);
   color: var(--near-black);

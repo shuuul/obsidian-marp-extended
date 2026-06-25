@@ -5,6 +5,6 @@
   "minAppVersion": "0.15.0",
   "description": "Create markdown-based Marp presentations in Obsidian with extended fork maintenance",
   "author": "shuuul",
-  "authorUrl": "https://github.com/shuuul/obsidian-marp-slides",
+  "authorUrl": "https://github.com/shuuul/obsidian-marp-extended",
   "isDesktopOnly": false
 }

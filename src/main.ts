@@ -126,10 +126,22 @@ export default class MarpSlides extends Plugin {
 
 	async exportFile(type: string){
 		const file = this.app.workspace.getActiveFile();
-		if(file !== null){
+		if(file === null){
+			new Notice('Open a Markdown file before exporting Marp slides.', 5000);
+			return;
+		}
+
+		try {
 			const { MarpExport } = await import('./utilities/marpExport');
 			const marpCli = new MarpExport(this.settings, this.app);
-			await marpCli.export(file,type);
+			const outputPath = await marpCli.export(file,type);
+			if (outputPath) {
+				new Notice(`Exported Marp slides to ${outputPath}`, 7000);
+			}
+		} catch (error) {
+			const message = error instanceof Error ? error.message : String(error);
+			console.error('Marp export failed:', error);
+			new Notice(`Marp export failed: ${message}`, 8000);
 		}
 	}
 

@@ -5,7 +5,7 @@ export interface DefaultThemeDefinition {
 	credit: string;
 }
 
-const MARP_EXTENDED_REPO_RAW_THEMES = 'https://raw.githubusercontent.com/shuuul/obsidian-marp-slides/main/vault/themes';
+const MARP_EXTENDED_REPO_RAW_THEMES = 'https://raw.githubusercontent.com/shuuul/obsidian-marp-extended/main/vault/themes';
 
 export const DEFAULT_THEME_DIRECTORY = '.marp-extended/themes';
 export const DEFAULT_THEME_MANIFEST_VERSION = 1;
@@ -21,8 +21,8 @@ export const DEFAULT_THEME_DEFINITIONS: DefaultThemeDefinition[] = [
 	{ name: 'gradient', fileName: 'gradient.css', url: `${MARP_EXTENDED_REPO_RAW_THEMES}/gradient.css`, credit: 'vault sample theme' },
 	{ name: 'haskell', fileName: 'haskell.css', url: `${MARP_EXTENDED_REPO_RAW_THEMES}/haskell.css`, credit: 'matsubara0507/marp-themes' },
 	{ name: 'iggg', fileName: 'iggg.css', url: `${MARP_EXTENDED_REPO_RAW_THEMES}/iggg.css`, credit: 'matsubara0507/marp-themes' },
-	{ name: 'kami', fileName: 'kami.css', url: 'https://raw.githubusercontent.com/tw93/Kami/main/assets/templates/marp/slides-marp.css', credit: 'tw93/Kami' },
-	{ name: 'kami-en', fileName: 'kami-en.css', url: 'https://raw.githubusercontent.com/tw93/Kami/main/assets/templates/marp/slides-marp-en.css', credit: 'tw93/Kami' },
+	{ name: 'kami', fileName: 'kami.css', url: `${MARP_EXTENDED_REPO_RAW_THEMES}/kami.css`, credit: 'tw93/Kami' },
+	{ name: 'kami-en', fileName: 'kami-en.css', url: `${MARP_EXTENDED_REPO_RAW_THEMES}/kami-en.css`, credit: 'tw93/Kami' },
 	{ name: 'minimal-container-turquoise', fileName: 'minimal-container-turquoise.css', url: `${MARP_EXTENDED_REPO_RAW_THEMES}/minimal-container-turquoise.css`, credit: 'vault sample theme' },
 	{ name: 'minimal-turquoise', fileName: 'minimal-turquoise.css', url: `${MARP_EXTENDED_REPO_RAW_THEMES}/minimal-turquoise.css`, credit: 'vault sample theme' },
 	{ name: 'olive', fileName: 'olive.css', url: `${MARP_EXTENDED_REPO_RAW_THEMES}/olive.css`, credit: 'matsubara0507/marp-themes' },
