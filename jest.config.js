@@ -1,14 +1,32 @@
-/** @type {import('ts-jest/dist/types').InitialOptionsTsJest} */
+/** @type {import('ts-jest').JestConfigWithTsJest} */
+const baseConfig = {
+	preset: 'ts-jest',
+	testEnvironment: 'node',
+	transform: {
+		'^.+\\.tsx?$': ['ts-jest', { tsconfig: 'tsconfig.json' }],
+	},
+	roots: ['<rootDir>/src', '<rootDir>/tests'],
+	moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json', 'node'],
+	setupFilesAfterEnv: ['<rootDir>/tests/setupWindow.ts'],
+	moduleNameMapper: {
+		'^@/(.*)$': '<rootDir>/src/$1',
+		'^@test/(.*)$': '<rootDir>/tests/$1',
+		'^obsidian$': '<rootDir>/tests/__mocks__/obsidian.ts',
+	},
+};
+
 module.exports = {
-    preset: 'ts-jest',
-    testEnvironment: 'node',
-    //modulePathIgnorePatterns: ["<rootDir>/docs/","<rootDir>/vault/"],
-
-	coverageDirectory: "tests/coverage",
-	coverageReporters: ["lcov"],
-
-    modulePaths: ['node_modules','<rootDir>'],
-    moduleDirectories: ['node_modules'],
-    moduleFileExtensions: ['js', 'mjs', 'cjs', 'jsx', 'ts', 'd.ts', 'tsx', 'json', 'node']
-
+	testTimeout: 15_000,
+	projects: [
+		{
+			...baseConfig,
+			displayName: 'unit',
+			testMatch: ['<rootDir>/tests/unit/**/*.test.ts'],
+		},
+	],
+	collectCoverageFrom: [
+		'src/**/*.ts',
+		'!src/**/*.d.ts',
+	],
+	coverageDirectory: 'coverage',
 };

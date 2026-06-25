@@ -1,38 +1,69 @@
-# Marp Slides for Obsidian
+# Marp Extended for Obsidian
 
-[![Version](https://img.shields.io/github/manifest-json/v/samuele-cozzi/obsidian-marp-slides?color=blue)](https://github.com/samuele-cozzi/obsidian-marp-slides/releases/latest)![Downloads](https://img.shields.io/github/downloads/samuele-cozzi/obsidian-marp-slides/total)[![CodeFactor](https://www.codefactor.io/repository/github/samuele-cozzi/obsidian-marp-slides/badge)](https://www.codefactor.io/repository/github/samuele-cozzi/obsidian-marp-slides)[![Maintainability](https://api.codeclimate.com/v1/badges/78932986b29ffe273e56/maintainability)](https://codeclimate.com/github/samuele-cozzi/obsidian-marp-slides/maintainability)[![Test Coverage](https://api.codeclimate.com/v1/badges/78932986b29ffe273e56/test_coverage)](https://codeclimate.com/github/samuele-cozzi/obsidian-marp-slides/test_coverage)[![LICENSE](https://img.shields.io/github/license/samuele-cozzi/obsidian-marp-slides)](https://github.com/samuele-cozzi/obsidian-marp-slides/blob/main/LICENSE)
-<!-- ![Obsidian Downloads](https://img.shields.io/badge/dynamic/json?logo=obsidian&color=%23483699&label=downloads&query=%24%5B%22better-word-count%22%5D.downloads&url=https%3A%2F%2Fraw.githubusercontent.com%2Fobsidianmd%2Fobsidian-releases%2Fmaster%2Fcommunity-plugin-stats.json&style=for-the-badge) -->
+Marp Extended is an Obsidian plugin for creating, previewing, presenting, and exporting [Marp](https://marp.app/) slide decks from Markdown notes.
 
-Marp Slides is very simple & powerful slide deck extension for [Obsidian](href="https://obsidian.md") based on [Marp](https://marp.app/). View the **[DOCS](https://samuele-cozzi.github.io/obsidian-marp-slides/)** for [getting started](https://samuele-cozzi.github.io/obsidian-marp-slides/10.GettingStarted.html)
-
-![Alt text](docs/pictures/CreateSlides.gif)
-
-See the documentation of [Marpit Markdown](https://marpit.marp.app/markdown) and [the features of Marp Core](https://github.com/marp-team/marp-core#features) about how to write.
-Marp have powerful tools for Markdown Slides: [Marpit Framework](https://marpit.marp.app/), [CLI tool](https://github.com/marp-team/marp-cli), [Web interface](https://web.marp.app/) and so on.
-
-## Getting Started
-
-- [Read Documentation](https://samuele-cozzi.github.io/obsidian-marp-slides/)
-- [View the demo Presentation](https://samuele-cozzi.github.io/obsidian-marp-slides/pictures/Sample%20Pro%201.html)
+> **Fork notice:** This project is a maintained fork of [Samuele Cozzi's Marp Slides for Obsidian](https://github.com/samuele-cozzi/obsidian-marp-slides). The original plugin and documentation remain the upstream foundation; this fork is being renamed and maintained as **Marp Extended**.
 
 ## Features
 
-- [Preview Slides](https://samuele-cozzi.github.io/obsidian-marp-slides/21.SlidesPreview.html)
-- [Export slide deck (html, pdf, pptx, img)](https://samuele-cozzi.github.io/obsidian-marp-slides/22.SlidesExport.html) using Marp cli API
-- [Use custom theme CSS](https://samuele-cozzi.github.io/obsidian-marp-slides/23.SlidesCustomTheme.html)
-- [Presenting](https://samuele-cozzi.github.io/obsidian-marp-slides/24.Presenting.html)
+- Preview Marp slides inside Obsidian.
+- Export slide decks as HTML, PDF, PPTX, or images through Marp CLI.
+- Present slide decks from the plugin.
+- Use custom Marp theme CSS from your vault.
+- Convert Obsidian image wiki-links to standard Markdown image links for preview/export.
+- Optional markdown-it extensions for containers, marks, and Kroki diagrams.
 
-![Alt text](docs/pictures/ThemeSlides.gif)
+See also:
 
-> ⚠️ Export except HTML requires to install any one of [Google Chrome](https://www.google.com/chrome/), [Chromium](https://www.chromium.org/), or [Microsoft Edge](https://www.microsoft.com/edge). You may also specify the custom path for Chrome / Chromium-based browser by preference `CHEROME_PATH`.
+- [Marpit Markdown](https://marpit.marp.app/markdown)
+- [Marp Core features](https://github.com/marp-team/marp-core#features)
+- [Marp CLI](https://github.com/marp-team/marp-cli)
 
-## Not supported
+## Getting started
 
-- Wiki Link
-- Mobile App Plugin is in Alpha Version
+1. Install or build the plugin into your vault's `.obsidian/plugins/marp-extended/` directory.
+2. Enable **Marp Extended** in Obsidian community plugin settings.
+3. Open a Markdown note and run **Slide Preview** from the command palette or ribbon icon.
+4. Use the export commands for PDF, PDF with notes, HTML, PPTX, or PNG.
 
-## Many Thanks 👏
+> ⚠️ PDF, PPTX, and image export require Google Chrome, Chromium, or Microsoft Edge. You can set a custom browser path with the `CHROME_PATH` setting.
 
-- [plugin obsidian development docs](https://marcus.se.net/obsidian-plugin-docs/)
-- [marp vs code](https://github.com/marp-team/marp-vscode)
-- [obsidian api](https://github.com/obsidianmd/obsidian-api)
+## Development
+
+```bash
+npm install
+npm run typecheck
+npm run lint
+npm test -- --runInBand
+npm run build
+```
+
+Useful scripts:
+
+| Command | Description |
+| --- | --- |
+| `npm run dev` | Watch build for local development |
+| `npm run build` | Typecheck and produce production `main.js` |
+| `npm run typecheck` | Run TypeScript checks only |
+| `npm run lint` | Run ESLint over `src` and `tests` |
+| `npm test` | Run Jest unit tests |
+| `npm run test:coverage` | Run Jest unit tests with coverage |
+| `npm run analyze:bundle` | Build and emit `metafile.json` for esbuild bundle analysis |
+
+`main.js` is generated. Edit files under `src/`, then rebuild.
+
+Developer guidance lives in [`AGENTS.md`](AGENTS.md). Release notes live in [`CHANGELOG.md`](CHANGELOG.md).
+
+## Security note
+
+Runtime dependencies currently audit clean with `npm audit --omit=dev`. A full `npm audit` may still report a moderate `js-yaml` advisory through Jest/coverage tooling; do not use `npm audit fix --force` unless you intend to change the test stack.
+
+## Upstream credits
+
+Marp Extended builds on the original [Marp Slides for Obsidian](https://github.com/samuele-cozzi/obsidian-marp-slides) plugin by Samuele Cozzi.
+
+Many thanks to:
+
+- [Obsidian plugin development docs](https://marcus.se.net/obsidian-plugin-docs/)
+- [Marp for VS Code](https://github.com/marp-team/marp-vscode)
+- [Obsidian API](https://github.com/obsidianmd/obsidian-api)

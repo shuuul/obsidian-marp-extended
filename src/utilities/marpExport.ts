@@ -2,7 +2,7 @@ import marpCli, { CLIError, CLIErrorCode } from '@marp-team/marp-cli'
 import { TFile, App } from 'obsidian';
 import { MarpSlidesSettings } from './settings';
 import { FilePath } from './filePath';
-import { writeFileSync, readFileSync } from 'fs-extra';
+import { writeFileSync, readFileSync } from 'node:fs';
 
 export class MarpCLIError extends Error {}
 
@@ -98,7 +98,6 @@ export class MarpExport {
                     //argv.push('bare');
                     //argv.push('bespoke');
                     //argv.push('--engine');
-                    //argv.push('@marp-team/marpit');
                     //argv.remove(completeFilePath);
                     //process.env.PORT = "5001";
                     //argv.push('PORT=5001');
@@ -150,9 +149,10 @@ export class MarpExport {
     private async runMarpCli(argv: string[], resourcesPath: string) {
         //console.info(`Execute Marp CLI [${argv.join(' ')}] (${JSON.stringify(opts)})`)
         console.info(`Execute Marp CLI [${argv.join(' ')}]`);
-        let temp__dirname = __dirname;
+        const temp__dirname = __dirname;
 
         try {    
+            // eslint-disable-next-line no-global-assign
             __dirname = resourcesPath;
             const exitCode = await marpCli(argv, {});
 
@@ -167,6 +167,7 @@ export class MarpExport {
             }
         }
 
+        // eslint-disable-next-line no-global-assign
         __dirname = temp__dirname;
     }
 }

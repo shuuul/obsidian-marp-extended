@@ -1,17 +1,27 @@
 {
   "compilerOptions": {
     "baseUrl": "./src",
+    "rootDir": ".",
+    "ignoreDeprecations": "6.0",
+    "paths": {
+      "@/*": ["*"],
+      "@test/*": ["../tests/*"]
+    },
     "inlineSourceMap": true,
     "inlineSources": true,
     "module": "ESNext",
     "target": "ES6",
     "allowJs": true,
     "noImplicitAny": true,
+    "strictPropertyInitialization": false,
     "moduleResolution": "node",
-    "importHelpers": true,
     "isolatedModules": true,
 	  "strictNullChecks": true,
     "esModuleInterop": true,
+    "types": [
+      "node",
+      "jest"
+    ],
     "lib": [
       "DOM",
       "ES5",

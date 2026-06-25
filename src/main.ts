@@ -260,12 +260,20 @@ class LineSelectionListener extends EditorSuggest<string> {
 		this.plugin = plugin;
 	}
 
+	private hasFrontMatter(text: string): boolean {
+		const lines = text.split('\n');
+		if (lines[0]?.trim() !== '---') {
+			return false;
+		}
+
+		return lines.slice(1).some((line) => line.trim() === '---');
+	}
+
 	onTrigger(cursor: EditorPosition, editor: Editor, file: TFile): EditorSuggestTriggerInfo | null {
 		//console.log("line: " + cursor.line);
 		//console.log("ch: " + cursor.ch);
 		//console.log("value: " + editor.getValue());
         
-        let triggerInfo: EditorSuggestTriggerInfo = {start:cursor, end:cursor, query:""};
         const instance = this.plugin.getViewInstance();
 
 		if (instance) {
@@ -274,11 +282,9 @@ class LineSelectionListener extends EditorSuggest<string> {
 			const text = firstNLines.join('\n');
 			
 			const regex = new RegExp('---', 'g');
-			let matches = text.match(regex);
-			let slide = matches ? matches.length : 0;
-			var matter = require('gray-matter');
-			const frontMatter = matter(text);
-			if (frontMatter.data !== null && Object.keys(frontMatter.data).length > 0) {
+			const matches = text.match(regex);
+			const slide = matches ? matches.length : 0;
+			if (this.hasFrontMatter(text)) {
 				instance.onLineChanged(slide - 2);
 			} else {
 				instance.onLineChanged(slide);
@@ -287,7 +293,7 @@ class LineSelectionListener extends EditorSuggest<string> {
 		return null;
 	}
 	getSuggestions(context: EditorSuggestContext): string[] | Promise<string[]> {
-		let suggestion :string[] = [];
+		const suggestion :string[] = [];
 		return suggestion;
 		//throw new Error('Method not implemented.');
 	}

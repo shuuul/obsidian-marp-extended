@@ -1,10 +1,10 @@
 {
-  "id": "marp-slides",
-  "name": "Marp Slides",
-  "version": "0.46.1",
+  "id": "marp-extended",
+  "name": "Marp Extended",
+  "version": "0.1.0",
   "minAppVersion": "0.15.0",
-  "description": "Create markdown-based Marp presentations in Obsidian",
-  "author": "Samuele Cozzi",
-  "authorUrl": "https://samuele-cozzi.web.app/",
+  "description": "Create markdown-based Marp presentations in Obsidian with extended fork maintenance",
+  "author": "shuuul",
+  "authorUrl": "https://github.com/shuuul/obsidian-marp-slides",
   "isDesktopOnly": false
 }

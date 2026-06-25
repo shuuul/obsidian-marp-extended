@@ -1,7 +1,7 @@
 import { TFile } from 'obsidian';
 import { expect, test} from '@jest/globals';
-import { FilePath } from "../src/utilities/filePath";
-import { DEFAULT_SETTINGS } from "../src/utilities/settings";
+import { FilePath } from "@/utilities/filePath";
+import { DEFAULT_SETTINGS } from "@/utilities/settings";
 
 class pathsUtility {
   base: string;

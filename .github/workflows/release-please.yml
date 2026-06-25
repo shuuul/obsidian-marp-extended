@@ -4,7 +4,7 @@ on:
       - main
 
 env:
-  PLUGIN_NAME: obsidian-marp-slides
+  PLUGIN_NAME: marp-extended
   
 name: release
 jobs:
@@ -16,10 +16,10 @@ jobs:
         with:
           token: ${{ secrets.PAT }}
           release-type: node
-          package-name: release-please-action
+          package-name: marp-extended
           config-file: release-please-config.json
           include-v-in-tag: false
-          changelog-path: docs/CHANGELOG.md
+          changelog-path: CHANGELOG.md
     outputs:
       release_created: ${{ steps.release.outputs.release_created }}
       tag_name: ${{ steps.release.outputs.tag_name }}

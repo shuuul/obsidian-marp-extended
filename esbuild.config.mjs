@@ -1,7 +1,6 @@
 import esbuild from "esbuild";
 import process from "process";
-import builtins from "builtin-modules";
-import { copy } from 'esbuild-plugin-copy';
+import { builtinModules } from "node:module";
 
 const banner =
 `/*
@@ -11,6 +10,7 @@ if you want to view the source, please visit the github repository of this plugi
 `;
 
 const prod = (process.argv[2] === "production");
+const analyze = process.argv.includes("--analyze");
 
 const context = await esbuild.context({
 	banner: {
@@ -18,6 +18,7 @@ const context = await esbuild.context({
 	},
 	entryPoints: ["main.ts"],
 	bundle: true,
+	platform: "node",
 	external: [
 		"obsidian",
 		"electron",
@@ -34,18 +35,28 @@ const context = await esbuild.context({
 		"@lezer/common",
 		"@lezer/highlight",
 		"@lezer/lr",		
-		...builtins],
+		...builtinModules,
+		...builtinModules.map((moduleName) => `node:${moduleName}`),
+	],
 	format: "cjs",
 	target: "es2018",
 	logLevel: "info",
 	sourcemap: prod ? false : "inline",
+	minify: prod,
+	metafile: analyze,
 	treeShaking: true,
-	//outfile: "vault/.obsidian/plugins/marp-slides/main.js", //for local dev!!!
+	//outfile: "vault/.obsidian/plugins/marp-extended/main.js", //for local dev!!!
 	outfile: "main.js",
 });
 
 if (prod) {
-	await context.rebuild();
+	const result = await context.rebuild();
+	if (analyze && result.metafile) {
+		await import("node:fs/promises").then(({ writeFile }) =>
+			writeFile("metafile.json", JSON.stringify(result.metafile))
+		);
+		console.log("Wrote metafile.json — open at https://esbuild.github.io/analyze/");
+	}
 	process.exit(0);
 } else {
 	await context.watch();

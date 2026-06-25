@@ -88,7 +88,7 @@ export class MarpPreviewView extends ItemView  {
 
     async onLineChanged(line: number) {
         try {
-		    this.containerEl.children[1].children[2].children[line].scrollIntoView();
+			this.containerEl.children[1].children[2].children[line].scrollIntoView();
         } catch {
             console.log("Preview slide not found!")
         }
@@ -143,7 +143,9 @@ export class MarpPreviewView extends ItemView  {
             container.empty();
 
 
-            let { html, css } = this.marp.render(processedMarkdown);
+            const rendered = this.marp.render(processedMarkdown);
+            let html = rendered.html;
+            const { css } = rendered;
             
             // Replace Backgorund Url for images
             html = html.replace(/(?!background-image:url\(&quot;http)background-image:url\(&quot;/g, `background-image:url(&quot;${basePath}`);
