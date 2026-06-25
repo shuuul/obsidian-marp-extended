@@ -6,3 +6,22 @@ available in the app when your plugin is enabled.
 If your plugin does not need CSS, delete this file.
 
 */
+
+.marp-extended-theme-list {
+	margin-bottom: 1rem;
+}
+
+.marp-extended-theme-empty {
+	color: var(--text-muted);
+	margin: 0.5rem 0 1rem;
+}
+
+.marp-extended-add-theme-modal .setting-item:has(.marp-extended-theme-css-input) {
+	align-items: flex-start;
+}
+
+.marp-extended-theme-css-input {
+	font-family: var(--font-monospace);
+	min-height: 18rem;
+	width: 100%;
+}

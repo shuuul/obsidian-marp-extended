@@ -4,6 +4,7 @@
 	"description": "Create markdown-based Marp presentations in Obsidian with extended fork maintenance",
 	"main": "main.js",
 	"scripts": {
+		"postinstall": "node scripts/postinstall.mjs",
 		"dev": "node esbuild.config.mjs",
 		"build": "npm run typecheck && node esbuild.config.mjs production",
 		"test": "node scripts/run-jest.js",

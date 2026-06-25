@@ -12,19 +12,49 @@ export const Vault = jest.fn().mockImplementation(() => {
   return {
     constructor: () => {},
     adapter: new FileSystemAdapter,
-    getConfig: () => { return "relative"; }
+    getConfig: () => { return "relative"; },
+    getFiles: () => [],
+    cachedRead: async () => '',
   }
 });
 
 export const FileSystemAdapter = jest.fn().mockImplementation(() => {
   let _path = "";
+  const files = new Map<string, string>();
+  const folders = new Set<string>();
   return {
     constructor: () => {},
-    write: (path: string, data: string) => { _path = path},
+    write: async (path: string, data: string) => { _path = path; files.set(normalizePath(path), data); },
+    read: async (path: string) => files.get(normalizePath(path)) ?? '',
+    exists: async (path: string) => files.has(normalizePath(path)) || folders.has(normalizePath(path)),
+    mkdir: async (path: string) => { folders.add(normalizePath(path)); },
+    remove: async (path: string) => { files.delete(normalizePath(path)); folders.delete(normalizePath(path)); },
+    list: async (path: string) => {
+      const normalized = normalizePath(path);
+      const prefix = normalized.endsWith('/') ? normalized : `${normalized}/`;
+      return {
+        files: [...files.keys()].filter((file) => file.startsWith(prefix)),
+        folders: [...folders].filter((folder) => folder.startsWith(prefix)),
+      };
+    },
     getBasePath: () => { return _path; },
     getResourcePath: () => { return  `app://local/${normalizePath(_path)}?aaaa`; }
   }
 });
+
+export const requestUrl = jest.fn();
+
+export const Notice = jest.fn().mockImplementation(() => ({
+  hide: jest.fn(),
+}));
+
+export const Modal = jest.fn().mockImplementation(() => ({
+  app: {},
+  titleEl: document.createElement('div'),
+  contentEl: document.createElement('div'),
+  open: jest.fn(),
+  close: jest.fn(),
+}));
 
 
 export const normalizePath = jest.fn().mockImplementation((str: string) => { 

@@ -59,10 +59,18 @@ Useful commands:
 | Bundle analysis | `npm run analyze:bundle` |
 | Version metadata sync | `npm run version` |
 
-For manual Obsidian testing, build or copy the plugin into:
+For manual Obsidian testing, set `OBSIDIAN_VAULT` in `.env.local`; `npm run dev` and `npm run build` auto-copy `main.js`, `manifest.json`, and `styles.css` into:
 
 ```text
 <vault>/.obsidian/plugins/marp-extended/
+```
+
+Then reload and enable the dev plugin with the Obsidian CLI:
+
+```bash
+obsidian reload
+obsidian plugin:enable id=marp-extended
+obsidian dev:errors
 ```
 
 Required runtime files for a local plugin install are:

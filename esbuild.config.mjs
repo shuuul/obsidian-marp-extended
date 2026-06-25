@@ -1,6 +1,25 @@
 import esbuild from "esbuild";
 import process from "process";
 import { builtinModules } from "node:module";
+import path from "node:path";
+import {
+	copyFileSync,
+	existsSync,
+	mkdirSync,
+	readdirSync,
+	readFileSync,
+	rmSync,
+} from "node:fs";
+
+if (existsSync(".env.local")) {
+	const envContent = readFileSync(".env.local", "utf-8");
+	for (const line of envContent.split("\n")) {
+		const match = line.match(/^([^=#]+)=["']?(.+?)["']?$/);
+		if (match && !process.env[match[1]]) {
+			process.env[match[1]] = match[2];
+		}
+	}
+}
 
 const banner =
 `/*
@@ -12,12 +31,55 @@ if you want to view the source, please visit the github repository of this plugi
 const prod = (process.argv[2] === "production");
 const analyze = process.argv.includes("--analyze");
 
+const OBSIDIAN_VAULT = process.env.OBSIDIAN_VAULT;
+const OBSIDIAN_PLUGIN_PATH = OBSIDIAN_VAULT && existsSync(OBSIDIAN_VAULT)
+	? path.join(OBSIDIAN_VAULT, ".obsidian", "plugins", "marp-extended")
+	: null;
+const OBSIDIAN_PLUGIN_DEPLOY_FILES = new Set(["main.js", "manifest.json", "styles.css"]);
+const OBSIDIAN_PLUGIN_RUNTIME_FILES = new Set(["data.json", "lib3"]);
+
+function pruneStaleObsidianPluginArtifacts(pluginPath) {
+	const keep = new Set([...OBSIDIAN_PLUGIN_DEPLOY_FILES, ...OBSIDIAN_PLUGIN_RUNTIME_FILES]);
+	for (const name of readdirSync(pluginPath)) {
+		if (keep.has(name)) {
+			continue;
+		}
+		rmSync(path.join(pluginPath, name), { recursive: true, force: true });
+		console.log(`Removed stale Obsidian plugin artifact: ${name}`);
+	}
+}
+
+const copyToObsidian = {
+	name: "copy-to-obsidian",
+	setup(build) {
+		build.onEnd((result) => {
+			if (result.errors.length > 0 || !OBSIDIAN_PLUGIN_PATH) {
+				return;
+			}
+
+			if (!existsSync(OBSIDIAN_PLUGIN_PATH)) {
+				mkdirSync(OBSIDIAN_PLUGIN_PATH, { recursive: true });
+			}
+
+			pruneStaleObsidianPluginArtifacts(OBSIDIAN_PLUGIN_PATH);
+
+			for (const file of OBSIDIAN_PLUGIN_DEPLOY_FILES) {
+				if (existsSync(file)) {
+					copyFileSync(file, path.join(OBSIDIAN_PLUGIN_PATH, file));
+					console.log(`Copied ${file} to Obsidian plugin folder`);
+				}
+			}
+		});
+	},
+};
+
 const context = await esbuild.context({
 	banner: {
 		js: banner,
 	},
 	entryPoints: ["main.ts"],
 	bundle: true,
+	plugins: [copyToObsidian],
 	platform: "node",
 	external: [
 		"obsidian",
@@ -45,7 +107,6 @@ const context = await esbuild.context({
 	minify: prod,
 	metafile: analyze,
 	treeShaking: true,
-	//outfile: "vault/.obsidian/plugins/marp-extended/main.js", //for local dev!!!
 	outfile: "main.js",
 });
 

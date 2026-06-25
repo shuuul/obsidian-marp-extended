@@ -2,7 +2,7 @@ import marpCli, { CLIError, CLIErrorCode } from '@marp-team/marp-cli'
 import { TFile, App } from 'obsidian';
 import { MarpSlidesSettings } from './settings';
 import { FilePath } from './filePath';
-import { writeFileSync, readFileSync } from 'node:fs';
+import { existsSync, writeFileSync, readFileSync } from 'node:fs';
 
 export class MarpCLIError extends Error {}
 
@@ -21,7 +21,7 @@ export class MarpExport {
         await filesTool.removeFileFromRoot(file);
         await filesTool.copyFileToRoot(file);
         const completeFilePath = filesTool.getCompleteFilePath(file);
-        const themePath = filesTool.getThemePath(file);
+        const themePaths = filesTool.getThemePaths(file).filter((path) => existsSync(path));
         const resourcesPath = filesTool.getLibDirectory(file.vault);
         const marpEngineConfig = filesTool.getMarpEngine(file.vault);
 
@@ -47,9 +47,9 @@ export class MarpExport {
                 argv.push(marpEngineConfig);
             }
 
-            if (themePath != ''){
+            if (themePaths.length > 0){
                 argv.push('--theme-set');
-                argv.push(themePath);
+                argv.push(...themePaths);
             }
 
             switch (type) {

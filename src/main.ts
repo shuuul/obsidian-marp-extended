@@ -1,10 +1,12 @@
-import { MarkdownView, TAbstractFile, Plugin, addIcon, App, PluginSettingTab, Setting, EditorSuggest, EditorPosition, Editor, TFile, EditorSuggestTriggerInfo, EditorSuggestContext  } from 'obsidian';
+import { MarkdownView, TAbstractFile, Plugin, addIcon, App, PluginSettingTab, Setting, EditorSuggest, EditorPosition, Editor, TFile, EditorSuggestTriggerInfo, EditorSuggestContext, Modal, Notice  } from 'obsidian';
 
 import { MARP_PREVIEW_VIEW, MarpPreviewView } from './views/marpPreviewView';
-import { MarpExport } from './utilities/marpExport';
 import { ICON_SLIDE_PREVIEW, ICON_EXPORT_PDF, ICON_EXPORT_PPTX, ICON_SLIDE_PRESENT } from './utilities/icons';
 import { Libs } from './utilities/libs';
 import { MarpSlidesSettings, DEFAULT_SETTINGS } from 'utilities/settings';
+import { ensureDefaultThemes } from './utilities/ensureDefaultThemes';
+import { DEFAULT_THEME_MANIFEST_VERSION } from './utilities/defaultThemes';
+import { ThemeManager, type InstalledThemeEntry } from './utilities/themeManager';
 
 
 export default class MarpSlides extends Plugin {
@@ -18,6 +20,11 @@ export default class MarpSlides extends Plugin {
 
 		const libsUtility = new Libs(this.settings);
 		libsUtility.loadLibs(this.app);
+
+		void ensureDefaultThemes(this).catch((error: unknown) => {
+			const message = error instanceof Error ? error.message : String(error);
+			console.error('Marp Extended: default theme install failed', message);
+		});
 
 		this.registerView(
 			MARP_PREVIEW_VIEW,
@@ -104,6 +111,7 @@ export default class MarpSlides extends Plugin {
 	async exportFile(type: string){
 		const file = this.app.workspace.getActiveFile();
 		if(file !== null){
+			const { MarpExport } = await import('./utilities/marpExport');
 			const marpCli = new MarpExport(this.settings, this.app);
 			await marpCli.export(file,type);
 		}
@@ -176,7 +184,7 @@ export class MarpSlidesSettingTab extends PluginSettingTab {
 		
 		new Setting(containerEl)
 			.setName('Theme Path')
-			.setDesc('Local paths to additional theme CSS for Marp core and Marpit framework. The rule for paths is following Markdown: Styles.')
+			.setDesc('Optional vault path for additional theme CSS. Built-in themes are installed automatically into .marp-extended/themes.')
 			.addText(text => text
 				.setPlaceholder('template\\marp\\themes')
 				.setValue(this.plugin.settings.ThemePath)
@@ -184,6 +192,8 @@ export class MarpSlidesSettingTab extends PluginSettingTab {
 					this.plugin.settings.ThemePath = value;
 					await this.plugin.saveSettings();
 				}));
+
+		this.displayThemesSection(containerEl);
 
 		new Setting(containerEl)
 			.setName('Export Path')
@@ -249,6 +259,145 @@ export class MarpSlidesSettingTab extends PluginSettingTab {
 					this.plugin.settings.EnableMarkdownItPlugins = value;
 					await this.plugin.saveSettings();
 				}));
+	}
+
+	private displayThemesSection(containerEl: HTMLElement): void {
+		containerEl.createEl('h3', {text: 'Themes'});
+
+		const themeManager = new ThemeManager(this.app, this.plugin.settings);
+		let themeListEl: HTMLElement;
+
+		new Setting(containerEl)
+			.setName('Installed themes')
+			.setDesc(`Default themes are downloaded from GitHub to ${themeManager.getDefaultThemeDirectory()}. Use their @theme names in Marp frontmatter.`)
+			.addButton(button => button
+				.setButtonText('Refresh defaults')
+				.onClick(async () => {
+					button.setDisabled(true);
+					try {
+						const installed = await themeManager.ensureDefaultThemes({ overwrite: true });
+						this.plugin.settings.DefaultThemesSeeded = true;
+						this.plugin.settings.DefaultThemesVersion = DEFAULT_THEME_MANIFEST_VERSION;
+						await this.plugin.saveSettings();
+						new Notice(`Refreshed Marp Extended themes (${installed.length}).`, 5000);
+						await this.renderThemeList(themeListEl);
+					} catch (error) {
+						const message = error instanceof Error ? error.message : String(error);
+						new Notice(`Theme refresh failed: ${message}`, 8000);
+					} finally {
+						button.setDisabled(false);
+					}
+				}))
+			.addButton(button => button
+				.setButtonText('Add CSS theme')
+				.setCta()
+				.onClick(() => {
+					new AddThemeModal(this.app, themeManager, async (entry) => {
+						new Notice(`Added Marp theme: ${entry.name}`, 5000);
+						await this.renderThemeList(themeListEl);
+					}).open();
+				}));
+
+		themeListEl = containerEl.createDiv({ cls: 'marp-extended-theme-list' });
+		void this.renderThemeList(themeListEl);
+	}
+
+	private async renderThemeList(containerEl: HTMLElement): Promise<void> {
+		containerEl.empty();
+
+		const themeManager = new ThemeManager(this.app, this.plugin.settings);
+		const themes = await themeManager.listThemes();
+
+		if (themes.length === 0) {
+			containerEl.createEl('p', {
+				cls: 'marp-extended-theme-empty',
+				text: 'No themes installed yet. Marp Extended will download default themes on startup, or you can add CSS manually.',
+			});
+			return;
+		}
+
+		themes.forEach((theme) => {
+			const desc = `${theme.source === 'default' ? 'Built-in' : 'Custom'} · ${theme.path}`;
+			const setting = new Setting(containerEl)
+				.setName(theme.name)
+				.setDesc(desc);
+
+			if (theme.source === 'custom') {
+				setting.addExtraButton(button => button
+					.setIcon('trash')
+					.setTooltip('Delete theme CSS')
+					.onClick(async () => {
+						await themeManager.removeTheme(theme.path);
+						new Notice(`Deleted Marp theme: ${theme.name}`, 5000);
+						await this.renderThemeList(containerEl);
+					}));
+			}
+		});
+	}
+}
+
+class AddThemeModal extends Modal {
+	private themeName = '';
+	private themeCss = '';
+
+	constructor(
+		app: App,
+		private themeManager: ThemeManager,
+		private onSaved: (entry: InstalledThemeEntry) => Promise<void>,
+	) {
+		super(app);
+	}
+
+	onOpen(): void {
+		this.titleEl.textContent = 'Add Marp CSS theme';
+		const { contentEl } = this;
+		contentEl.empty();
+		contentEl.addClass('marp-extended-add-theme-modal');
+
+		new Setting(contentEl)
+			.setName('Theme name')
+			.setDesc('Optional if the CSS already has a /* @theme name */ metadata comment.')
+			.addText(text => text
+				.setPlaceholder('my-theme')
+				.onChange((value) => {
+					this.themeName = value;
+				}));
+
+		new Setting(contentEl)
+			.setName('Theme CSS')
+			.setDesc('Paste a Marp theme CSS file. It will be saved into .marp-extended/themes/.')
+			.addTextArea(text => {
+				text.inputEl.rows = 18;
+				text.inputEl.addClass('marp-extended-theme-css-input');
+				text.setPlaceholder('/* @theme my-theme */\n\n@import "default";\n\nsection { ... }')
+					.onChange((value) => {
+						this.themeCss = value;
+					});
+			});
+
+		new Setting(contentEl)
+			.addButton(button => button
+				.setButtonText('Cancel')
+				.onClick(() => this.close()))
+			.addButton(button => button
+				.setButtonText('Save theme')
+				.setCta()
+				.onClick(async () => {
+					button.setDisabled(true);
+					try {
+						const entry = await this.themeManager.addThemeFromCss(this.themeCss, this.themeName);
+						await this.onSaved(entry);
+						this.close();
+					} catch (error) {
+						const message = error instanceof Error ? error.message : String(error);
+						new Notice(`Theme save failed: ${message}`, 8000);
+						button.setDisabled(false);
+					}
+				}));
+	}
+
+	onClose(): void {
+		this.contentEl.empty();
 	}
 }
 

@@ -1,5 +1,6 @@
 import { Vault, normalizePath, FileSystemAdapter, TFile, App } from 'obsidian';
 import { MarpSlidesSettings } from './settings';
+import { DEFAULT_THEME_DIRECTORY } from './defaultThemes';
 
 export class FilePath  {
 
@@ -87,6 +88,21 @@ export class FilePath  {
         {
             return '';
         }
+    }
+
+    public getDefaultThemePath(file: TFile): string{
+        return `${this.getRootPath(file)}${normalizePath(DEFAULT_THEME_DIRECTORY)}`;
+    }
+
+    public getThemePaths(file: TFile): string[]{
+        const paths = [this.getDefaultThemePath(file)];
+        const customThemePath = this.getThemePath(file);
+
+        if (customThemePath != '' && customThemePath != paths[0]){
+            paths.push(customThemePath);
+        }
+
+        return paths;
     }
 
     private getPluginDirectory(vault: Vault): string {

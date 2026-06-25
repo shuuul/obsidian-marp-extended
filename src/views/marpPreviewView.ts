@@ -1,10 +1,10 @@
-import { ItemView, WorkspaceLeaf, MarkdownView, normalizePath, TFile } from 'obsidian';
+import { ItemView, WorkspaceLeaf, MarkdownView, TFile } from 'obsidian';
 import { Marp } from '@marp-team/marp-core'
 import { browser, type MarpCoreBrowser } from '@marp-team/marp-core/browser'
 
 import { MarpSlidesSettings } from '../utilities/settings'
-import { MarpExport } from '../utilities/marpExport';
 import { FilePath } from '../utilities/filePath'
+import { ThemeManager } from '../utilities/themeManager';
 import { MathOptions } from '@marp-team/marp-core/types/src/math/math';
 
 const markdownItContainer = require('markdown-it-container');
@@ -62,17 +62,11 @@ export class MarpPreviewView extends ItemView  {
         container.empty();
         this.marpBrowser = browser(container);
 
-        if (this.settings.ThemePath != '') {        
-            const fileContents: string[] = await Promise.all(
-                this.app.vault.getFiles()
-                    .filter(x => x.parent?.path == normalizePath(this.settings.ThemePath))
-                    .map((file) => this.app.vault.cachedRead(file))
-            );
-
-            fileContents.forEach((content) => {
-                this.marp.themeSet.add(content);
-            });
-        }
+        const themeManager = new ThemeManager(this.app, this.settings);
+        const fileContents = await themeManager.loadThemeCss();
+        fileContents.forEach((content) => {
+            this.marp.themeSet.add(content);
+        });
 
         this.addActions();
     }
@@ -94,39 +88,37 @@ export class MarpPreviewView extends ItemView  {
         }
 	}
 
-    async addActions() {
-        const marpCli = new MarpExport(this.settings, this.app);
-        
+    addActions() {
         this.addAction('image', 'Export as PNG', () => {
-            if (this.file) {
-                marpCli.export(this.file, 'png');
-            }
+            void this.exportFile('png');
         });
 
         this.addAction('code-glyph', 'Export as HTML', () => {
-            if (this.file) {
-                marpCli.export(this.file, 'html');
-            }
+            void this.exportFile('html');
         });
 
         this.addAction('slides-marp-export-pdf', 'Export as PDF', () => {
-            if (this.file) {
-                marpCli.export(this.file, 'pdf');
-            }
+            void this.exportFile('pdf');
         });
 
         this.addAction('slides-marp-export-pptx', 'Export as PPTX', () => {
-            if (this.file) {
-                marpCli.export(this.file, 'pptx');
-            }
+            void this.exportFile('pptx');
         });
 
         this.addAction('slides-marp-slide-present', 'Preview Slides', () => {
-            if (this.file) {
-                marpCli.export(this.file, 'preview');
-            }
+            void this.exportFile('preview');
         });
       }
+
+    private async exportFile(type: string) {
+        if (!this.file) {
+            return;
+        }
+
+        const { MarpExport } = await import('../utilities/marpExport');
+        const marpCli = new MarpExport(this.settings, this.app);
+        await marpCli.export(this.file, type);
+    }
     
     async displaySlides(view : MarkdownView) {
 
