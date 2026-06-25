@@ -4,6 +4,8 @@ Marp Extended is an Obsidian plugin for creating, previewing, presenting, and ex
 
 > **Fork notice:** This project is a maintained fork of [Samuele Cozzi's Marp Slides for Obsidian](https://github.com/samuele-cozzi/obsidian-marp-slides). The original plugin and documentation remain the upstream foundation; this fork is being renamed and maintained as **Marp Extended**.
 
+![Marp Extended preview and export example](assets/marp-extended-example.png)
+
 ## Features
 
 - Preview Marp slides inside Obsidian.
@@ -66,7 +68,7 @@ Developer guidance lives in [`AGENTS.md`](AGENTS.md). Release notes live in [`CH
 
 ## Security note
 
-Runtime dependencies currently audit clean with `npm audit --omit=dev`. A full `npm audit` may still report a moderate `js-yaml` advisory through Jest/coverage tooling; do not use `npm audit fix --force` unless you intend to change the test stack.
+Runtime dependencies audit clean with `npm audit --omit=dev`. A full `npm audit` currently reports a dev-only moderate `js-yaml` advisory through Istanbul/Jest coverage tooling (`@istanbuljs/load-nyc-config` → `babel-plugin-istanbul` → Jest/ts-jest). `npm audit fix --force` would make breaking test-stack changes, so avoid it unless you are intentionally updating that tooling.
 
 ## Upstream credits
 
