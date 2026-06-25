@@ -78,31 +78,12 @@ export class FilePath  {
         }
     }
 
-    public getThemePath(file: TFile): string{
-        const themePath = `${this.getRootPath(file)}${normalizePath(this.settings.ThemePath)}`;
-        //console.log(`Theme Path: ${themePath}`);
-        if (this.settings.ThemePath != ''){
-            return themePath;
-        } 
-        else
-        {
-            return '';
-        }
-    }
-
     public getDefaultThemePath(file: TFile): string{
         return `${this.getRootPath(file)}${normalizePath(DEFAULT_THEME_DIRECTORY)}`;
     }
 
     public getThemePaths(file: TFile): string[]{
-        const paths = [this.getDefaultThemePath(file)];
-        const customThemePath = this.getThemePath(file);
-
-        if (customThemePath != '' && customThemePath != paths[0]){
-            paths.push(customThemePath);
-        }
-
-        return paths;
+        return [this.getDefaultThemePath(file)];
     }
 
     private getPluginDirectory(vault: Vault): string {

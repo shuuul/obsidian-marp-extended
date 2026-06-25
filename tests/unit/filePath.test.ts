@@ -53,12 +53,9 @@ test('file path', () => {
 
 });
 
-test('theme paths include built-in themes before custom theme path', () => {
+test('theme paths include managed theme directory', () => {
 
-  const filePath = new FilePath({
-    ...DEFAULT_SETTINGS,
-    ThemePath: 'custom\\themes',
-  });
+  const filePath = new FilePath(DEFAULT_SETTINGS);
 
   const file = new TFile;
   file.vault.adapter.write('aaa', '');
@@ -67,7 +64,6 @@ test('theme paths include built-in themes before custom theme path', () => {
 
   expect(result).toEqual([
     'aaa/.marp-extended/themes',
-    'aaa/custom/themes',
   ]);
 
 });

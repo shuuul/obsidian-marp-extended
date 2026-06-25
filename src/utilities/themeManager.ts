@@ -1,6 +1,5 @@
 import { App, normalizePath, requestUrl } from 'obsidian';
 
-import { MarpSlidesSettings } from './settings';
 import {
 	DEFAULT_THEME_DEFINITIONS,
 	DEFAULT_THEME_DIRECTORY,
@@ -43,7 +42,7 @@ function uniqueByPath(entries: InstalledThemeEntry[]): InstalledThemeEntry[] {
 }
 
 export class ThemeManager {
-	constructor(private app: App, private settings: MarpSlidesSettings) {}
+	constructor(private app: App) {}
 
 	getDefaultThemeDirectory(): string {
 		return DEFAULT_THEME_DIRECTORY;
@@ -75,11 +74,6 @@ export class ThemeManager {
 	async listThemes(): Promise<InstalledThemeEntry[]> {
 		const entries: InstalledThemeEntry[] = [];
 		entries.push(...await this.listThemesFromDirectory(DEFAULT_THEME_DIRECTORY, 'default'));
-
-		const customThemePath = normalizePath(this.settings.ThemePath.trim());
-		if (customThemePath && customThemePath !== DEFAULT_THEME_DIRECTORY) {
-			entries.push(...await this.listThemesFromDirectory(customThemePath, 'custom'));
-		}
 
 		return uniqueByPath(entries).sort((a, b) => {
 			if (a.source !== b.source) {

@@ -2,7 +2,6 @@ import { FileSystemAdapter } from 'obsidian';
 import { expect, test } from '@jest/globals';
 
 import { DEFAULT_THEME_DIRECTORY, normalizeThemeName, parseThemeNameFromCss, themeNameToFileName } from '@/utilities/defaultThemes';
-import { DEFAULT_SETTINGS } from '@/utilities/settings';
 import { ThemeManager } from '@/utilities/themeManager';
 
 function createApp(adapter: any): any {
@@ -22,7 +21,7 @@ test('theme metadata helpers parse and sanitize theme names', () => {
 
 test('pasted theme CSS is saved under the default theme directory', async () => {
 	const adapter = new FileSystemAdapter();
-	const manager = new ThemeManager(createApp(adapter), { ...DEFAULT_SETTINGS });
+	const manager = new ThemeManager(createApp(adapter));
 
 	const entry = await manager.addThemeFromCss('section { color: red; }', 'My Theme!');
 
@@ -36,19 +35,14 @@ test('pasted theme CSS is saved under the default theme directory', async () => 
 	expect((await manager.listThemes())[0].source).toBe('custom');
 });
 
-test('theme list includes default themes before custom theme path themes', async () => {
+test('theme list includes default themes before custom themes in managed directory', async () => {
 	const adapter = new FileSystemAdapter();
 	await adapter.mkdir('.marp-extended');
 	await adapter.mkdir(DEFAULT_THEME_DIRECTORY);
-	await adapter.mkdir('custom');
-	await adapter.mkdir('custom/themes');
 	await adapter.write(`${DEFAULT_THEME_DIRECTORY}/kami.css`, '/* @theme kami */\nsection {}');
-	await adapter.write('custom/themes/local.css', '/* @theme local */\nsection {}');
+	await adapter.write(`${DEFAULT_THEME_DIRECTORY}/local.css`, '/* @theme local */\nsection {}');
 
-	const manager = new ThemeManager(createApp(adapter), {
-		...DEFAULT_SETTINGS,
-		ThemePath: 'custom/themes',
-	});
+	const manager = new ThemeManager(createApp(adapter));
 
 	const themes = await manager.listThemes();
 	expect(themes.map((theme) => `${theme.source}:${theme.name}`)).toEqual([

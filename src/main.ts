@@ -84,8 +84,12 @@ export default class MarpSlides extends Plugin {
 		// This adds a settings tab so the user can configure various aspects of the plugin
 		this.addSettingTab(new MarpSlidesSettingTab(this.app, this));
 
-		if (this.settings.EnableSyncPreview)
-			this.registerEditorSuggest(new LineSelectionListener(this.app, this));
+		this.registerEditorSuggest(new LineSelectionListener(this.app, this));
+		this.registerEvent(this.app.workspace.on('active-leaf-change', (leaf) => {
+			if (leaf?.view instanceof MarkdownView) {
+				this.refreshPreviewForEditor(leaf.view);
+			}
+		}));
 
 		this.registerEvent(this.app.vault.on('modify', this.onChange.bind(this)));
 	}
@@ -95,7 +99,16 @@ export default class MarpSlides extends Plugin {
 	}
 
 	async loadSettings() {
-		this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
+		const saved = await this.loadData() as Partial<MarpSlidesSettings> | null;
+		this.settings = {
+			CHROME_PATH: saved?.CHROME_PATH ?? DEFAULT_SETTINGS.CHROME_PATH,
+			DefaultThemesSeeded: saved?.DefaultThemesSeeded ?? DEFAULT_SETTINGS.DefaultThemesSeeded,
+			DefaultThemesVersion: saved?.DefaultThemesVersion ?? DEFAULT_SETTINGS.DefaultThemesVersion,
+			EnableHTML: saved?.EnableHTML ?? DEFAULT_SETTINGS.EnableHTML,
+			MathTypesettings: saved?.MathTypesettings ?? DEFAULT_SETTINGS.MathTypesettings,
+			HTMLExportMode: saved?.HTMLExportMode ?? DEFAULT_SETTINGS.HTMLExportMode,
+			EnableMarkdownItPlugins: saved?.EnableMarkdownItPlugins ?? DEFAULT_SETTINGS.EnableMarkdownItPlugins,
+		};
 	}
 
 	async saveSettings() {
@@ -104,7 +117,10 @@ export default class MarpSlides extends Plugin {
 
 	onChange(file: TAbstractFile) {
 		if (file == this.editorView?.file) {
-			this.slidesView.onChange(this.editorView);
+			const view = this.getViewInstance(false);
+			if (view) {
+				void view.onChange(this.editorView);
+			}
 		}
 	}
 
@@ -118,35 +134,59 @@ export default class MarpSlides extends Plugin {
 	}
 
 	async showPreviewSlide(){
-		this.editorView = this.app.workspace.getActiveViewOfType(MarkdownView);
+		this.editorView = this.getActiveMarkdownView();
 
 		if (!this.editorView) {
 			return;
 		}
 
 		this.slidesView = await this.activateView();
-		this.slidesView.displaySlides(this.editorView);
+		await this.slidesView.displaySlides(this.editorView);
 	}
 	
 	async activateView() : Promise<MarpPreviewView> {
 		this.app.workspace.detachLeavesOfType(MARP_PREVIEW_VIEW);
 	
-		await this.app.workspace.getLeaf('split').setViewState({
+		const leaf = this.app.workspace.getRightLeaf(false) ?? this.app.workspace.getLeaf('split');
+		await leaf.setViewState({
 			type: MARP_PREVIEW_VIEW,
 			active: true,
 		});
-
-		const leaf = this.app.workspace.getLeavesOfType(MARP_PREVIEW_VIEW)[0];
 
 		this.app.workspace.revealLeaf(leaf);
 
 		return leaf.view as MarpPreviewView;
 	}
 
-	getViewInstance(): MarpPreviewView | null {
+	getActiveMarkdownView(): MarkdownView | null {
+		return this.app.workspace.getActiveViewOfType(MarkdownView);
+	}
+
+	refreshPreviewForEditor(view: MarkdownView): MarpPreviewView | null {
+		this.editorView = view;
+		const previewView = this.getViewInstance(false);
+		if (previewView) {
+			void previewView.displaySlides(view);
+		}
+		return previewView;
+	}
+
+	syncPreviewContext(view: MarkdownView): MarpPreviewView | null {
+		const shouldRefresh = this.editorView?.file !== view.file;
+		this.editorView = view;
+		const previewView = this.getViewInstance(false);
+		if (previewView && shouldRefresh) {
+			void previewView.displaySlides(view);
+		}
+		return previewView;
+	}
+
+	getViewInstance(reveal = true): MarpPreviewView | null {
 		const leaf = this.app.workspace.getLeavesOfType(MARP_PREVIEW_VIEW)[0];
 		if (leaf){
-			this.app.workspace.revealLeaf(leaf);
+			if (reveal) {
+				this.app.workspace.revealLeaf(leaf);
+			}
 			return leaf.view as MarpPreviewView;
 		} else {
 			return null;
@@ -169,40 +209,16 @@ export class MarpSlidesSettingTab extends PluginSettingTab {
 
 		containerEl.empty();
 
-		containerEl.createEl('h2', {text: 'MARP Slide Plugin - Settings'});
+		containerEl.createEl('h3', {text: 'General'});
 
 		new Setting(containerEl)
 			.setName('Chrome Path')
-			.setDesc('Sets the custom path for Chrome or Chromium-based browser to export PDF, PPTX, and image. If it\'s empty, Marp will find out the installed Google Chrome / Chromium / Microsoft Edge.')
+			.setDesc('Optional. Leave empty to let Marp CLI automatically find Google Chrome, Chromium, or Microsoft Edge. Set this only if auto-detection fails.')
 			.addText(text => text
 				.setPlaceholder('Enter CHROME_PATH')
 				.setValue(this.plugin.settings.CHROME_PATH)
 				.onChange(async (value) => {
 					this.plugin.settings.CHROME_PATH = value;
-					await this.plugin.saveSettings();
-				}));
-		
-		new Setting(containerEl)
-			.setName('Theme Path')
-			.setDesc('Optional vault path for additional theme CSS. Built-in themes are installed automatically into .marp-extended/themes.')
-			.addText(text => text
-				.setPlaceholder('template\\marp\\themes')
-				.setValue(this.plugin.settings.ThemePath)
-				.onChange(async (value) => {
-					this.plugin.settings.ThemePath = value;
-					await this.plugin.saveSettings();
-				}));
-
-		this.displayThemesSection(containerEl);
-
-		new Setting(containerEl)
-			.setName('Export Path')
-			.setDesc('Sets the custom path to export PDF, PPTX, and images. If it\'s empty, Marp will export in the same folder of the note. Export path does not affect HTML export')
-			.addText(text => text
-				.setPlaceholder('C:\\Users\\user\\Downloads\\')
-				.setValue(this.plugin.settings.EXPORT_PATH)
-				.onChange(async (value) => {
-					this.plugin.settings.EXPORT_PATH = value;
 					await this.plugin.saveSettings();
 				}));
 		
@@ -230,10 +246,10 @@ export class MarpSlidesSettingTab extends PluginSettingTab {
 
 		new Setting(containerEl)
 			.setName('HTML Export Mode')
-			.setDesc('(Experimental) Controls HTML library for eporting HTML File in Marp Cli. bespoke.js is experimental')
+			.setDesc('Choose the Marp CLI HTML template. Bare is minimal; Bespoke adds presentation controls, presenter view, overview, and transitions.')
 			.addDropdown(toggle => toggle
-				.addOption("bare","bare.js")
-				.addOption("bespoke","bespoke.js")
+				.addOption("bare","bare (minimal)")
+				.addOption("bespoke","bespoke (interactive)")
 				.setValue(this.plugin.settings.HTMLExportMode)
 				.onChange(async (value) => {
 					this.plugin.settings.HTMLExportMode = value;
@@ -241,30 +257,22 @@ export class MarpSlidesSettingTab extends PluginSettingTab {
 				}));
 		
 		new Setting(containerEl)
-			.setName('Sync Preview')
-			.setDesc('(Experimental) Sync the slide preview with the editor cursor')
-			.addToggle(toggle => toggle
-				.setValue(this.plugin.settings.EnableSyncPreview)
-				.onChange(async (value) => {
-					this.plugin.settings.EnableSyncPreview = value;
-					await this.plugin.saveSettings();
-				}));
-
-		new Setting(containerEl)
 			.setName('MarkdownIt Plugins')
-			.setDesc('(Experimental) Enable the Markdown It Plugins (Mark, Containers, Kroki)')
+			.setDesc('Enable the Markdown It Plugins (Mark, Containers, Kroki)')
 			.addToggle(toggle => toggle
 				.setValue(this.plugin.settings.EnableMarkdownItPlugins)
 				.onChange(async (value) => {
 					this.plugin.settings.EnableMarkdownItPlugins = value;
 					await this.plugin.saveSettings();
 				}));
+
+		this.displayThemesSection(containerEl);
 	}
 
 	private displayThemesSection(containerEl: HTMLElement): void {
 		containerEl.createEl('h3', {text: 'Themes'});
 
-		const themeManager = new ThemeManager(this.app, this.plugin.settings);
+		const themeManager = new ThemeManager(this.app);
 		let themeListEl: HTMLElement;
 
 		new Setting(containerEl)
@@ -305,7 +313,7 @@ export class MarpSlidesSettingTab extends PluginSettingTab {
 	private async renderThemeList(containerEl: HTMLElement): Promise<void> {
 		containerEl.empty();
 
-		const themeManager = new ThemeManager(this.app, this.plugin.settings);
+		const themeManager = new ThemeManager(this.app);
 		const themes = await themeManager.listThemes();
 
 		if (themes.length === 0) {
@@ -322,16 +330,14 @@ export class MarpSlidesSettingTab extends PluginSettingTab {
 				.setName(theme.name)
 				.setDesc(desc);
 
-			if (theme.source === 'custom') {
-				setting.addExtraButton(button => button
-					.setIcon('trash')
-					.setTooltip('Delete theme CSS')
-					.onClick(async () => {
-						await themeManager.removeTheme(theme.path);
-						new Notice(`Deleted Marp theme: ${theme.name}`, 5000);
-						await this.renderThemeList(containerEl);
-					}));
-			}
+			setting.addExtraButton(button => button
+				.setIcon('trash')
+				.setTooltip('Delete theme CSS')
+				.onClick(async () => {
+					await themeManager.removeTheme(theme.path);
+					new Notice(`Deleted Marp theme: ${theme.name}`, 5000);
+					await this.renderThemeList(containerEl);
+				}));
 		});
 	}
 }
@@ -423,9 +429,12 @@ class LineSelectionListener extends EditorSuggest<string> {
 		//console.log("ch: " + cursor.ch);
 		//console.log("value: " + editor.getValue());
         
-        const instance = this.plugin.getViewInstance();
+        const activeView = this.plugin.getActiveMarkdownView();
+		const instance = activeView?.file === file
+			? this.plugin.syncPreviewContext(activeView)
+			: this.plugin.getViewInstance(false);
 
-		if (instance) {
+		if (instance?.isSyncPreviewEnabled()) {
 			const lines = editor.getValue().split('\n');
 			const firstNLines = lines.slice(0, cursor.line);
 			const text = firstNLines.join('\n');

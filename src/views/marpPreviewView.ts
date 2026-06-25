@@ -1,4 +1,4 @@
-import { ItemView, WorkspaceLeaf, MarkdownView, TFile } from 'obsidian';
+import { ItemView, WorkspaceLeaf, MarkdownView, TFile, setIcon } from 'obsidian';
 import { Marp } from '@marp-team/marp-core'
 import { browser, type MarpCoreBrowser } from '@marp-team/marp-core/browser'
 
@@ -17,6 +17,9 @@ export class MarpPreviewView extends ItemView  {
     private marp: Marp; 
     
     private marpBrowser: MarpCoreBrowser | undefined;
+    private previewContainerEl: HTMLElement | undefined;
+    private syncPreviewButtonEl: HTMLButtonElement | undefined;
+    private syncPreviewEnabled = true;
     private settings : MarpSlidesSettings;
 
     private file : TFile;
@@ -55,14 +58,20 @@ export class MarpPreviewView extends ItemView  {
         return "Deck Preview";
     }
 
+    getIcon() {
+        return 'slides-preview-marp';
+    }
+
     async onOpen() {
         // console.log("marp slide onopen");
 
-        const container = this.containerEl.children[1];
-        container.empty();
-        this.marpBrowser = browser(container);
+        this.contentEl.empty();
+        this.contentEl.addClass('marp-extended-preview-root');
+        this.addPreviewToolbar(this.contentEl);
+        this.previewContainerEl = this.contentEl.createDiv({ cls: 'marp-extended-preview-content' });
+        this.marpBrowser = browser(this.previewContainerEl);
 
-        const themeManager = new ThemeManager(this.app, this.settings);
+        const themeManager = new ThemeManager(this.app);
         const fileContents = await themeManager.loadThemeCss();
         fileContents.forEach((content) => {
             this.marp.themeSet.add(content);
@@ -82,11 +91,72 @@ export class MarpPreviewView extends ItemView  {
 
     async onLineChanged(line: number) {
         try {
-			this.containerEl.children[1].children[2].children[line].scrollIntoView();
+            this.previewContainerEl?.querySelectorAll('section')[line]?.scrollIntoView();
         } catch {
             console.log("Preview slide not found!")
         }
 	}
+
+    isSyncPreviewEnabled() {
+        return this.syncPreviewEnabled;
+    }
+
+    addPreviewToolbar(container: HTMLElement) {
+        const toolbar = container.createDiv({ cls: 'marp-extended-preview-toolbar' });
+        this.addSyncPreviewToolbarButton(toolbar);
+        this.addPreviewToolbarButton(toolbar, 'image', 'Export as PNG', 'png');
+        this.addPreviewToolbarButton(toolbar, 'code-glyph', 'Export as HTML', 'html');
+        this.addPreviewToolbarButton(toolbar, 'slides-marp-export-pdf', 'Export as PDF', 'pdf');
+        this.addPreviewToolbarButton(toolbar, 'slides-marp-export-pptx', 'Export as PPTX', 'pptx');
+        this.addPreviewToolbarButton(toolbar, 'slides-marp-slide-present', 'Preview Slides', 'preview');
+    }
+
+    private addSyncPreviewToolbarButton(toolbar: HTMLElement) {
+        this.syncPreviewButtonEl = toolbar.createEl('button', {
+            cls: 'marp-extended-preview-toolbar-button marp-extended-preview-sync-button',
+            attr: {
+                type: 'button',
+            },
+        });
+        this.syncPreviewButtonEl.addEventListener('click', () => {
+            this.syncPreviewEnabled = !this.syncPreviewEnabled;
+            this.updateSyncPreviewToolbarButton();
+        });
+        this.updateSyncPreviewToolbarButton();
+    }
+
+    private updateSyncPreviewToolbarButton() {
+        if (!this.syncPreviewButtonEl) {
+            return;
+        }
+
+        const title = this.syncPreviewEnabled ? 'Sync preview: on' : 'Sync preview: off';
+        this.syncPreviewButtonEl.empty();
+        this.syncPreviewButtonEl.classList.toggle('is-enabled', this.syncPreviewEnabled);
+        this.syncPreviewButtonEl.setAttribute('aria-label', title);
+        this.syncPreviewButtonEl.setAttribute('aria-pressed', String(this.syncPreviewEnabled));
+        this.syncPreviewButtonEl.setAttribute('title', title);
+        setIcon(this.syncPreviewButtonEl, this.syncPreviewEnabled ? 'link' : 'unlink');
+        this.syncPreviewButtonEl.createSpan({
+            cls: 'marp-extended-preview-toolbar-button-label',
+            text: this.syncPreviewEnabled ? 'Sync on' : 'Sync off',
+        });
+    }
+
+    private addPreviewToolbarButton(toolbar: HTMLElement, icon: string, title: string, type: string) {
+        const button = toolbar.createEl('button', {
+            cls: 'marp-extended-preview-toolbar-button',
+            attr: {
+                'aria-label': title,
+                title,
+                type: 'button',
+            },
+        });
+        setIcon(button, icon);
+        button.addEventListener('click', () => {
+            void this.exportFile(type);
+        });
+    }
 
     addActions() {
         this.addAction('image', 'Export as PNG', () => {
@@ -131,7 +201,7 @@ export class MarpPreviewView extends ItemView  {
             // Convert wiki-link images to standard markdown
             const processedMarkdown = filePath.convertImageWikiLinks(markdownText, view.file, this.app);
 
-            const container = this.containerEl.children[1];
+            const container = this.previewContainerEl ?? this.contentEl;
             container.empty();
 
 

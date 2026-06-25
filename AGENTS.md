@@ -65,13 +65,15 @@ For manual Obsidian testing, set `OBSIDIAN_VAULT` in `.env.local`; `npm run dev`
 <vault>/.obsidian/plugins/marp-extended/
 ```
 
-Then reload and enable the dev plugin with the Obsidian CLI:
+Then reload the dev plugin with the Obsidian CLI. If the local CLI supports plugin enabling, enable the dev plugin too:
 
 ```bash
 obsidian reload
-obsidian plugin:enable id=marp-extended
+obsidian plugin:enable id=marp-extended  # optional; skip/report if this command is unavailable
 obsidian dev:errors
 ```
+
+After completing code/config/style changes, refresh the local Obsidian dev plugin automatically: run `npm run build` so the updated runtime files are copied, then run `obsidian reload`; also run `obsidian plugin:enable id=marp-extended` when supported. If `OBSIDIAN_VAULT` is unset, the Obsidian CLI is unavailable, or Obsidian is not running, report that the reload could not be completed.
 
 Required runtime files for a local plugin install are:
 

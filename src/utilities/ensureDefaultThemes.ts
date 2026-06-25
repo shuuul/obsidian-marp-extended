@@ -17,7 +17,7 @@ export async function ensureDefaultThemes(plugin: MarpSlides): Promise<void> {
 		return;
 	}
 
-	const manager = new ThemeManager(plugin.app, plugin.settings);
+	const manager = new ThemeManager(plugin.app);
 	const notice = new Notice('Installing Marp Extended themes…', 0);
 
 	try {
