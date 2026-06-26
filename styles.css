@@ -17,6 +17,9 @@ If your plugin does not need CSS, delete this file.
 }
 
 .view-content.marp-extended-preview-root {
+	display: flex;
+	flex-direction: column;
+	overflow: hidden;
 	padding: 0;
 }
 
@@ -36,7 +39,28 @@ If your plugin does not need CSS, delete this file.
 }
 
 .marp-extended-preview-content {
-	padding-top: var(--size-2-2);
+	--marp-extended-preview-zoom: 1;
+	flex: 1 1 auto;
+	overflow: auto;
+	overscroll-behavior: contain;
+	padding: var(--size-2-2) 0 var(--size-4-4);
+}
+
+.marp-extended-preview-content > #__marp-vscode {
+	margin-inline: auto;
+	transform-origin: top left;
+	width: max-content;
+	zoom: var(--marp-extended-preview-zoom);
+}
+
+.marp-extended-preview-content > #__marp-vscode > [data-marp-vscode-slide-wrapper] {
+	display: block;
+}
+
+.marp-extended-preview-content > #__marp-vscode > [data-marp-vscode-slide-wrapper] > svg {
+	display: block;
+	height: 100%;
+	width: 100%;
 }
 
 .marp-extended-preview-toolbar-button {
@@ -67,6 +91,22 @@ If your plugin does not need CSS, delete this file.
 	padding-inline: var(--size-2-2);
 	width: auto;
 }
+
+.marp-extended-preview-zoom-controls {
+	align-items: center;
+	display: inline-flex;
+	gap: var(--size-2-1);
+	margin-inline: var(--size-2-1);
+}
+
+.marp-extended-preview-zoom-label {
+	color: var(--text-muted);
+	font-size: var(--font-ui-smaller);
+	min-width: 3.5em;
+	text-align: center;
+	white-space: nowrap;
+}
+
 
 .marp-extended-preview-toolbar-button-label {
 	font-size: var(--font-ui-smaller);

@@ -9,3 +9,6 @@ export const ICON_EXPORT_PPTX =
 
 export const ICON_SLIDE_PRESENT =
     '<svg width="100" height="100" viewBox="0 0 600 600" xmlns="http://www.w3.org/2000/svg"><g><rect stroke-width="40" rx="40" id="svg_1" height="400" width="525.00001" y="100" x="37.5" stroke="currentColor" fill="none"/><path id="svg_9" d="m109,215.22229l0,0l0,-0.02939l0,0.02939zm0.0155,-0.02939l89.44746,84.82179l-89.46295,84.7924l32.88988,31.19291l122.35284,-116.00001l-122.35284,-116.00001l-32.87438,31.19291zm158.4976,198.69133l223.48689,0l0,-44.06384l-223.48689,0l0,44.06384zm67.19021,-91.83028l156.29668,0l0,-44.06384l-156.29668,0l0,44.06384zm-67.19021,-135.90881l0,44.09323l223.48689,0l0,-44.09323l-223.48689,0z" stroke-width="30" fill="currentColor"/></g></svg>';
+
+export const ICON_FIT_WIDTH =
+    '<svg width="100" height="100" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" fill="none"><rect x="8" y="20" width="84" height="60" rx="6" stroke="currentColor" stroke-width="8"/><path d="M22 50h56" stroke="currentColor" stroke-width="8" stroke-linecap="round"/><path d="M36 36L22 50l14 14" stroke="currentColor" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/><path d="M64 36l14 14-14 14" stroke="currentColor" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/></svg>';

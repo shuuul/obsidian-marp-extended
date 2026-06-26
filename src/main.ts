@@ -1,7 +1,7 @@
 import { MarkdownView, TAbstractFile, Plugin, addIcon, App, PluginSettingTab, Setting, EditorSuggest, EditorPosition, Editor, TFile, EditorSuggestTriggerInfo, EditorSuggestContext, Modal, Notice  } from 'obsidian';
 
 import { MARP_PREVIEW_VIEW, MarpPreviewView } from './views/marpPreviewView';
-import { ICON_SLIDE_PREVIEW, ICON_EXPORT_PDF, ICON_EXPORT_PPTX, ICON_SLIDE_PRESENT } from './utilities/icons';
+import { ICON_SLIDE_PREVIEW, ICON_EXPORT_PDF, ICON_EXPORT_PPTX, ICON_SLIDE_PRESENT, ICON_FIT_WIDTH } from './utilities/icons';
 import { Libs } from './utilities/libs';
 import { MarpSlidesSettings, DEFAULT_SETTINGS } from 'utilities/settings';
 import { ensureDefaultThemes } from './utilities/ensureDefaultThemes';
@@ -35,6 +35,7 @@ export default class MarpSlides extends Plugin {
 		addIcon('slides-marp-export-pdf', ICON_EXPORT_PDF);
 		addIcon('slides-marp-export-pptx', ICON_EXPORT_PPTX);
 		addIcon('slides-marp-slide-present', ICON_SLIDE_PRESENT);
+		addIcon('slides-marp-fit-width', ICON_FIT_WIDTH);
 		this.addRibbonIcon('slides-preview-marp', 'Show Slide Preview', async () => {
 			await this.showPreviewSlide();
 		});
