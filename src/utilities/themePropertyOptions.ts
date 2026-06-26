@@ -1,8 +1,10 @@
 import type { App, MetadataCache } from 'obsidian';
+import { parseThemeSizeNamesFromCss } from './defaultThemes';
 
 import { ThemeManager } from './themeManager';
 
 const THEME_PROPERTY_KEY = 'theme';
+const SIZE_PROPERTY_KEY = 'size';
 
 type MetadataCacheWithPropertyValues = MetadataCache & {
 	getFrontmatterPropertyValuesForKey?: (key: string) => unknown;
@@ -10,8 +12,8 @@ type MetadataCacheWithPropertyValues = MetadataCache & {
 
 type PropertyValueGetter = (key: string) => string[];
 
-function isThemePropertyKey(key: string): boolean {
-	return key.trim().toLowerCase() === THEME_PROPERTY_KEY;
+function getPropertyKey(key: string): string {
+	return key.trim().toLowerCase();
 }
 
 function toStringArray(values: unknown): string[] {
@@ -42,6 +44,7 @@ export class ThemePropertyOptions {
 	private originalGetValues: ((key: string) => unknown) | null = null;
 	private patchedGetValues: PropertyValueGetter | null = null;
 	private themeNames: string[] = [];
+	private sizeNames: string[] = [];
 
 	constructor(
 		private app: App,
@@ -58,19 +61,26 @@ export class ThemePropertyOptions {
 		this.originalGetValues = originalGetValues;
 		this.patchedGetValues = (key: string) => {
 			const existingValues = toStringArray(originalGetValues.call(metadataCache, key));
-			if (!isThemePropertyKey(key)) {
-				return existingValues;
+			switch (getPropertyKey(key)) {
+				case THEME_PROPERTY_KEY:
+					return uniqueStrings([...existingValues, ...this.themeNames]);
+				case SIZE_PROPERTY_KEY:
+					return uniqueStrings([...existingValues, ...this.sizeNames]);
+				default:
+					return existingValues;
 			}
-
-			return uniqueStrings([...existingValues, ...this.themeNames]);
 		};
 
 		metadataCache.getFrontmatterPropertyValuesForKey = this.patchedGetValues;
 	}
 
 	async refresh(): Promise<void> {
-		const themes = await this.themeManager.listThemes();
+		const [themes, themeCss] = await Promise.all([
+			this.themeManager.listThemes(),
+			this.themeManager.loadThemeCss(),
+		]);
 		this.themeNames = uniqueStrings(themes.map((theme) => theme.name)).sort((a, b) => a.localeCompare(b));
+		this.sizeNames = uniqueStrings(themeCss.flatMap(parseThemeSizeNamesFromCss)).sort((a, b) => a.localeCompare(b));
 	}
 
 	unregister(): void {
@@ -87,6 +97,7 @@ export class ThemePropertyOptions {
 		this.originalGetValues = null;
 		this.patchedGetValues = null;
 		this.themeNames = [];
+		this.sizeNames = [];
 	}
 
 	private getMetadataCacheWithPropertyValues(): MetadataCacheWithPropertyValues | null {

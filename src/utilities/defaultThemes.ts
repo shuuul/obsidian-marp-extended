@@ -37,6 +37,19 @@ export function parseThemeNameFromCss(css: string): string | null {
 	return match?.[1] ?? null;
 }
 
+export function parseThemeSizeNamesFromCss(css: string): string[] {
+	const matches = css.matchAll(/@size\s+(\S+)\s+(\S+)/g);
+	const names: string[] = [];
+
+	for (const match of matches) {
+		if (match[2] !== 'false') {
+			names.push(match[1]);
+		}
+	}
+
+	return names;
+}
+
 export function normalizeThemeName(themeName: string): string {
 	const normalized = themeName
 		.trim()

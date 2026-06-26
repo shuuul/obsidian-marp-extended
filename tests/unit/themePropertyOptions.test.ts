@@ -37,6 +37,33 @@ test('theme property suggestions include installed Marp themes', async () => {
 	expect(app.metadataCache.getFrontmatterPropertyValuesForKey('status')).toEqual(['draft']);
 });
 
+test('size property suggestions include Marp theme size presets', async () => {
+	const adapter = new FileSystemAdapter();
+	await adapter.mkdir('.marp-extended');
+	await adapter.mkdir(DEFAULT_THEME_DIRECTORY);
+	await adapter.write(
+		`${DEFAULT_THEME_DIRECTORY}/kami.css`,
+		'/* @theme kami */\n/* @size 16:9 1280px 720px */\n/* @size 4:3 960px 720px */\nsection {}'
+	);
+	await adapter.write(
+		`${DEFAULT_THEME_DIRECTORY}/print.css`,
+		'/* @theme print */\n/* @size print-wide 280mm 158mm */\n/* @size disabled false */\nsection {}'
+	);
+
+	const app = createApp(adapter, (key) => key === 'size' ? ['custom'] : []);
+	const options = new ThemePropertyOptions(app, new ThemeManager(app));
+
+	options.register();
+	await options.refresh();
+
+	expect(app.metadataCache.getFrontmatterPropertyValuesForKey('size')).toEqual([
+		'custom',
+		'16:9',
+		'4:3',
+		'print-wide',
+	]);
+});
+
 test('theme property suggestions restore original metadata cache method on unregister', async () => {
 	const adapter = new FileSystemAdapter();
 	const app = createApp(adapter, () => ['original']);

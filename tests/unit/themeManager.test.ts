@@ -1,7 +1,7 @@
 import { FileSystemAdapter } from 'obsidian';
 import { expect, test } from '@jest/globals';
 
-import { DEFAULT_THEME_DIRECTORY, normalizeThemeName, parseThemeNameFromCss, themeNameToFileName } from '@/utilities/defaultThemes';
+import { DEFAULT_THEME_DIRECTORY, normalizeThemeName, parseThemeNameFromCss, parseThemeSizeNamesFromCss, themeNameToFileName } from '@/utilities/defaultThemes';
 import { ThemeManager } from '@/utilities/themeManager';
 
 function createApp(adapter: any): any {
@@ -17,6 +17,8 @@ test('theme metadata helpers parse and sanitize theme names', () => {
 	expect(parseThemeNameFromCss('section {}')).toBeNull();
 	expect(normalizeThemeName('My Theme!')).toBe('my-theme');
 	expect(themeNameToFileName('My Theme!')).toBe('my-theme.css');
+	expect(parseThemeSizeNamesFromCss('/* @size 16:9 1280px 720px */\n/* @size print-wide 280mm 158mm */')).toEqual(['16:9', 'print-wide']);
+	expect(parseThemeSizeNamesFromCss('/* @size 4:3 false */')).toEqual([]);
 });
 
 test('pasted theme CSS is saved under the default theme directory', async () => {
