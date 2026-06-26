@@ -35,6 +35,8 @@ Global directives affect the entire deck. If repeated, Marpit uses the last valu
 | Directive | Use |
 | --- | --- |
 | `theme` | Select a theme registered in the theme set, e.g. `default`, `gaia`, `uncover`, or a vault CSS theme. |
+| `mermaidTheme` | Marp Extended property for selecting a Mermaid-only CSS theme from `.marp-extended/mermaid-themes`. |
+| `mermaidFlat` | Marp Extended property. Use `true` to remove the Mermaid figure card background, border, shadow, and padding so diagrams blend into the slide. |
 | `style` | Add CSS tweaks as a YAML block scalar. Prefer this to raw `<style>` when possible. |
 | `headingDivider` | Auto-split slides before headings. Use number `1`-`6` or an array such as `[1, 2]`. |
 | `lang` | Set the HTML `lang` attribute. |
@@ -48,6 +50,8 @@ Example:
 ---
 marp: true
 theme: gaia
+mermaidTheme: github
+mermaidFlat: false
 size: 16:9
 headingDivider: 2
 math: katex
@@ -88,6 +92,36 @@ Use quotes when YAML special characters are present:
 ```yaml
 footer: "**Draft** · v0.2"
 ```
+
+## HTML blocks for advanced Obsidian slide layouts
+
+Obsidian Markdown and Marp directives cover common slides, but many editorial
+layouts need explicit HTML. In this plugin, hand-written HTML is an accepted
+escape hatch for structures that Markdown cannot express cleanly, such as two
+column grids, cards, callouts, metric tables, title metadata, and Kami-style
+paper layouts.
+
+```markdown
+<div class="c2">
+<div>
+
+### Left column
+
+- Markdown still works inside the HTML wrapper.
+
+</div>
+<div>
+
+<div class="mc">A styled callout controlled by the theme CSS.</div>
+
+</div>
+</div>
+```
+
+Keep the HTML semantic and small. Put reusable styling in a theme CSS file
+instead of repeating `style="..."` attributes across slides. If raw HTML does
+not render, check the plugin's HTML setting and export path before assuming
+vanilla Obsidian preview behavior applies.
 
 ## Images
 

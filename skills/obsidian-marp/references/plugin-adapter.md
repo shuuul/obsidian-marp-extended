@@ -19,7 +19,6 @@ Defined in `src/utilities/settings.ts`:
 | `EnableHTML` | `false` | Plugin setting for HTML handling. Check render/export code before promising raw HTML support. |
 | `MathTypesettings` | `mathjax` | Default math choice exposed by plugin settings. Decks can still declare `math: mathjax` or `math: katex`. |
 | `HTMLExportMode` | `bare` | Passed to Marp CLI as `--template <mode>` for HTML export. Marp CLI's default is `bespoke`, but this plugin defaults to `bare`. |
-| `EnableMarkdownItPlugins` | `true` | Adds the plugin's custom Marp engine config for Kroki, mark, and container plugins. |
 
 ## Wiki-link image conversion
 
@@ -52,6 +51,7 @@ Before calling Marp CLI, the plugin:
 3. Collects existing theme paths from `.marp-extended/themes`.
 4. Resolves the plugin engine config under the installed plugin's `lib3/marp.config.js`.
 5. Converts image wiki-links in the temporary/export source file.
+6. Replaces Mermaid fences with inline `beautiful-mermaid` SVG figures before invoking Marp CLI.
 
 The CLI argv always starts with:
 
@@ -64,21 +64,45 @@ Then it may add:
 - `--engine <lib3/marp.config.js>` when markdown-it plugins are enabled.
 - `--theme-set <defaultThemePath...>` when theme paths exist.
 - `--browser-path <CHROME_PATH>` when configured.
+- `--html` so pre-rendered inline Mermaid SVG is preserved in every export type.
 - Export-type flags shown in `references/syntax.md`.
 
 Security note: `--allow-local-files` is necessary for vault resources but should only be used with trusted Markdown.
+
+## Mermaid themes
+
+Mermaid styling is separate from Marp slide themes:
+
+- Slide themes live under `.marp-extended/themes` and are selected with `theme`.
+- Mermaid themes live under `.marp-extended/mermaid-themes` and are selected with `mermaidTheme`.
+- `mermaidFlat: true` injects a small post-theme override to remove the Mermaid figure background, border, shadow, and padding. Use it when diagrams should blend into a Kami-like paper background.
+
+Example frontmatter for a complete deck:
+
+```yaml
+---
+marp: true
+theme: kami-en
+mermaidTheme: kami-en
+mermaidFlat: true
+size: kami
+paginate: true
+---
+```
+
+Obsidian property suggestions for `theme`, `size`, `mermaidTheme`, and `mermaidFlat` are patched by the plugin.
 
 ## Markdown-it plugins
 
 The custom engine config in `src/config/marp.config.js` registers:
 
-- `@kazumatu981/markdown-it-kroki`
 - `markdown-it-mark`
 - `markdown-it-container` with the container name `container`
 
 Agent guidance:
 
-- If Kroki diagrams, `==marked text==`, or custom containers fail, check `EnableMarkdownItPlugins` and whether the copied `lib3/` assets exist in the installed plugin directory.
+- If Mermaid diagrams fail, check the plugin's Mermaid preprocessing/rendering code rather than the export engine config.
+- If `==marked text==` or custom containers fail in export, check whether the copied `lib3/` assets exist in the installed plugin directory.
 - Do not assume these markdown-it extensions are available in vanilla Marp CLI outside this plugin.
 
 ## Themes in this repo

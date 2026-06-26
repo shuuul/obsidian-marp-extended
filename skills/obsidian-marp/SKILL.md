@@ -23,11 +23,13 @@ Use this skill to help agents author Marp slide decks that work in **Marp Extend
 - Put `marp: true` in YAML frontmatter when creating decks for editor integrations, even though the core renderer can process Marp syntax without it.
 - Split slides with a horizontal rule (`---`, `___`, `***`, or `- - -`). Do not confuse the closing frontmatter `---` with a slide separator.
 - Prefer Marp directives over raw HTML/CSS where possible. Raw HTML may be restricted by Marp Core and this plugin's `EnableHTML` setting.
+- When Markdown, Obsidian, or Marp shorthand cannot express a layout, use explicit HTML blocks inside slides. Marp Extended examples intentionally use small `<div>`, `<table>`, and inline HTML structures for grids, callouts, title blocks, and Kami-style editorial layouts that Obsidian Markdown alone cannot represent.
 - Use Obsidian image wiki-links freely for images: `![[diagram.png]]` and `![[diagram.png|Alt text]]` are converted by this plugin for preview/export. Non-image wiki-links are not converted by the plugin's image converter.
 - For predictable export, keep local images and theme CSS inside the vault. The plugin invokes Marp CLI with `--allow-local-files` for export.
 - Use built-in theme names (`default`, `gaia`, `uncover`) or custom CSS themes registered in the vault/plugin theme set. Custom theme CSS must include `/* @theme name */`.
 - For math-heavy slides, declare the math engine explicitly in frontmatter, matching the plugin setting default (`mathjax` unless changed): `math: mathjax` or `math: katex`.
-- For diagrams, this plugin can enable markdown-it plugins for Kroki, mark, and containers via its custom engine config. If a diagram does not render, check `EnableMarkdownItPlugins` first.
+- For diagrams, this plugin renders Mermaid fences as inline SVG with `beautiful-mermaid`; the custom engine config still enables mark and container plugins for export.
+- Keep example frontmatter explicit: include `marp`, `theme`, `mermaidTheme`, `mermaidFlat`, `size`, and `paginate` so Obsidian Properties and Marp preview/export stay predictable.
 
 ## Common deck skeleton
 
@@ -35,6 +37,8 @@ Use this skill to help agents author Marp slide decks that work in **Marp Extend
 ---
 marp: true
 theme: default
+mermaidTheme: github
+mermaidFlat: false
 size: 16:9
 paginate: true
 math: mathjax
