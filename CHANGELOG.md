@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.3.0
+
+- Added Obsidian image wiki-link conversion for Marp preview/export, including alt text, image size directives, URL-encoded paths, and unresolved-link fallback.
+- Added installed Marp theme suggestions for the frontmatter theme property.
+- Added Marp slide size preset suggestions for theme/frontmatter editing.
+- Added an Obsidian Marp syntax skill for development guidance.
+
 ## 0.2.0
 
 - Added fit-width Marp preview zoom controls with step zoom, pinch zoom, and zoom state preservation across preview rerenders.
