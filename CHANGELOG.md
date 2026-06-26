@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.0
+
+- Added fit-width Marp preview zoom controls with step zoom, pinch zoom, and zoom state preservation across preview rerenders.
+- Added real Marp CLI export coverage for sample deck exports with managed themes across PDF, PDF notes, PPTX, PNG, and HTML outputs.
+
 ## 0.1.1
 
 - Fixed Obsidian sidebar and command export actions so failures and output paths are visible in Notices.
