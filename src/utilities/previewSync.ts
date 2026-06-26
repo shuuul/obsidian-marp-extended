@@ -6,16 +6,26 @@ type CodeFence = {
 	length: number;
 };
 
+type LineReader = (lineNumber: number) => string;
+
 export function getPreviewSlideIndex(markdown: string, cursorLine: number): number {
 	const lines = markdown.split('\n');
-	const linesBeforeCursor = getLinesBeforeCursor(lines.length, cursorLine);
-	const frontmatterEndLine = getFrontmatterEndLine(lines);
+	return getPreviewSlideIndexFromLineReader(lines.length, cursorLine, (lineNumber) => lines[lineNumber] ?? '');
+}
+
+export function getPreviewSlideIndexFromLineReader(
+	lineCount: number,
+	cursorLine: number,
+	getLine: LineReader,
+): number {
+	const linesBeforeCursor = getLinesBeforeCursor(lineCount, cursorLine);
+	const frontmatterEndLine = getFrontmatterEndLine(lineCount, getLine);
 	const firstContentLine = frontmatterEndLine == null ? 0 : frontmatterEndLine + 1;
 	let slideIndex = 0;
 	let codeFence: CodeFence | null = null;
 
 	for (let lineNumber = firstContentLine; lineNumber < linesBeforeCursor; lineNumber++) {
-		const line = lines[lineNumber];
+		const line = getLine(lineNumber);
 
 		if (codeFence) {
 			if (isClosingCodeFence(line, codeFence)) {
@@ -45,13 +55,13 @@ function getLinesBeforeCursor(lineCount: number, cursorLine: number): number {
 	return Math.min(Math.max(Math.floor(cursorLine), 0), lineCount);
 }
 
-function getFrontmatterEndLine(lines: string[]): number | null {
-	if (lines[0]?.trim() !== '---') {
+function getFrontmatterEndLine(lineCount: number, getLine: LineReader): number | null {
+	if (getLine(0)?.trim() !== '---') {
 		return null;
 	}
 
-	for (let lineNumber = 1; lineNumber < lines.length; lineNumber++) {
-		if (lines[lineNumber].trim() === '---') {
+	for (let lineNumber = 1; lineNumber < lineCount; lineNumber++) {
+		if (getLine(lineNumber).trim() === '---') {
 			return lineNumber;
 		}
 	}

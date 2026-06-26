@@ -126,3 +126,21 @@ test('default Mermaid theme refresh uses versioned repo URLs', async () => {
 	}));
 	expect(await adapter.read(`${DEFAULT_MERMAID_THEME_DIRECTORY}/${DEFAULT_MERMAID_THEME_DEFINITIONS[0].fileName}`)).toContain('@mermaid-theme refreshed');
 });
+
+test('Mermaid theme CSS loads directly from normalized theme file', async () => {
+	const adapter = new FileSystemAdapter();
+	await adapter.mkdir('.marp-extended');
+	await adapter.mkdir(DEFAULT_MERMAID_THEME_DIRECTORY);
+	await adapter.write(`${DEFAULT_MERMAID_THEME_DIRECTORY}/dracula.css`, '/* @mermaid-theme dracula */\nsection .mermaid-diagram-container svg { --accent: pink; }');
+	await adapter.write(`${DEFAULT_MERMAID_THEME_DIRECTORY}/other.css`, '/* @mermaid-theme other */\nsection .mermaid-diagram-container svg {}');
+	const readSpy = jest.spyOn(adapter, 'read');
+	const listSpy = jest.spyOn(adapter, 'list');
+
+	const manager = new MermaidThemeManager(createApp(adapter));
+	const css = await manager.loadThemeCss('Dracula');
+
+	expect(css).toContain('--accent: pink');
+	expect(readSpy).toHaveBeenCalledTimes(1);
+	expect(readSpy).toHaveBeenCalledWith(`${DEFAULT_MERMAID_THEME_DIRECTORY}/dracula.css`);
+	expect(listSpy).not.toHaveBeenCalled();
+});

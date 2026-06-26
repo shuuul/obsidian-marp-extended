@@ -28,12 +28,15 @@ export class MarpPreviewView extends ItemView  {
     
     private marpBrowser: MarpCoreBrowser | undefined;
     private previewContainerEl: HTMLElement | undefined;
+    private previewSlideEls: HTMLElement[] = [];
+    private previewMaxSlideWidth = 0;
     private previewResizeObserver: ResizeObserver | undefined;
     private previewZoom = PREVIEW_ZOOM_RESET;
     private previewZoomFitScale = PREVIEW_ZOOM_RESET;
     private zoomLabelEl: HTMLElement | undefined;
     private syncPreviewButtonEl: HTMLButtonElement | undefined;
     private syncPreviewEnabled = true;
+    private displaySlidesRevision = 0;
     private settings : MarpSlidesSettings;
 
     private file : TFile | null = null;
@@ -97,6 +100,8 @@ export class MarpPreviewView extends ItemView  {
     async onClose() {
         this.previewResizeObserver?.disconnect();
         this.previewResizeObserver = undefined;
+        this.previewSlideEls = [];
+        this.previewMaxSlideWidth = 0;
         this.marpBrowser?.cleanup();
         this.marpBrowser = undefined;
     }
@@ -107,9 +112,7 @@ export class MarpPreviewView extends ItemView  {
 
     onLineChanged(slideIndex: number): void {
         const targetSlideIndex = Math.max(0, slideIndex);
-        const slide = this.previewContainerEl
-            ?.querySelectorAll<HTMLElement>('[data-marp-vscode-slide-wrapper]')
-            .item(targetSlideIndex);
+        const slide = this.previewSlideEls[targetSlideIndex];
 
         if (!slide) {
             console.log("Preview slide not found!")
@@ -237,24 +240,7 @@ export class MarpPreviewView extends ItemView  {
 
     private applyPreviewZoom(): void {
         if (this.previewContainerEl) {
-            let maxSlideWidth = 0;
-            this.previewContainerEl.querySelectorAll<HTMLElement>('[data-marp-vscode-slide-wrapper]').forEach((wrapper) => {
-                const viewBox = wrapper.querySelector('svg')?.getAttribute('viewBox');
-                const dimensions = viewBox?.trim().split(/\s+/).map(Number);
-                if (
-                    dimensions?.length === 4
-                    && Number.isFinite(dimensions[2])
-                    && Number.isFinite(dimensions[3])
-                    && dimensions[2] > 0
-                    && dimensions[3] > 0
-                ) {
-                    wrapper.style.width = `${dimensions[2]}px`;
-                    wrapper.style.height = `${dimensions[3]}px`;
-                    maxSlideWidth = Math.max(maxSlideWidth, dimensions[2]);
-                }
-            });
-
-            this.previewZoomFitScale = getPreviewZoomFitScale(this.previewContainerEl.clientWidth, maxSlideWidth);
+            this.previewZoomFitScale = getPreviewZoomFitScale(this.previewContainerEl.clientWidth, this.previewMaxSlideWidth);
             this.previewContainerEl.style.setProperty(
                 '--marp-extended-preview-zoom',
                 String(this.previewZoom * this.previewZoomFitScale),
@@ -268,6 +254,34 @@ export class MarpPreviewView extends ItemView  {
         const formattedZoom = formatPreviewZoom(this.previewZoom);
         this.zoomLabelEl.setText(formattedZoom);
         this.zoomLabelEl.setAttribute('aria-label', `Preview zoom ${formattedZoom}`);
+    }
+
+    private refreshPreviewSlideDimensions(): void {
+        this.previewSlideEls = [];
+        this.previewMaxSlideWidth = 0;
+
+        if (!this.previewContainerEl) {
+            return;
+        }
+
+        this.previewSlideEls = Array.from(
+            this.previewContainerEl.querySelectorAll<HTMLElement>('[data-marp-vscode-slide-wrapper]')
+        );
+        this.previewSlideEls.forEach((wrapper) => {
+            const viewBox = wrapper.querySelector('svg')?.getAttribute('viewBox');
+            const dimensions = viewBox?.trim().split(/\s+/).map(Number);
+            if (
+                dimensions?.length === 4
+                && Number.isFinite(dimensions[2])
+                && Number.isFinite(dimensions[3])
+                && dimensions[2] > 0
+                && dimensions[3] > 0
+            ) {
+                wrapper.style.width = `${dimensions[2]}px`;
+                wrapper.style.height = `${dimensions[3]}px`;
+                this.previewMaxSlideWidth = Math.max(this.previewMaxSlideWidth, dimensions[2]);
+            }
+        });
     }
 
     private setPreviewZoom(nextZoom: number, anchor?: { clientX: number; clientY: number }): void {
@@ -383,20 +397,29 @@ export class MarpPreviewView extends ItemView  {
     async displaySlides(view : MarkdownView, markdownOverride?: string) {
 
         if (view.file != null) {
+            const displayRevision = ++this.displaySlidesRevision;
             this.file = view.file;
             const filePath = new FilePath(this.settings);
             const basePath = filePath.getCompleteFileBasePath(view.file);
             const markdownText = markdownOverride ?? view.getViewData();
             const mermaidThemeCss = await loadMermaidThemeCssForFile(this.app, view.file, markdownText);
+            if (displayRevision !== this.displaySlidesRevision) {
+                return;
+            }
 
             // Convert wiki-link images to standard markdown
             const processedMarkdown = filePath.convertImageWikiLinks(markdownText, view.file, this.app);
 
             const container = this.previewContainerEl ?? this.contentEl;
             container.empty();
+            this.previewSlideEls = [];
+            this.previewMaxSlideWidth = 0;
 
 
             const rendered = this.marp.render(processedMarkdown);
+            if (displayRevision !== this.displaySlidesRevision) {
+                return;
+            }
             let html = rendered.html;
             const { css } = rendered;
             
@@ -415,6 +438,7 @@ export class MarpPreviewView extends ItemView  {
                 `;
 
             container.innerHTML = htmlFile;
+            this.refreshPreviewSlideDimensions();
             this.marpBrowser?.update();
             this.applyPreviewZoom();
         }

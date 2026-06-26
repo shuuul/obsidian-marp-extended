@@ -87,6 +87,15 @@ export class MermaidThemeManager {
 
 	async loadThemeCss(themeName: string): Promise<string | null> {
 		const normalizedName = normalizeThemeName(themeName);
+		const expectedPath = joinVaultPath(DEFAULT_MERMAID_THEME_DIRECTORY, themeNameToFileName(normalizedName));
+		if (await this.app.vault.adapter.exists(expectedPath)) {
+			const css = await this.app.vault.adapter.read(expectedPath);
+			const parsedThemeName = parseMermaidThemeNameFromCss(css);
+			if (!parsedThemeName || normalizeThemeName(parsedThemeName) === normalizedName) {
+				return css;
+			}
+		}
+
 		const themes = await this.listThemes();
 		const theme = themes.find((entry) => entry.name === normalizedName);
 		return theme ? this.app.vault.adapter.read(theme.path) : null;

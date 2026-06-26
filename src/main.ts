@@ -12,7 +12,7 @@ import { DEFAULT_THEME_MANIFEST_VERSION } from './utilities/defaultThemes';
 import { MermaidThemeManager, type InstalledMermaidThemeEntry } from './utilities/mermaidThemeManager';
 import { ThemeManager, type InstalledThemeEntry } from './utilities/themeManager';
 import { ThemePropertyOptions } from './utilities/themePropertyOptions';
-import { getPreviewSlideIndex } from './utilities/previewSync';
+import { getPreviewSlideIndexFromLineReader } from './utilities/previewSync';
 
 
 export default class MarpSlides extends Plugin {
@@ -222,8 +222,13 @@ export default class MarpSlides extends Plugin {
 			return;
 		}
 
-		const cursorLine = update.state.doc.lineAt(update.state.selection.main.head).number - 1;
-		void previewView.onLineChanged(getPreviewSlideIndex(update.state.sliceDoc(), cursorLine));
+		const doc = update.state.doc;
+		const cursorLine = doc.lineAt(update.state.selection.main.head).number - 1;
+		void previewView.onLineChanged(getPreviewSlideIndexFromLineReader(
+			doc.lines,
+			cursorLine,
+			(lineNumber) => doc.line(lineNumber + 1).text,
+		));
 	}
 
 	private getPreviewViewForEditorFile(file: TFile): MarpPreviewView | null {
