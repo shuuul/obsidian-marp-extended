@@ -1,4 +1,5 @@
-import { MarkdownView, TAbstractFile, Plugin, addIcon, App, PluginSettingTab, Setting, EditorSuggest, EditorPosition, Editor, TFile, EditorSuggestTriggerInfo, EditorSuggestContext, Modal, Notice  } from 'obsidian';
+import { MarkdownView, TAbstractFile, Plugin, addIcon, App, PluginSettingTab, Setting, TFile, Modal, Notice, editorInfoField } from 'obsidian';
+import { EditorView, type ViewUpdate } from '@codemirror/view';
 
 import { MARP_PREVIEW_VIEW, MarpPreviewView } from './views/marpPreviewView';
 import { ICON_SLIDE_PREVIEW, ICON_EXPORT_PDF, ICON_EXPORT_PPTX, ICON_SLIDE_PRESENT, ICON_FIT_WIDTH } from './utilities/icons';
@@ -8,6 +9,7 @@ import { ensureDefaultThemes } from './utilities/ensureDefaultThemes';
 import { DEFAULT_THEME_MANIFEST_VERSION } from './utilities/defaultThemes';
 import { ThemeManager, type InstalledThemeEntry } from './utilities/themeManager';
 import { ThemePropertyOptions } from './utilities/themePropertyOptions';
+import { getPreviewSlideIndex } from './utilities/previewSync';
 
 
 export default class MarpSlides extends Plugin {
@@ -98,7 +100,9 @@ export default class MarpSlides extends Plugin {
 		// This adds a settings tab so the user can configure various aspects of the plugin
 		this.addSettingTab(new MarpSlidesSettingTab(this.app, this));
 
-		this.registerEditorSuggest(new LineSelectionListener(this.app, this));
+		this.registerEditorExtension(EditorView.updateListener.of((update: ViewUpdate) => {
+			this.handleEditorUpdate(update);
+		}));
 		this.registerEvent(this.app.workspace.on('active-leaf-change', (leaf) => {
 			if (leaf?.view instanceof MarkdownView) {
 				this.refreshPreviewForEditor(leaf.view);
@@ -186,6 +190,39 @@ export default class MarpSlides extends Plugin {
 		this.app.workspace.revealLeaf(leaf);
 
 		return leaf.view as MarpPreviewView;
+	}
+
+	private handleEditorUpdate(update: ViewUpdate): void {
+		if (!update.selectionSet && !update.docChanged && !update.focusChanged) {
+			return;
+		}
+
+		if (!update.view.hasFocus) {
+			return;
+		}
+
+		const file = update.state.field(editorInfoField, false)?.file;
+		if (!file) {
+			return;
+		}
+
+		const previewView = this.getPreviewViewForEditorFile(file);
+		if (!previewView?.isSyncPreviewEnabled()) {
+			return;
+		}
+
+		const cursorLine = update.state.doc.lineAt(update.state.selection.main.head).number - 1;
+		void previewView.onLineChanged(getPreviewSlideIndex(update.state.sliceDoc(), cursorLine));
+	}
+
+	private getPreviewViewForEditorFile(file: TFile): MarpPreviewView | null {
+		const activeView = this.getActiveMarkdownView();
+		if (activeView?.file === file) {
+			return this.syncPreviewContext(activeView);
+		}
+
+		const previewView = this.getViewInstance(false);
+		return previewView?.isDisplayingFile(file) ? previewView : null;
 	}
 
 	getActiveMarkdownView(): MarkdownView | null {
@@ -475,61 +512,5 @@ class AddThemeModal extends Modal {
 
 	onClose(): void {
 		this.contentEl.empty();
-	}
-}
-
-class LineSelectionListener extends EditorSuggest<string> {
-	private plugin: MarpSlides;
-
-	constructor(app: App, plugin: MarpSlides) {
-		super(app);
-		this.plugin = plugin;
-	}
-
-	private hasFrontMatter(text: string): boolean {
-		const lines = text.split('\n');
-		if (lines[0]?.trim() !== '---') {
-			return false;
-		}
-
-		return lines.slice(1).some((line) => line.trim() === '---');
-	}
-
-	onTrigger(cursor: EditorPosition, editor: Editor, file: TFile): EditorSuggestTriggerInfo | null {
-		//console.log("line: " + cursor.line);
-		//console.log("ch: " + cursor.ch);
-		//console.log("value: " + editor.getValue());
-        
-        const activeView = this.plugin.getActiveMarkdownView();
-		const instance = activeView?.file === file
-			? this.plugin.syncPreviewContext(activeView)
-			: this.plugin.getViewInstance(false);
-
-		if (instance?.isSyncPreviewEnabled()) {
-			const lines = editor.getValue().split('\n');
-			const firstNLines = lines.slice(0, cursor.line);
-			const text = firstNLines.join('\n');
-			
-			const regex = new RegExp('---', 'g');
-			const matches = text.match(regex);
-			const slide = matches ? matches.length : 0;
-			if (this.hasFrontMatter(text)) {
-				instance.onLineChanged(slide - 2);
-			} else {
-				instance.onLineChanged(slide);
-			}			
-		}
-		return null;
-	}
-	getSuggestions(context: EditorSuggestContext): string[] | Promise<string[]> {
-		const suggestion :string[] = [];
-		return suggestion;
-		//throw new Error('Method not implemented.');
-	}
-	renderSuggestion(value: string, el: HTMLElement): void {
-		throw new Error('Method not implemented.');
-	}
-	selectSuggestion(value: string, evt: MouseEvent | KeyboardEvent): void {
-		throw new Error('Method not implemented.');
 	}
 }

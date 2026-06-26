@@ -103,19 +103,29 @@ export class MarpPreviewView extends ItemView  {
     }
 
     async onChange(view : MarkdownView) {
-        this.displaySlides(view);
+        void this.displaySlides(view);
     }
 
-    async onLineChanged(line: number) {
-        try {
-            this.previewContainerEl?.querySelectorAll('section')[line]?.scrollIntoView();
-        } catch {
+    onLineChanged(slideIndex: number): void {
+        const targetSlideIndex = Math.max(0, slideIndex);
+        const slide = this.previewContainerEl
+            ?.querySelectorAll<HTMLElement>('[data-marp-vscode-slide-wrapper]')
+            .item(targetSlideIndex);
+
+        if (!slide) {
             console.log("Preview slide not found!")
+            return;
         }
+
+        slide.scrollIntoView({ block: 'start', inline: 'nearest' });
 	}
 
     isSyncPreviewEnabled() {
         return this.syncPreviewEnabled;
+    }
+
+    isDisplayingFile(file: TFile) {
+        return this.file?.path === file.path;
     }
 
     addPreviewToolbar(container: HTMLElement) {
