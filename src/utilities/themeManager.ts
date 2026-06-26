@@ -4,6 +4,8 @@ import {
 	DEFAULT_THEME_DEFINITIONS,
 	DEFAULT_THEME_DIRECTORY,
 	DEFAULT_THEME_FILE_NAMES,
+	DEFAULT_THEME_VERSION_COMMENT,
+	parseDefaultThemeVersionFromCss,
 	normalizeThemeName,
 	parseThemeNameFromCss,
 	themeNameToFileName,
@@ -16,6 +18,7 @@ export interface InstalledThemeEntry {
 	fileName: string;
 	path: string;
 	source: ThemeSource;
+	version: number | null;
 }
 
 export interface EnsureDefaultThemesOptions {
@@ -28,6 +31,12 @@ function joinVaultPath(...parts: string[]): string {
 
 function fileNameFromPath(path: string): string {
 	return path.split('/').pop() ?? path;
+}
+
+function getDefaultThemeDefinition(fileNameOrThemeName: string) {
+	return DEFAULT_THEME_DEFINITIONS.find((theme) =>
+		theme.fileName === fileNameOrThemeName || theme.name === fileNameOrThemeName
+	);
 }
 
 function uniqueByPath(entries: InstalledThemeEntry[]): InstalledThemeEntry[] {
@@ -59,7 +68,7 @@ export class ThemeManager {
 			}
 
 			const css = await this.downloadThemeCss(theme.url);
-			await this.app.vault.adapter.write(path, css);
+			await this.writeDefaultTheme(theme.fileName, css);
 			installed.push(theme.name);
 		}
 
@@ -112,6 +121,27 @@ export class ThemeManager {
 			fileName,
 			path,
 			source: DEFAULT_THEME_FILE_NAMES.has(fileName) ? 'default' : 'custom',
+			version: DEFAULT_THEME_FILE_NAMES.has(fileName) ? parseDefaultThemeVersionFromCss(cssToWrite) : null,
+		};
+	}
+
+	async updateDefaultTheme(fileNameOrThemeName: string): Promise<InstalledThemeEntry> {
+		const theme = getDefaultThemeDefinition(fileNameOrThemeName);
+		if (!theme) {
+			throw new Error(`Unknown default theme: ${fileNameOrThemeName}`);
+		}
+
+		await this.ensureVaultFolder(DEFAULT_THEME_DIRECTORY);
+
+		const css = await this.downloadThemeCss(theme.url);
+		const path = await this.writeDefaultTheme(theme.fileName, css);
+
+		return {
+			name: parseThemeNameFromCss(css) ?? theme.name,
+			fileName: theme.fileName,
+			path,
+			source: 'default',
+			version: parseDefaultThemeVersionFromCss(css),
 		};
 	}
 
@@ -142,6 +172,7 @@ export class ThemeManager {
 				fileName,
 				path,
 				source: themeSource,
+				version: themeSource === 'default' ? parseDefaultThemeVersionFromCss(css) : null,
 			});
 		}
 
@@ -160,6 +191,12 @@ export class ThemeManager {
 		}
 	}
 
+	private async writeDefaultTheme(fileName: string, css: string): Promise<string> {
+		const path = joinVaultPath(DEFAULT_THEME_DIRECTORY, fileName);
+		await this.app.vault.adapter.write(path, css.endsWith('\n') ? css : `${css}\n`);
+		return path;
+	}
+
 	private async downloadThemeCss(url: string): Promise<string> {
 		const response = await requestUrl({
 			url,
@@ -175,6 +212,10 @@ export class ThemeManager {
 
 		if (!parseThemeNameFromCss(response.text)) {
 			throw new Error(`Downloaded CSS is missing @theme metadata: ${url}`);
+		}
+
+		if (parseDefaultThemeVersionFromCss(response.text) == null) {
+			throw new Error(`Downloaded CSS is missing ${DEFAULT_THEME_VERSION_COMMENT} metadata: ${url}`);
 		}
 
 		return response.text;

@@ -1,7 +1,7 @@
-import { FileSystemAdapter } from 'obsidian';
-import { expect, test } from '@jest/globals';
+import { FileSystemAdapter, requestUrl } from 'obsidian';
+import { beforeEach, expect, test } from '@jest/globals';
 
-import { DEFAULT_THEME_DIRECTORY, normalizeThemeName, parseThemeNameFromCss, parseThemeSizeNamesFromCss, themeNameToFileName } from '@/utilities/defaultThemes';
+import { DEFAULT_THEME_DIRECTORY, DEFAULT_THEME_MANIFEST_VERSION, normalizeThemeName, parseDefaultThemeVersionFromCss, parseThemeNameFromCss, parseThemeSizeNamesFromCss, themeNameToFileName } from '@/utilities/defaultThemes';
 import { ThemeManager } from '@/utilities/themeManager';
 
 function createApp(adapter: any): any {
@@ -12,6 +12,10 @@ function createApp(adapter: any): any {
 	};
 }
 
+beforeEach(() => {
+	(requestUrl as jest.Mock).mockReset();
+});
+
 test('theme metadata helpers parse and sanitize theme names', () => {
 	expect(parseThemeNameFromCss('/* @theme minimal-turquoise */\nsection {}')).toBe('minimal-turquoise');
 	expect(parseThemeNameFromCss('section {}')).toBeNull();
@@ -19,6 +23,8 @@ test('theme metadata helpers parse and sanitize theme names', () => {
 	expect(themeNameToFileName('My Theme!')).toBe('my-theme.css');
 	expect(parseThemeSizeNamesFromCss('/* @size 16:9 1280px 720px */\n/* @size print-wide 280mm 158mm */')).toEqual(['16:9', 'print-wide']);
 	expect(parseThemeSizeNamesFromCss('/* @size 4:3 false */')).toEqual([]);
+	expect(parseDefaultThemeVersionFromCss(`/* @marp-extended-theme-version ${DEFAULT_THEME_MANIFEST_VERSION} */`)).toBe(DEFAULT_THEME_MANIFEST_VERSION);
+	expect(parseDefaultThemeVersionFromCss('/* @theme custom */\nsection {}')).toBeNull();
 });
 
 test('pasted theme CSS is saved under the default theme directory', async () => {
@@ -32,6 +38,7 @@ test('pasted theme CSS is saved under the default theme directory', async () => 
 		fileName: 'my-theme.css',
 		path: `${DEFAULT_THEME_DIRECTORY}/my-theme.css`,
 		source: 'custom',
+		version: null,
 	});
 	expect(await adapter.read(entry.path)).toContain('/* @theme my-theme */');
 	expect((await manager.listThemes())[0].source).toBe('custom');
@@ -41,7 +48,7 @@ test('theme list includes default themes before custom themes in managed directo
 	const adapter = new FileSystemAdapter();
 	await adapter.mkdir('.marp-extended');
 	await adapter.mkdir(DEFAULT_THEME_DIRECTORY);
-	await adapter.write(`${DEFAULT_THEME_DIRECTORY}/kami.css`, '/* @theme kami */\nsection {}');
+	await adapter.write(`${DEFAULT_THEME_DIRECTORY}/kami.css`, `/* @theme kami */\n/* @marp-extended-theme-version ${DEFAULT_THEME_MANIFEST_VERSION} */\nsection {}`);
 	await adapter.write(`${DEFAULT_THEME_DIRECTORY}/local.css`, '/* @theme local */\nsection {}');
 
 	const manager = new ThemeManager(createApp(adapter));
@@ -51,4 +58,31 @@ test('theme list includes default themes before custom themes in managed directo
 		'default:kami',
 		'custom:local',
 	]);
+	expect(themes[0].version).toBe(DEFAULT_THEME_MANIFEST_VERSION);
+});
+
+test('default theme update pulls repo CSS and overwrites the installed file', async () => {
+	const adapter = new FileSystemAdapter();
+	await adapter.mkdir('.marp-extended');
+	await adapter.mkdir(DEFAULT_THEME_DIRECTORY);
+	await adapter.write(`${DEFAULT_THEME_DIRECTORY}/kami.css`, '/* @theme kami */\nsection { color: red; }');
+	(requestUrl as jest.Mock).mockResolvedValueOnce({
+		status: 200,
+		text: `/* @theme kami */\n/* @marp-extended-theme-version ${DEFAULT_THEME_MANIFEST_VERSION} */\nsection { color: blue; }`,
+	});
+
+	const manager = new ThemeManager(createApp(adapter));
+	const entry = await manager.updateDefaultTheme('kami');
+
+	expect(requestUrl).toHaveBeenCalledWith(expect.objectContaining({
+		url: expect.stringContaining('/kami.css'),
+	}));
+	expect(entry).toEqual({
+		name: 'kami',
+		fileName: 'kami.css',
+		path: `${DEFAULT_THEME_DIRECTORY}/kami.css`,
+		source: 'default',
+		version: DEFAULT_THEME_MANIFEST_VERSION,
+	});
+	expect(await adapter.read(entry.path)).toContain('color: blue');
 });

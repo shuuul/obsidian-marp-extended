@@ -307,7 +307,7 @@ export class MarpSlidesSettingTab extends PluginSettingTab {
 
 		new Setting(containerEl)
 			.setName('Installed themes')
-			.setDesc(`Default themes are downloaded from GitHub to ${themeManager.getDefaultThemeDirectory()}. Use their @theme names in Marp frontmatter.`)
+			.setDesc(`Default themes are downloaded from GitHub to ${themeManager.getDefaultThemeDirectory()}. Latest default theme version: v${DEFAULT_THEME_MANIFEST_VERSION}. Use their @theme names in Marp frontmatter.`)
 			.addButton(button => button
 				.setButtonText('Refresh defaults')
 				.onClick(async () => {
@@ -342,6 +342,19 @@ export class MarpSlidesSettingTab extends PluginSettingTab {
 		void this.renderThemeList(themeListEl);
 	}
 
+	private getThemeDescription(theme: InstalledThemeEntry): string {
+		const source = theme.source === 'default' ? 'Built-in' : 'Custom';
+		if (theme.source !== 'default') {
+			return `${source} · ${theme.path}`;
+		}
+
+		const installedVersion = theme.version == null ? 'unknown' : `v${theme.version}`;
+		const updateStatus = theme.version === DEFAULT_THEME_MANIFEST_VERSION
+			? 'current'
+			: `latest v${DEFAULT_THEME_MANIFEST_VERSION}`;
+		return `${source} · installed ${installedVersion} · ${updateStatus} · ${theme.path}`;
+	}
+
 	private async renderThemeList(containerEl: HTMLElement): Promise<void> {
 		containerEl.empty();
 
@@ -357,10 +370,28 @@ export class MarpSlidesSettingTab extends PluginSettingTab {
 		}
 
 		themes.forEach((theme) => {
-			const desc = `${theme.source === 'default' ? 'Built-in' : 'Custom'} · ${theme.path}`;
 			const setting = new Setting(containerEl)
 				.setName(theme.name)
-				.setDesc(desc);
+				.setDesc(this.getThemeDescription(theme));
+
+			if (theme.source === 'default') {
+				setting.addExtraButton(button => button
+					.setIcon('refresh-cw')
+					.setTooltip('Update theme CSS from GitHub')
+					.onClick(async () => {
+						button.setDisabled(true);
+						try {
+							const updated = await themeManager.updateDefaultTheme(theme.fileName);
+							await this.plugin.refreshThemePropertyOptions();
+							new Notice(`Updated Marp theme: ${updated.name}`, 5000);
+							await this.renderThemeList(containerEl);
+						} catch (error) {
+							const message = error instanceof Error ? error.message : String(error);
+							new Notice(`Theme update failed: ${message}`, 8000);
+							button.setDisabled(false);
+						}
+					}));
+			}
 
 			setting.addExtraButton(button => button
 				.setIcon('trash')

@@ -8,7 +8,8 @@ export interface DefaultThemeDefinition {
 const MARP_EXTENDED_REPO_RAW_THEMES = 'https://raw.githubusercontent.com/shuuul/obsidian-marp-extended/main/vault/themes';
 
 export const DEFAULT_THEME_DIRECTORY = '.marp-extended/themes';
-export const DEFAULT_THEME_MANIFEST_VERSION = 1;
+export const DEFAULT_THEME_MANIFEST_VERSION = 2;
+export const DEFAULT_THEME_VERSION_COMMENT = '@marp-extended-theme-version';
 
 export const DEFAULT_THEME_DEFINITIONS: DefaultThemeDefinition[] = [
 	{ name: 'academic', fileName: 'academic.css', url: `${MARP_EXTENDED_REPO_RAW_THEMES}/academic.css`, credit: 'kaisugi/marp-theme-academic' },
@@ -48,6 +49,16 @@ export function parseThemeSizeNamesFromCss(css: string): string[] {
 	}
 
 	return names;
+}
+
+export function parseDefaultThemeVersionFromCss(css: string): number | null {
+	const match = css.match(new RegExp(`${DEFAULT_THEME_VERSION_COMMENT}\\s+(\\d+)`));
+	if (!match) {
+		return null;
+	}
+
+	const version = Number.parseInt(match[1], 10);
+	return Number.isFinite(version) ? version : null;
 }
 
 export function normalizeThemeName(themeName: string): string {
