@@ -1,6 +1,9 @@
 import marpCli from '@marp-team/marp-cli';
-import { TFile } from 'obsidian';
+import { App, TFile } from 'obsidian';
 import { expect, jest, test, beforeEach, afterEach } from '@jest/globals';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { basename as pathBasename, dirname, join } from 'node:path';
 
 import { MarpCLIError, MarpExport } from '@/utilities/marpExport';
 import { DEFAULT_SETTINGS } from '@/utilities/settings';
@@ -28,6 +31,8 @@ type TestElectronRequire = (moduleName: string) => {
 
 type TestWindow = Window & { require?: TestElectronRequire };
 type NodeRequireFunction = (moduleName: string) => unknown;
+const tempDirectories: string[] = [];
+
 
 
 function createFile(): TFile {
@@ -46,6 +51,30 @@ function createFile(): TFile {
 
 	return file;
 }
+
+function createDiskBackedFile(root: string, markdownPath: string, content: string): TFile {
+	const file = new TFile() as TFile & {
+		basename: string;
+		name: string;
+		vault: TFile['vault'] & { configDir: string };
+	};
+	const parentPath = dirname(markdownPath);
+	const sourcePath = join(root, markdownPath);
+
+	mkdirSync(join(root, parentPath), { recursive: true });
+	writeFileSync(sourcePath, content, 'utf-8');
+	file.path = markdownPath;
+	file.name = pathBasename(markdownPath);
+	file.basename = file.name.replace(/\.md$/i, '');
+	file.parent = { path: parentPath === '.' ? '' : parentPath } as TFile['parent'];
+	file.vault.configDir = '.obsidian';
+	void file.vault.adapter.write(root, '');
+	(file.vault.adapter as any).getFullPath = (path: string) => join(root, path);
+	file.vault.cachedRead = async () => readFileSync(sourcePath, 'utf-8');
+
+	return file;
+}
+
 
 function mockFolderPicker(result: { canceled: boolean; filePaths?: string[] }) {
 	const showOpenDialog = jest.fn(async (_options: unknown) => result);
@@ -72,6 +101,9 @@ beforeEach(() => {
 
 afterEach(() => {
 	delete (window as TestWindow).require;
+	for (const directory of tempDirectories.splice(0)) {
+		rmSync(directory, { recursive: true, force: true });
+	}
 });
 
 test('export selects a folder and passes output path to Marp CLI', async () => {
@@ -131,6 +163,49 @@ test('PNG export writes the selected PNG output file', async () => {
 	]));
 	expect(marpCliMock.mock.calls[0][0]).not.toContain('--images');
 	expect(marpCliMock.mock.calls[0][0]).not.toContain('--png');
+});
+
+test('export converts wiki-links through a temporary markdown file without changing the source file', async () => {
+	const root = mkdtempSync(join(tmpdir(), 'marp-export-temp-source-'));
+	tempDirectories.push(root);
+	const originalContent = '# Deck\n\n![[image.png|Alt text]]\n';
+	const file = createDiskBackedFile(root, 'slides/deck.md', originalContent);
+	const exportDirectory = join(root, 'exports');
+	const sourcePath = join(root, 'slides/deck.md');
+	const linkedImage = new TFile() as TFile & { path: string };
+	let temporarySourcePath = '';
+
+	mkdirSync(exportDirectory, { recursive: true });
+	linkedImage.path = 'assets/image.png';
+	mockFolderPicker({ canceled: false, filePaths: [exportDirectory] });
+	marpCliMock.mockImplementationOnce(async (argv: string[]) => {
+		temporarySourcePath = argv[0];
+		expect(temporarySourcePath).not.toBe(sourcePath);
+		expect(dirname(temporarySourcePath)).toBe(dirname(sourcePath));
+		expect(readFileSync(temporarySourcePath, 'utf-8')).toContain('![Alt text](../assets/image.png)');
+		expect(readFileSync(sourcePath, 'utf-8')).toBe(originalContent);
+
+		return 0;
+	});
+
+	const app = {
+		vault: file.vault,
+		metadataCache: {
+			getFirstLinkpathDest: jest.fn(() => linkedImage),
+		},
+	} as unknown as App;
+	const exporter = new MarpExport(DEFAULT_SETTINGS, app);
+
+	const outputPath = await exporter.export(file, 'pdf-with-notes');
+
+	expect(outputPath).toBe(join(exportDirectory, 'deck.pdf'));
+	expect(marpCliMock.mock.calls[0][0]).toEqual(expect.arrayContaining([
+		'--pdf-notes',
+		'--pdf-outlines',
+	]));
+	expect(temporarySourcePath).not.toBe('');
+	expect(existsSync(temporarySourcePath)).toBe(false);
+	expect(readFileSync(sourcePath, 'utf-8')).toBe(originalContent);
 });
 
 test('export falls back to the source folder when native folder picker is unavailable', async () => {

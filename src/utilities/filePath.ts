@@ -25,6 +25,10 @@ export class FilePath  {
         }
     }
 
+    public shouldUseRootExportSource(file: TFile): boolean {
+        return this.isAbsoluteLinkFormat(file) && file.path !== file.name;
+    }
+
     private getVaultPath(vault: Vault, normalizedPath: string): string {
         const adapter = vault.adapter as FileSystemAdapter;
         const path = normalizePath(normalizedPath);
@@ -145,39 +149,64 @@ export class FilePath  {
      * Transforms ![[image.png]] to ![image.png](path/to/image.png)
      */
     public convertImageWikiLinks(markdown: string, sourceFile: TFile, app: App): string {
-        // Image extensions to convert
-        const imageExtensions = /\.(png|jpg|jpeg|gif|svg|webp|bmp)$/i;
+        const wikiLinkRegex = /!\[\[([^\]]+)\]\]/g;
 
-        // Regex: ![[filename]] or ![[filename|alt text]]
-        const wikiLinkRegex = /!\[\[([^\]|]+?)(?:\|([^\]]*))?\]\]/g;
+        return markdown.replace(wikiLinkRegex, (match, wikiLink) => {
+            const [rawLinkPath, rawDisplayText] = wikiLink.split('|', 2);
+            const linkPath = rawLinkPath.trim();
+            const displayText = rawDisplayText?.trim();
 
-        return markdown.replace(wikiLinkRegex, (match, filename, altText) => {
-            // Only process image files
-            if (!imageExtensions.test(filename)) {
+            if (!this.isImageLinkPath(linkPath)) {
                 return match;
             }
 
-            // Use Obsidian's link resolver to find the file
-            const linkedFile = app.metadataCache.getFirstLinkpathDest(filename, sourceFile.path);
+            const linkedFile = app.metadataCache.getFirstLinkpathDest(linkPath, sourceFile.path);
+            const imagePath = linkedFile
+                ? this.getMarkdownImagePath(sourceFile, linkedFile)
+                : linkPath;
+            const altText = this.getMarpImageAltText(linkPath, displayText);
 
-            if (linkedFile) {
-                // Build path based on link format setting
-                let imagePath: string;
-                if (this.isAbsoluteLinkFormat(sourceFile)) {
-                    // Absolute: path from vault root
-                    imagePath = linkedFile.path;
-                } else {
-                    // Relative: path from source file's folder
-                    imagePath = this.getRelativePathFromFile(sourceFile, linkedFile);
-                }
-
-                const alt = altText || filename;
-                return `![${alt}](${imagePath})`;
-            }
-
-            // File not found - return original
-            return match;
+            return `![${this.escapeMarkdownAltText(altText)}](${this.encodeMarkdownLinkDestination(imagePath)})`;
         });
+    }
+
+    private isImageLinkPath(linkPath: string): boolean {
+        return /\.(png|jpg|jpeg|gif|svg|webp|bmp)(?:[?#].*)?$/i.test(linkPath);
+    }
+
+    private getMarkdownImagePath(sourceFile: TFile, linkedFile: TFile): string {
+        if (this.isAbsoluteLinkFormat(sourceFile)) {
+            return linkedFile.path;
+        }
+
+        return this.getRelativePathFromFile(sourceFile, linkedFile);
+    }
+
+    private getMarpImageAltText(linkPath: string, displayText: string | undefined): string {
+        if (!displayText) {
+            return linkPath;
+        }
+
+        const dimensionMatch = displayText.match(/^(?:(\d+)(?:px)?)?(?:x(?:(\d+)(?:px)?))?$/i);
+        if (!dimensionMatch || (!dimensionMatch[1] && !dimensionMatch[2])) {
+            return displayText;
+        }
+
+        return [
+            dimensionMatch[1] ? `w:${dimensionMatch[1]}` : null,
+            dimensionMatch[2] ? `h:${dimensionMatch[2]}` : null,
+        ].filter(Boolean).join(' ');
+    }
+
+    private escapeMarkdownAltText(altText: string): string {
+        return altText.replace(/\\/g, '\\\\').replace(/]/g, '\\]');
+    }
+
+    private encodeMarkdownLinkDestination(path: string): string {
+        return path
+            .split('/')
+            .map((part) => encodeURIComponent(part))
+            .join('/');
     }
 
     /**

@@ -16,6 +16,41 @@ Marp Extended is an Obsidian plugin for creating, previewing, presenting, and ex
 - Convert Obsidian image wiki-links to standard Markdown image links for preview/export.
 - Optional markdown-it extensions for containers, marks, and Kroki diagrams.
 
+## Markdown compatibility
+
+Marp Extended renders slides with Marp, so notes should primarily use Marp-compatible Markdown. Obsidian image embeds are supported as a convenience by converting image wiki-links before preview/export.
+
+Supported image wiki-link forms:
+
+| Obsidian syntax | Converted Marp-compatible syntax |
+| --- | --- |
+| `![[image.png]]` | `![image.png](image.png)` |
+| `![[image.png\|Alt text]]` | `![Alt text](image.png)` |
+| `![[image.png\|600]]` | `![w:600](image.png)` |
+| `![[image.png\|600x400]]` | `![w:600 h:400](image.png)` |
+
+For example:
+
+```md
+![[Pasted image 20260625124927.png]]
+![[Pasted image 20260625124927.png|Screenshot]]
+![[Pasted image 20260625124927.png|600]]
+![[Pasted image 20260625124927.png|600x400]]
+```
+
+These are converted to standard Markdown image links / Marp image directives. Paths are URL-encoded so spaces become `%20`:
+
+```md
+![Pasted image 20260625124927.png](Pasted%20image%2020260625124927.png)
+![Screenshot](Pasted%20image%2020260625124927.png)
+![w:600](Pasted%20image%2020260625124927.png)
+![w:600 h:400](Pasted%20image%2020260625124927.png)
+```
+
+When possible, the plugin resolves the image through Obsidian's link resolver and emits a path Marp can read. If the image cannot be resolved, the plugin falls back to treating the wiki-link target as a path relative to the current note.
+
+Other Obsidian-only extensions are not converted automatically. If Marp does not support an Obsidian syntax directly, write it in standard Markdown or Marp syntax.
+
 See also:
 
 - [Marpit Markdown](https://marpit.marp.app/markdown)

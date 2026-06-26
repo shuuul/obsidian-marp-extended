@@ -1,7 +1,7 @@
 import { TFile, App } from 'obsidian';
 import { MarpSlidesSettings } from './settings';
 import { FilePath } from './filePath';
-import { existsSync, writeFileSync, readFileSync } from 'node:fs';
+import { existsSync, writeFileSync, unlinkSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -53,6 +53,11 @@ interface MarpCliModule {
     CLIErrorCode: {
         NOT_FOUND_CHROMIUM: string | number;
     };
+}
+
+interface ExportSource {
+    path: string;
+    temporaryPath: string | null;
 }
 
 let marpCliModulePromise: Promise<MarpCliModule> | null = null;
@@ -151,25 +156,14 @@ export class MarpExport {
             return null;
         }
 
-        await filesTool.removeFileFromRoot(file);
-        await filesTool.copyFileToRoot(file);
-        const completeFilePath = filesTool.getCompleteFilePath(file);
+        const sourceFilePath = filesTool.getCompleteFilePath(file);
         const themePaths = filesTool.getThemePaths(file).filter((path) => existsSync(path));
         const resourcesPath = filesTool.getLibDirectory(file.vault);
         const marpEngineConfig = filesTool.getMarpEngine(file.vault);
 
-        // Convert wiki-link images to standard markdown before export
-        if (this.app && completeFilePath != '') {
-            try {
-                const originalContent = readFileSync(completeFilePath, 'utf-8');
-                const processedContent = filesTool.convertImageWikiLinks(originalContent, file, this.app);
-                writeFileSync(completeFilePath, processedContent, 'utf-8');
-            } catch (e) {
-                console.error('Failed to process wiki-links for export:', e);
-            }
-        }
-
-        if (completeFilePath != ''){
+        if (sourceFilePath != ''){
+            const exportSource = await this.prepareExportSource(file, filesTool, sourceFilePath);
+            const completeFilePath = exportSource.path;
             //console.log(completeFilePath);
 
             const argv: string[] = [completeFilePath,'--allow-local-files'];
@@ -229,8 +223,12 @@ export class MarpExport {
                     
                     //argv.push('--watch');
             }
-            await this.run(argv, resourcesPath);
-            return outputPath;
+            try {
+                await this.run(argv, resourcesPath);
+                return outputPath;
+            } finally {
+                this.removeTemporaryExportSource(exportSource.temporaryPath);
+            }
         } 
 
         return null;
@@ -306,6 +304,40 @@ export class MarpExport {
             // eslint-disable-next-line no-global-assign
             __dirname = temp__dirname;
         }
+    }
+
+    private async prepareExportSource(file: TFile, filesTool: FilePath, sourceFilePath: string): Promise<ExportSource> {
+        if (!this.app) {
+            await filesTool.removeFileFromRoot(file);
+            await filesTool.copyFileToRoot(file);
+            return { path: sourceFilePath, temporaryPath: null };
+        }
+
+        const originalContent = await this.app.vault.cachedRead(file);
+        const processedContent = filesTool.convertImageWikiLinks(originalContent, file, this.app);
+        const needsTemporarySource = processedContent !== originalContent || filesTool.shouldUseRootExportSource(file);
+
+        if (!needsTemporarySource) {
+            return { path: sourceFilePath, temporaryPath: null };
+        }
+
+        const temporaryPath = this.getTemporaryExportSourcePath(sourceFilePath, file.basename);
+        writeFileSync(temporaryPath, processedContent, { encoding: 'utf-8', flag: 'wx' });
+
+        return { path: temporaryPath, temporaryPath };
+    }
+
+    private getTemporaryExportSourcePath(sourceFilePath: string, basename: string): string {
+        const suffix = `${process.pid}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
+        return join(dirname(sourceFilePath), `.${basename}.marp-export-${suffix}.md`);
+    }
+
+    private removeTemporaryExportSource(temporaryPath: string | null): void {
+        if (!temporaryPath || !existsSync(temporaryPath)) {
+            return;
+        }
+
+        unlinkSync(temporaryPath);
     }
 
     private shouldChooseExportDirectory(type: string): boolean {
