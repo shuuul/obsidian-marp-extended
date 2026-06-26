@@ -1,8 +1,10 @@
 ---
 marp: true
 theme: beamer
-paginate: true
+mermaidTheme: beamer
+mermaidFlat: false
 size: 16:9
+paginate: true
 header: This is a header
 footer: This is a footer
 title: Marp custom themes

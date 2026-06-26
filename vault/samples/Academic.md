@@ -1,7 +1,11 @@
 ---
+marp: true
 theme: academic
+mermaidTheme: academic
+mermaidFlat: false
+size: 16:9
 paginate: true
-math: latex
+math: mathjax
 ---
 
 <!-- _class: lead -->

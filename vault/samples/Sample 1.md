@@ -1,5 +1,10 @@
 ---
+marp: true
 theme: default
+mermaidTheme: github
+mermaidFlat: false
+size: 16:9
+paginate: true
 footer: Samuele Cozzi
 ---
 

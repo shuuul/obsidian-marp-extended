@@ -1,5 +1,9 @@
 ---
+marp: true
 theme: minimal-turquoise
+mermaidTheme: minimal-turquoise
+mermaidFlat: false
+size: 16:9
 paginate: true
 _paginate: false
 header: Title of deck

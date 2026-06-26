@@ -1,7 +1,6 @@
 /* @theme kami */
 /* @marp-extended-theme-version 2 */
-/* @size 16:9 1280px 720px */
-/* @size 4:3 960px 720px */
+/* @size kami 280mm 158mm */
 /* Kami Marp theme (CN). Mirrors slides-weasy.html tokens. */
 
 @font-face {
@@ -33,6 +32,10 @@
   --brand-tint: #EEF2F7;
   --border:     #e8e6dc;
   --border-soft:#e5e3d8;
+  --tag-bg:     #E4ECF5;
+  --charcoal:   #4d4c48;
+  --breaking-bg:#f0e0d8;
+  --breaking-fg:#8b4513;
 
   --serif: "TsangerJinKai02", "Source Han Serif SC", "Noto Serif CJK SC", "Songti SC", "STSong", Georgia, serif;
   --sans:  var(--serif);
@@ -43,8 +46,8 @@
 }
 
 section {
-  width: 1280px;
-  height: 720px;
+  width: 280mm;
+  height: 158mm;
   padding: 16mm 20mm;
   background: var(--parchment);
   color: var(--near-black);
@@ -65,6 +68,18 @@ section p, section ul, section ol, section table {
 }
 
 .eyebrow {
+  font-family: var(--mono);
+  font-size: 9.5pt;
+  letter-spacing: 2pt;
+  text-transform: uppercase;
+  color: var(--stone);
+  margin-bottom: 2pt;
+}
+
+.eyebrow,
+section > header {
+  all: unset;
+  display: block;
   font-family: var(--mono);
   font-size: 9.5pt;
   letter-spacing: 2pt;

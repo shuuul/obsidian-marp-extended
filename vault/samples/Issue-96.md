@@ -1,5 +1,9 @@
 ---
+marp: true
 theme: gaia
+mermaidTheme: github
+mermaidFlat: false
+size: 16:9
 paginate: true
 backgroundColor: #fff
 backgroundImage: url('https://marp.app/assets/hero-background.svg')
