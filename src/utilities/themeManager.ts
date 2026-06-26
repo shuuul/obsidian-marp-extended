@@ -203,8 +203,27 @@ export class ThemeManager {
 		return `${url}${separator}marp-extended-theme-version=${DEFAULT_THEME_MANIFEST_VERSION}`;
 	}
 
+	private getUncachedThemeDownloadUrl(url: string): string {
+		const separator = url.includes('?') ? '&' : '?';
+		return `${url}${separator}marp-extended-theme-version=${DEFAULT_THEME_MANIFEST_VERSION}&cache-bust=${Date.now()}`;
+	}
+
 	private async downloadThemeCss(url: string): Promise<string> {
-		const downloadUrl = this.getThemeDownloadUrl(url);
+		const css = await this.fetchThemeCss(this.getThemeDownloadUrl(url));
+		if (parseDefaultThemeVersionFromCss(css) === DEFAULT_THEME_MANIFEST_VERSION) {
+			return css;
+		}
+
+		const uncachedCss = await this.fetchThemeCss(this.getUncachedThemeDownloadUrl(url));
+		const version = parseDefaultThemeVersionFromCss(uncachedCss);
+		if (version !== DEFAULT_THEME_MANIFEST_VERSION) {
+			throw new Error(`Downloaded theme version ${version ?? 'unknown'} does not match expected v${DEFAULT_THEME_MANIFEST_VERSION}: ${url}`);
+		}
+
+		return uncachedCss;
+	}
+
+	private async fetchThemeCss(downloadUrl: string): Promise<string> {
 		const response = await requestUrl({
 			url: downloadUrl,
 			headers: {
@@ -214,15 +233,15 @@ export class ThemeManager {
 		});
 
 		if (response.status < 200 || response.status >= 300) {
-			throw new Error(`Theme download failed with status ${response.status}: ${url}`);
+			throw new Error(`Theme download failed with status ${response.status}: ${downloadUrl}`);
 		}
 
 		if (!parseThemeNameFromCss(response.text)) {
-			throw new Error(`Downloaded CSS is missing @theme metadata: ${url}`);
+			throw new Error(`Downloaded CSS is missing @theme metadata: ${downloadUrl}`);
 		}
 
 		if (parseDefaultThemeVersionFromCss(response.text) == null) {
-			throw new Error(`Downloaded CSS is missing ${DEFAULT_THEME_VERSION_COMMENT} metadata: ${url}`);
+			throw new Error(`Downloaded CSS is missing ${DEFAULT_THEME_VERSION_COMMENT} metadata: ${downloadUrl}`);
 		}
 
 		return response.text;

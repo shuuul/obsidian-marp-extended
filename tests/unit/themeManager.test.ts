@@ -92,6 +92,31 @@ test('default theme update pulls repo CSS and overwrites the installed file', as
 	expect(await adapter.read(entry.path)).toContain('color: blue');
 });
 
+test('default theme update retries stale cached CSS before writing', async () => {
+	const adapter = new FileSystemAdapter();
+	await adapter.mkdir('.marp-extended');
+	await adapter.mkdir(DEFAULT_THEME_DIRECTORY);
+	(requestUrl as jest.Mock)
+		.mockResolvedValueOnce({
+			status: 200,
+			text: '/* @theme kami */\n/* @marp-extended-theme-version 2 */\nsection { color: red; }',
+		})
+		.mockResolvedValueOnce({
+			status: 200,
+			text: `/* @theme kami */\n/* @marp-extended-theme-version ${DEFAULT_THEME_MANIFEST_VERSION} */\nsection { color: blue; }`,
+		});
+
+	const manager = new ThemeManager(createApp(adapter));
+	const entry = await manager.updateDefaultTheme('kami');
+
+	expect(requestUrl).toHaveBeenCalledTimes(2);
+	expect(requestUrl).toHaveBeenNthCalledWith(2, expect.objectContaining({
+		url: expect.stringContaining(`marp-extended-theme-version=${DEFAULT_THEME_MANIFEST_VERSION}&cache-bust=`),
+	}));
+	expect(entry.version).toBe(DEFAULT_THEME_MANIFEST_VERSION);
+	expect(await adapter.read(entry.path)).toContain('color: blue');
+});
+
 test('default theme refresh uses versioned repo URLs for every default theme', async () => {
 	const adapter = new FileSystemAdapter();
 	(requestUrl as jest.Mock).mockResolvedValue({
