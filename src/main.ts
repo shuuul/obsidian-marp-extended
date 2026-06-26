@@ -7,6 +7,7 @@ import { MarpSlidesSettings, DEFAULT_SETTINGS } from 'utilities/settings';
 import { ensureDefaultThemes } from './utilities/ensureDefaultThemes';
 import { DEFAULT_THEME_MANIFEST_VERSION } from './utilities/defaultThemes';
 import { ThemeManager, type InstalledThemeEntry } from './utilities/themeManager';
+import { ThemePropertyOptions } from './utilities/themePropertyOptions';
 
 
 export default class MarpSlides extends Plugin {
@@ -14,6 +15,7 @@ export default class MarpSlides extends Plugin {
 	public settings: MarpSlidesSettings;
 	private slidesView : MarpPreviewView;
 	private editorView : MarkdownView | null;
+	private themePropertyOptions: ThemePropertyOptions | null = null;
 
 	async onload() {
 		await this.loadSettings();
@@ -21,10 +23,21 @@ export default class MarpSlides extends Plugin {
 		const libsUtility = new Libs(this.settings);
 		libsUtility.loadLibs(this.app);
 
-		void ensureDefaultThemes(this).catch((error: unknown) => {
+		const themeManager = new ThemeManager(this.app);
+		this.themePropertyOptions = new ThemePropertyOptions(this.app, themeManager);
+		this.themePropertyOptions.register();
+		this.register(() => this.themePropertyOptions?.unregister());
+		void this.refreshThemePropertyOptions().catch((error: unknown) => {
 			const message = error instanceof Error ? error.message : String(error);
-			console.error('Marp Extended: default theme install failed', message);
+			console.error('Marp Extended: theme property options refresh failed', message);
 		});
+
+		void ensureDefaultThemes(this)
+			.then(() => this.refreshThemePropertyOptions())
+			.catch((error: unknown) => {
+				const message = error instanceof Error ? error.message : String(error);
+				console.error('Marp Extended: default theme install failed', message);
+			});
 
 		this.registerView(
 			MARP_PREVIEW_VIEW,
@@ -114,6 +127,10 @@ export default class MarpSlides extends Plugin {
 
 	async saveSettings() {
 		await this.saveData(this.settings);
+	}
+
+	async refreshThemePropertyOptions(): Promise<void> {
+		await this.themePropertyOptions?.refresh();
 	}
 
 	onChange(file: TAbstractFile) {
@@ -301,6 +318,7 @@ export class MarpSlidesSettingTab extends PluginSettingTab {
 						this.plugin.settings.DefaultThemesVersion = DEFAULT_THEME_MANIFEST_VERSION;
 						await this.plugin.saveSettings();
 						new Notice(`Refreshed Marp Extended themes (${installed.length}).`, 5000);
+						await this.plugin.refreshThemePropertyOptions();
 						await this.renderThemeList(themeListEl);
 					} catch (error) {
 						const message = error instanceof Error ? error.message : String(error);
@@ -315,6 +333,7 @@ export class MarpSlidesSettingTab extends PluginSettingTab {
 				.onClick(() => {
 					new AddThemeModal(this.app, themeManager, async (entry) => {
 						new Notice(`Added Marp theme: ${entry.name}`, 5000);
+						await this.plugin.refreshThemePropertyOptions();
 						await this.renderThemeList(themeListEl);
 					}).open();
 				}));
@@ -348,6 +367,7 @@ export class MarpSlidesSettingTab extends PluginSettingTab {
 				.setTooltip('Delete theme CSS')
 				.onClick(async () => {
 					await themeManager.removeTheme(theme.path);
+					await this.plugin.refreshThemePropertyOptions();
 					new Notice(`Deleted Marp theme: ${theme.name}`, 5000);
 					await this.renderThemeList(containerEl);
 				}));
