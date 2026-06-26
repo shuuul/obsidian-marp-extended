@@ -1,5 +1,8 @@
 ---
+marp: true
 theme: border
+mermaidTheme: border
+mermaidFlat: false
 size: 16:9
 header: title of presentation
 _header: ''

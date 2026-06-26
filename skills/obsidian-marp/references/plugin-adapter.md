@@ -4,8 +4,11 @@ These notes adapt upstream Marp syntax to this repository's Obsidian plugin. Sou
 
 ## Plugin identity
 
+- Display name: `Marp Extended` (`manifest.json`).
 - Plugin id: `marp-extended` (`manifest.json`).
 - Package name: `marp-extended` (`package.json`).
+- Current version: `0.4.0` (`manifest.json`, `package.json`).
+- Repository: <https://github.com/shuuul/obsidian-marp-extended>.
 - Obsidian runtime files: `main.js`, `manifest.json`, `styles.css`.
 - Generated `main.js` should not be edited by hand; change `src/` and run the build.
 
@@ -29,6 +32,8 @@ The converter transforms Obsidian image wiki-links into standard Markdown image 
 ```markdown
 ![[image.png]]              -> ![image.png](resolved/path/image.png)
 ![[image.png|Alt text]]     -> ![Alt text](resolved/path/image.png)
+![[image.png|600]]          -> ![w:600](resolved/path/image.png)
+![[image.png|600x400]]      -> ![w:600 h:400](resolved/path/image.png)
 ```
 
 Important constraints:
@@ -37,7 +42,7 @@ Important constraints:
 - The file is resolved with Obsidian `metadataCache.getFirstLinkpathDest(filename, sourceFile.path)`.
 - Absolute Obsidian link format produces paths from the vault root.
 - Relative Obsidian link format produces paths relative to the current note's folder.
-- If the linked file cannot be resolved, the original wiki-link is left unchanged.
+- If the linked image cannot be resolved, the converter still emits a Markdown image using the wiki-link target as the path.
 - Non-image wiki-links and embeds are out of scope for this converter.
 
 ## Export behavior
@@ -59,12 +64,12 @@ The CLI argv always starts with:
 <completeFilePath> --allow-local-files
 ```
 
-Then it may add:
+The plugin then adds:
 
-- `--engine <lib3/marp.config.js>` when markdown-it plugins are enabled.
+- Always `--engine <lib3/marp.config.js>` for this plugin's Marp engine config.
+- Always `--html` so pre-rendered inline Mermaid SVG is preserved in every export type.
 - `--theme-set <defaultThemePath...>` when theme paths exist.
 - `--browser-path <CHROME_PATH>` when configured.
-- `--html` so pre-rendered inline Mermaid SVG is preserved in every export type.
 - Export-type flags shown in `references/syntax.md`.
 
 Security note: `--allow-local-files` is necessary for vault resources but should only be used with trusted Markdown.

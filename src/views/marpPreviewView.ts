@@ -27,6 +27,7 @@ const PREVIEW_PROFILE_STORAGE_KEY = 'marp-extended-profile';
 
 export class MarpPreviewView extends ItemView  {
     private marp: Marp; 
+    private themeCssSignature: string | null = null;
     
     private marpBrowser: MarpCoreBrowser | undefined;
     private previewContainerEl: HTMLElement | undefined;
@@ -51,7 +52,11 @@ export class MarpPreviewView extends ItemView  {
         this.settings = settings;
         this.themeAssetCache = new ThemeAssetCache(this.app);
 
-        this.marp = new Marp({
+        this.marp = this.createMarp();
+    }
+
+    private createMarp(): Marp {
+        return new Marp({
             container: { tag: 'div', id: '__marp-vscode' },
             slideContainer: { tag: 'div', 'data-marp-vscode-slide-wrapper': '' },
             html: this.settings.EnableHTML,
@@ -62,12 +67,27 @@ export class MarpPreviewView extends ItemView  {
             math: this.settings.MathTypesettings as MathOptions,
             minifyCSS: true,
             script: false
-          });
-
-        this.marp
+          })
             .use(markdownItContainer, "container")
             .use(markdownItMark)
             .use(markdownItMermaid);
+    }
+
+    private async reloadThemesIfChanged(): Promise<void> {
+        const themeManager = new ThemeManager(this.app);
+        const fileContents = await themeManager.loadThemeCss();
+        const signature = fileContents.join('\n/* marp-extended-theme-boundary */\n');
+
+        if (signature === this.themeCssSignature) {
+            return;
+        }
+
+        const marp = this.createMarp();
+        fileContents.forEach((content) => {
+            marp.themeSet.add(content);
+        });
+        this.marp = marp;
+        this.themeCssSignature = signature;
     }
 
     getViewType() {
@@ -93,11 +113,7 @@ export class MarpPreviewView extends ItemView  {
         this.registerPreviewZoomResizeObserver();
         this.marpBrowser = browser(this.previewContainerEl);
 
-        const themeManager = new ThemeManager(this.app);
-        const fileContents = await themeManager.loadThemeCss();
-        fileContents.forEach((content) => {
-            this.marp.themeSet.add(content);
-        });
+        await this.reloadThemesIfChanged();
 
         this.addActions();
     }
@@ -462,6 +478,10 @@ export class MarpPreviewView extends ItemView  {
                 const filePath = new FilePath(this.settings);
                 const basePath = filePath.getCompleteFileBasePath(view.file);
                 const markdownText = markdownOverride ?? view.getViewData();
+                await this.measurePreviewStepAsync('reloadThemesIfChanged', () => this.reloadThemesIfChanged());
+                if (displayRevision !== this.displaySlidesRevision) {
+                    return;
+                }
                 const mermaidThemeCss = await this.measurePreviewStepAsync('loadMermaidThemeCss', () => (
                     loadMermaidThemeCssForFile(this.app, view.file as TFile, markdownText)
                 ));

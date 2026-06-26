@@ -90,7 +90,7 @@ HTML comment examples:
 Use quotes when YAML special characters are present:
 
 ```yaml
-footer: "**Draft** · v0.2"
+footer: "**Draft** · v0.3"
 ```
 
 ## HTML blocks for advanced Obsidian slide layouts
@@ -179,9 +179,11 @@ Marp Extended converts image wiki-links before render/export:
 ```markdown
 ![[attachments/diagram.png]]
 ![[diagram.png|System diagram]]
+![[diagram.png|600]]
+![[diagram.png|600x400]]
 ```
 
-Converted forms become normal Markdown images. The converter only targets image extensions: `png`, `jpg`, `jpeg`, `gif`, `svg`, `webp`, and `bmp`.
+Converted forms become normal Markdown images. Text aliases become image alt text, while numeric aliases become Marp image directives such as `![w:600]` and `![w:600 h:400]`. The converter only targets image extensions: `png`, `jpg`, `jpeg`, `gif`, `svg`, `webp`, and `bmp`. If Obsidian cannot resolve an image file, Marp Extended still emits a Markdown image using the wiki-link target as the path.
 
 ## Lists and fragments
 
@@ -316,7 +318,7 @@ The plugin maps export commands to Marp CLI roughly as follows:
 | HTML | `--html --template <bare|bespoke> -o deck.html` |
 | Preview | `--html --preview` |
 
-The plugin also adds `--allow-local-files`, optional `--engine <plugin lib3/marp.config.js>`, optional `--theme-set <vault .marp-extended/themes>`, and optional `--browser-path <CHROME_PATH>`.
+The plugin also adds `--allow-local-files`, always adds `--engine <plugin lib3/marp.config.js>`, always adds `--html` so pre-rendered Mermaid SVG is preserved, and optionally adds `--theme-set <vault .marp-extended/themes>` plus `--browser-path <CHROME_PATH>`.
 
 ## Sources
 

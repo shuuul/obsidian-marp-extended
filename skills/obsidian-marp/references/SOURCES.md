@@ -2,6 +2,9 @@
 
 Generated/updatable upstream snapshots are stored in `upstream/` by `../scripts/update-references.py`.
 
+Current project metadata source: **Marp Extended** `0.4.0`, plugin/package id
+`marp-extended`, repository <https://github.com/shuuul/obsidian-marp-extended>.
+
 ## Agent Skill specification
 
 - https://agentskills.io/specification

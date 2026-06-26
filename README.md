@@ -6,6 +6,15 @@ Marp Extended is an Obsidian plugin for creating, previewing, presenting, and ex
 
 ![Marp Extended preview and export example](assets/marp-extended-example.png)
 
+## Project status
+
+| Field | Value |
+| --- | --- |
+| Plugin name | Marp Extended |
+| Plugin/package ID | `marp-extended` |
+| Current version | `0.4.0` |
+| Repository | <https://github.com/shuuul/obsidian-marp-extended> |
+
 ## Features
 
 - Preview Marp slides inside Obsidian.
@@ -95,11 +104,13 @@ Useful scripts:
 | `npm run test:coverage` | Run Jest unit tests with coverage |
 | `npm run analyze:bundle` | Build and emit `metafile.json` for esbuild bundle analysis |
 | `npm run obsidian:reload` | Reload the local Obsidian dev plugin and check dev errors |
-| `npm run obsidian:profile -- path="slides/examples/Kami Agent Slides.md"` | Capture preview Chrome metrics and Marp Extended timing marks; pass `cpu=true` for a `.cpuprofile` |
+| `npm run obsidian:profile -- path="samples/Kami Agent Slides.md"` | Capture preview Chrome metrics and Marp Extended timing marks for a vault-relative note path; pass `cpu=true` for a `.cpuprofile` |
 
 `main.js` is generated. Edit files under `src/`, then rebuild.
 
 Developer guidance lives in [`AGENTS.md`](AGENTS.md). Release notes live in [`CHANGELOG.md`](CHANGELOG.md).
+
+Current Marp-related runtime dependencies are `@marp-team/marp-cli` `^4.4.0`, `@marp-team/marp-core` `^4.3.0`, `beautiful-mermaid` `^1.1.3`, plus bundled markdown-it extensions `markdown-it-container` and `markdown-it-mark`.
 
 ## Security note
 

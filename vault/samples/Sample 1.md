@@ -5,7 +5,7 @@ mermaidTheme: github
 mermaidFlat: false
 size: 16:9
 paginate: true
-footer: Samuele Cozzi
+footer: Marp Extended sample
 ---
 
 # First Slide

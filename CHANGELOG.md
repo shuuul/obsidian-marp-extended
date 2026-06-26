@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.4.0
+
+- Added themed Mermaid diagram rendering as inline SVG for preview/export, including `mermaidTheme` and `mermaidFlat` support.
+- Added default theme update controls for bundled Marp and Mermaid themes.
+- Improved preview performance by reducing refresh overhead and caching Mermaid render output plus remote theme assets.
+- Fixed preview slide sync after render updates.
+- Fixed default theme refresh cache busting and Kami blockquote styling.
+- Added Obsidian plugin reload tooling for local development.
+- Updated project, vault, CSS, and Obsidian Marp skill documentation for the current Marp Extended release flow and syntax behavior.
+
 ## 0.3.0
 
 - Added Obsidian image wiki-link conversion for Marp preview/export, including alt text, image size directives, URL-encoded paths, and unresolved-link fallback.

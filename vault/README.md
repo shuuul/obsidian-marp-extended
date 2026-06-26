@@ -5,6 +5,9 @@ based on the original `obsidian-marp-slides` project. It keeps the upstream samp
 material for Marp preview/export while adding Marp Extended defaults, Kami themes,
 and Mermaid diagram support.
 
+Current plugin metadata: **Marp Extended** `0.4.0`, manifest/package id
+`marp-extended`, repository <https://github.com/shuuul/obsidian-marp-extended>.
+
 ## What comes from obsidian-marp-slides
 
 The original sample vault demonstrated how to write Marp decks in Obsidian and
@@ -60,13 +63,15 @@ marp: true
 theme: kami          # or kami-en
 mermaidTheme: kami   # or kami-en
 mermaidFlat: true     # optional: blend Mermaid into the slide background
-size: kami
+size: kami            # or portfolio for A4 portrait
 paginate: true
 footer: "Kami · Marp Extended"
 ---
 ```
 
 The `kami` size is `280mm × 158mm`, matching the upstream Kami Marp examples.
+Kami themes also define a `portfolio` size of `210mm × 297mm`, matching the A4
+portrait layout used by Kami's `demo-kaku.pdf` portfolio export.
 
 ## Mermaid support
 
@@ -84,10 +89,12 @@ Example:
 
 ````markdown
 ---
+marp: true
 theme: kami
 mermaidTheme: kami
 mermaidFlat: true
 size: kami
+paginate: true
 ---
 
 ```mermaid[Kami flow]

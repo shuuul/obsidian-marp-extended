@@ -1,6 +1,6 @@
 {
 	"name": "marp-extended",
-	"version": "0.3.0",
+	"version": "0.4.0",
 	"description": "Create markdown-based Marp presentations in Obsidian with extended Marp support",
 	"main": "main.js",
 	"scripts": {

@@ -14,7 +14,7 @@ A custom theme should start with Marp metadata and then define slide-level CSS:
 
 ```css
 /* @theme my-theme */
-/* @marp-extended-theme-version 2 */
+/* @marp-extended-theme-version 3 */
 @import "default";
 
 :root {
@@ -54,9 +54,12 @@ Then use it from slide frontmatter:
 
 ```yaml
 ---
+marp: true
 theme: kami
 mermaidTheme: kami
 mermaidFlat: true   # optional: remove the diagram card background
+size: 16:9
+paginate: true
 ---
 ```
 
@@ -259,8 +262,11 @@ Use this slide to validate preview and export:
 
 ````markdown
 ---
+marp: true
 theme: my-theme
 mermaidTheme: my-mermaid-theme
+mermaidFlat: false
+size: 16:9
 paginate: true
 ---
 

@@ -11,6 +11,9 @@ metadata:
 
 Use this skill to help agents author Marp slide decks that work in **Marp Extended**, this repository's Obsidian plugin (`manifest.json` id: `marp-extended`).
 
+Current project metadata: **Marp Extended** `0.4.0`, plugin/package id
+`marp-extended`, repository <https://github.com/shuuul/obsidian-marp-extended>.
+
 ## Start here
 
 1. Read `references/syntax.md` when you need Marp / Marpit Markdown syntax, directives, image syntax, themes, math, transitions, or examples.
@@ -24,7 +27,7 @@ Use this skill to help agents author Marp slide decks that work in **Marp Extend
 - Split slides with a horizontal rule (`---`, `___`, `***`, or `- - -`). Do not confuse the closing frontmatter `---` with a slide separator.
 - Prefer Marp directives over raw HTML/CSS where possible. Raw HTML may be restricted by Marp Core and this plugin's `EnableHTML` setting.
 - When Markdown, Obsidian, or Marp shorthand cannot express a layout, use explicit HTML blocks inside slides. Marp Extended examples intentionally use small `<div>`, `<table>`, and inline HTML structures for grids, callouts, title blocks, and Kami-style editorial layouts that Obsidian Markdown alone cannot represent.
-- Use Obsidian image wiki-links freely for images: `![[diagram.png]]` and `![[diagram.png|Alt text]]` are converted by this plugin for preview/export. Non-image wiki-links are not converted by the plugin's image converter.
+- Use Obsidian image wiki-links freely for images: `![[diagram.png]]`, `![[diagram.png|Alt text]]`, `![[diagram.png|600]]`, and `![[diagram.png|600x400]]` are converted by this plugin for preview/export. Size aliases become Marp image directives such as `![w:600]` and `![w:600 h:400]`. If Obsidian cannot resolve the image file, the converter still emits a Markdown image using the wiki-link target as the path. Non-image wiki-links are not converted by the plugin's image converter.
 - For predictable export, keep local images and theme CSS inside the vault. The plugin invokes Marp CLI with `--allow-local-files` for export.
 - Use built-in theme names (`default`, `gaia`, `uncover`) or custom CSS themes registered in the vault/plugin theme set. Custom theme CSS must include `/* @theme name */`.
 - For math-heavy slides, declare the math engine explicitly in frontmatter, matching the plugin setting default (`mathjax` unless changed): `math: mathjax` or `math: katex`.

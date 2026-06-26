@@ -5,6 +5,7 @@ import { DEFAULT_THEME_DEFINITIONS, DEFAULT_THEME_DIRECTORY, DEFAULT_THEME_MANIF
 import { DEFAULT_MERMAID_THEME_DEFINITIONS, DEFAULT_MERMAID_THEME_DIRECTORY, DEFAULT_MERMAID_THEME_MANIFEST_VERSION, parseDefaultMermaidThemeVersionFromCss, parseMermaidThemeNameFromCss } from '@/utilities/defaultMermaidThemes';
 import { MermaidThemeManager } from '@/utilities/mermaidThemeManager';
 import { ThemeManager } from '@/utilities/themeManager';
+import { ensureDefaultThemes } from '@/utilities/ensureDefaultThemes';
 
 function createApp(adapter: any): any {
 	return {
@@ -107,6 +108,32 @@ test('default theme refresh uses versioned repo URLs for every default theme', a
 		url: `${DEFAULT_THEME_DEFINITIONS[0].url}?marp-extended-theme-version=${DEFAULT_THEME_MANIFEST_VERSION}`,
 	}));
 	expect(await adapter.read(`${DEFAULT_THEME_DIRECTORY}/${DEFAULT_THEME_DEFINITIONS[0].fileName}`)).toContain('color: blue');
+});
+
+test('startup default theme ensure overwrites outdated installed default themes', async () => {
+	const adapter = new FileSystemAdapter();
+	await adapter.mkdir('.marp-extended');
+	await adapter.mkdir(DEFAULT_THEME_DIRECTORY);
+	await adapter.write(`${DEFAULT_THEME_DIRECTORY}/kami.css`, '/* @theme kami */\n/* @marp-extended-theme-version 2 */\nsection { color: red; }');
+	(requestUrl as jest.Mock).mockResolvedValue({
+		status: 200,
+		text: `/* @theme refreshed */\n/* @marp-extended-theme-version ${DEFAULT_THEME_MANIFEST_VERSION} */\nsection { color: blue; }`,
+	});
+	const plugin = {
+		app: createApp(adapter),
+		settings: {
+			DefaultThemesSeeded: true,
+			DefaultThemesVersion: DEFAULT_THEME_MANIFEST_VERSION - 1,
+		},
+		saveSettings: jest.fn(),
+	};
+
+	await ensureDefaultThemes(plugin as any);
+
+	expect(requestUrl).toHaveBeenCalledTimes(DEFAULT_THEME_DEFINITIONS.length);
+	expect(plugin.settings.DefaultThemesVersion).toBe(DEFAULT_THEME_MANIFEST_VERSION);
+	expect(plugin.saveSettings).toHaveBeenCalledTimes(1);
+	expect(await adapter.read(`${DEFAULT_THEME_DIRECTORY}/kami.css`)).toContain('color: blue');
 });
 
 test('default Mermaid theme refresh uses versioned repo URLs', async () => {

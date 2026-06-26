@@ -19,9 +19,11 @@ export async function ensureDefaultThemes(plugin: MarpSlides): Promise<void> {
 
 	const manager = new ThemeManager(plugin.app);
 	const notice = new Notice('Installing Marp Extended themes…', 0);
+	const overwriteOutdatedThemes = plugin.settings.DefaultThemesSeeded === true
+		&& plugin.settings.DefaultThemesVersion !== DEFAULT_THEME_MANIFEST_VERSION;
 
 	try {
-		const installed = await manager.ensureDefaultThemes();
+		const installed = await manager.ensureDefaultThemes({ overwrite: overwriteOutdatedThemes });
 		plugin.settings.DefaultThemesSeeded = true;
 		plugin.settings.DefaultThemesVersion = DEFAULT_THEME_MANIFEST_VERSION;
 		await plugin.saveSettings();
