@@ -18,6 +18,18 @@ jest.mock('@marp-team/marp-cli', () => ({
 
 const marpCliMock = marpCli as unknown as jest.MockedFunction<(argv: string[], opts: unknown) => Promise<number>>;
 
+type TestElectronRequire = (moduleName: string) => {
+	remote?: {
+		dialog?: {
+			showOpenDialog: (options: unknown) => Promise<{ canceled: boolean; filePaths?: string[] }>;
+		};
+	};
+};
+
+type TestWindow = Window & { require?: TestElectronRequire };
+type NodeRequireFunction = (moduleName: string) => unknown;
+
+
 function createFile(): TFile {
 	const file = new TFile() as TFile & {
 		basename: string;
@@ -37,7 +49,7 @@ function createFile(): TFile {
 
 function mockFolderPicker(result: { canceled: boolean; filePaths?: string[] }) {
 	const showOpenDialog = jest.fn(async (_options: unknown) => result);
-	(window as any).require = jest.fn((moduleName: string) => {
+	const electronRequire: TestElectronRequire = (moduleName: string) => {
 		if (moduleName === 'electron') {
 			return {
 				remote: {
@@ -47,7 +59,8 @@ function mockFolderPicker(result: { canceled: boolean; filePaths?: string[] }) {
 		}
 
 		throw new Error(`Unexpected module: ${moduleName}`);
-	});
+	};
+	(window as TestWindow).require = electronRequire;
 
 	return showOpenDialog;
 }
@@ -58,7 +71,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
-	delete (window as any).require;
+	delete (window as TestWindow).require;
 });
 
 test('export selects a folder and passes output path to Marp CLI', async () => {
@@ -158,7 +171,7 @@ test('export throws when Marp CLI returns a failing exit status', async () => {
 test('export keeps Obsidian app URL createRequire patch while Marp CLI runs', async () => {
 	mockFolderPicker({ canceled: false, filePaths: ['/tmp/export'] });
 	marpCliMock.mockImplementation(async () => {
-		const nodeModule = require('node:module') as typeof import('node:module');
+		const nodeModule = require('node:module') as { createRequire(filename: string | URL): NodeRequireFunction };
 
 		expect(() => nodeModule.createRequire('app://obsidian.md/marp-cli-qbOdG7H_.js')).not.toThrow();
 
