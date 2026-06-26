@@ -1,0 +1,51 @@
+/* @mermaid-theme dracula */
+/* @marp-extended-mermaid-theme-version 1 */
+
+section .mermaid-diagram-container.mermaid-diagram {
+  align-items: center;
+  background: var(--dracula-background);
+  border: 1px solid rgba(255, 121, 198, 0.42);
+  border-radius: 0.35em;
+  box-shadow: 0 0.2em 0.8em rgba(255, 121, 198, 0.14);
+  display: flex;
+  flex-direction: column;
+  gap: 0.35em;
+  justify-content: center;
+  margin: 0.75em auto 0;
+  padding: 0.45em;
+  max-width: calc(100% - 2em);
+  width: fit-content;
+}
+
+section .mermaid-diagram-container.mermaid-diagram svg {
+  --bg: var(--dracula-current-line) !important;
+  --surface: var(--dracula-background) !important;
+  --fg: var(--dracula-foreground) !important;
+  --line: var(--dracula-purple) !important;
+  --accent: var(--dracula-pink) !important;
+  --muted: var(--dracula-comment) !important;
+  --border: rgba(255, 121, 198, 0.42) !important;
+  display: block;
+  height: auto;
+  max-height: 430px;
+  max-width: 100%;
+  width: auto;
+}
+
+section .mermaid-diagram-container.mermaid-diagram svg path,
+section .mermaid-diagram-container.mermaid-diagram svg rect,
+section .mermaid-diagram-container.mermaid-diagram svg polygon {
+  stroke-width: 2px;
+}
+
+section .mermaid-diagram-container.mermaid-diagram svg text {
+  font-weight: 600;
+}
+
+section .mermaid-diagram-container.mermaid-diagram figcaption {
+  color: currentColor;
+  font-size: 0.65em;
+  line-height: 1.3;
+  opacity: 0.72;
+  text-align: center;
+}

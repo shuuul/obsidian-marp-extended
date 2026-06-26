@@ -4,6 +4,8 @@ import { FilePath } from './filePath';
 import { existsSync, writeFileSync, unlinkSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { renderMermaidFences } from '../markdown-it/mermaid';
+import { loadMermaidThemeCssForFile, wrapMermaidThemeCss } from './mermaidTheme';
 
 export class MarpCLIError extends Error {}
 
@@ -169,10 +171,8 @@ export class MarpExport {
             const argv: string[] = [completeFilePath,'--allow-local-files'];
             //const argv: string[] = ['--engine', '@marp-team/marp-core', completeFilePath,'--allow-local-files'];
 
-            if (this.settings.EnableMarkdownItPlugins){
-                argv.push('--engine');
-                argv.push(marpEngineConfig);
-            }
+            argv.push('--engine');
+            argv.push(marpEngineConfig);
 
             if (themePaths.length > 0){
                 argv.push('--theme-set');
@@ -180,6 +180,7 @@ export class MarpExport {
             }
 
             this.pushBrowserPath(argv);
+            argv.push('--html');
 
             switch (type) {
                 case 'pdf':
@@ -202,13 +203,11 @@ export class MarpExport {
                     this.pushOutputPath(argv, outputPath);
                     break;
                 case 'html':
-                    argv.push('--html');
                     argv.push('--template');
                     argv.push(this.settings.HTMLExportMode);
                     this.pushOutputPath(argv, outputPath);
                     break;
                 case 'preview':
-                    argv.push('--html');
                     argv.push('--preview');
                     break;
                 default:
@@ -314,7 +313,9 @@ export class MarpExport {
         }
 
         const originalContent = await this.app.vault.cachedRead(file);
-        const processedContent = filesTool.convertImageWikiLinks(originalContent, file, this.app);
+        const mermaidThemeCss = await loadMermaidThemeCssForFile(this.app, file, originalContent);
+        const processedContent = wrapMermaidThemeCss(mermaidThemeCss)
+            + renderMermaidFences(filesTool.convertImageWikiLinks(originalContent, file, this.app));
         const needsTemporarySource = processedContent !== originalContent || filesTool.shouldUseRootExportSource(file);
 
         if (!needsTemporarySource) {

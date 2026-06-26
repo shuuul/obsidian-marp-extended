@@ -1,0 +1,51 @@
+/* @mermaid-theme minimal-turquoise */
+/* @marp-extended-mermaid-theme-version 1 */
+
+section .mermaid-diagram-container.mermaid-diagram {
+  align-items: center;
+  background: #ffffff;
+  border: 1px solid rgba(48, 134, 149, 0.34);
+  border-radius: 0.35em;
+  box-shadow: 0 0.2em 0.8em rgba(48, 134, 149, 0.12);
+  display: flex;
+  flex-direction: column;
+  gap: 0.35em;
+  justify-content: center;
+  margin: 0.75em auto 0;
+  padding: 0.45em;
+  max-width: calc(100% - 2em);
+  width: fit-content;
+}
+
+section .mermaid-diagram-container.mermaid-diagram svg {
+  --bg: var(--color-background-stripe, #edf5f6) !important;
+  --surface: #ffffff !important;
+  --fg: #17353a !important;
+  --line: #308695 !important;
+  --accent: #308695 !important;
+  --muted: #547479 !important;
+  --border: rgba(48, 134, 149, 0.34) !important;
+  display: block;
+  height: auto;
+  max-height: 430px;
+  max-width: 100%;
+  width: auto;
+}
+
+section .mermaid-diagram-container.mermaid-diagram svg path,
+section .mermaid-diagram-container.mermaid-diagram svg rect,
+section .mermaid-diagram-container.mermaid-diagram svg polygon {
+  stroke-width: 2px;
+}
+
+section .mermaid-diagram-container.mermaid-diagram svg text {
+  font-weight: 600;
+}
+
+section .mermaid-diagram-container.mermaid-diagram figcaption {
+  color: currentColor;
+  font-size: 0.65em;
+  line-height: 1.3;
+  opacity: 0.72;
+  text-align: center;
+}

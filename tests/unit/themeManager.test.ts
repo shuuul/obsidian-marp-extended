@@ -2,6 +2,8 @@ import { FileSystemAdapter, requestUrl } from 'obsidian';
 import { beforeEach, expect, test } from '@jest/globals';
 
 import { DEFAULT_THEME_DEFINITIONS, DEFAULT_THEME_DIRECTORY, DEFAULT_THEME_MANIFEST_VERSION, normalizeThemeName, parseDefaultThemeVersionFromCss, parseThemeNameFromCss, parseThemeSizeNamesFromCss, themeNameToFileName } from '@/utilities/defaultThemes';
+import { DEFAULT_MERMAID_THEME_DEFINITIONS, DEFAULT_MERMAID_THEME_DIRECTORY, DEFAULT_MERMAID_THEME_MANIFEST_VERSION, parseDefaultMermaidThemeVersionFromCss, parseMermaidThemeNameFromCss } from '@/utilities/defaultMermaidThemes';
+import { MermaidThemeManager } from '@/utilities/mermaidThemeManager';
 import { ThemeManager } from '@/utilities/themeManager';
 
 function createApp(adapter: any): any {
@@ -25,6 +27,8 @@ test('theme metadata helpers parse and sanitize theme names', () => {
 	expect(parseThemeSizeNamesFromCss('/* @size 4:3 false */')).toEqual([]);
 	expect(parseDefaultThemeVersionFromCss(`/* @marp-extended-theme-version ${DEFAULT_THEME_MANIFEST_VERSION} */`)).toBe(DEFAULT_THEME_MANIFEST_VERSION);
 	expect(parseDefaultThemeVersionFromCss('/* @theme custom */\nsection {}')).toBeNull();
+	expect(parseMermaidThemeNameFromCss('/* @mermaid-theme kami */\nsection {}')).toBe('kami');
+	expect(parseDefaultMermaidThemeVersionFromCss(`/* @marp-extended-mermaid-theme-version ${DEFAULT_MERMAID_THEME_MANIFEST_VERSION} */`)).toBe(DEFAULT_MERMAID_THEME_MANIFEST_VERSION);
 });
 
 test('pasted theme CSS is saved under the default theme directory', async () => {
@@ -103,4 +107,22 @@ test('default theme refresh uses versioned repo URLs for every default theme', a
 		url: `${DEFAULT_THEME_DEFINITIONS[0].url}?marp-extended-theme-version=${DEFAULT_THEME_MANIFEST_VERSION}`,
 	}));
 	expect(await adapter.read(`${DEFAULT_THEME_DIRECTORY}/${DEFAULT_THEME_DEFINITIONS[0].fileName}`)).toContain('color: blue');
+});
+
+test('default Mermaid theme refresh uses versioned repo URLs', async () => {
+	const adapter = new FileSystemAdapter();
+	(requestUrl as jest.Mock).mockResolvedValue({
+		status: 200,
+		text: `/* @mermaid-theme refreshed */\n/* @marp-extended-mermaid-theme-version ${DEFAULT_MERMAID_THEME_MANIFEST_VERSION} */\nsection .mermaid-diagram-container svg {}`,
+	});
+
+	const manager = new MermaidThemeManager(createApp(adapter));
+	const installed = await manager.ensureDefaultThemes({ overwrite: true });
+
+	expect(installed).toEqual(DEFAULT_MERMAID_THEME_DEFINITIONS.map((theme) => theme.name));
+	expect(requestUrl).toHaveBeenCalledTimes(DEFAULT_MERMAID_THEME_DEFINITIONS.length);
+	expect(requestUrl).toHaveBeenCalledWith(expect.objectContaining({
+		url: `${DEFAULT_MERMAID_THEME_DEFINITIONS[0].url}?marp-extended-mermaid-theme-version=${DEFAULT_MERMAID_THEME_MANIFEST_VERSION}`,
+	}));
+	expect(await adapter.read(`${DEFAULT_MERMAID_THEME_DIRECTORY}/${DEFAULT_MERMAID_THEME_DEFINITIONS[0].fileName}`)).toContain('@mermaid-theme refreshed');
 });

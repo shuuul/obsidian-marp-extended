@@ -6,7 +6,10 @@ import { ICON_SLIDE_PREVIEW, ICON_EXPORT_PDF, ICON_EXPORT_PPTX, ICON_SLIDE_PRESE
 import { Libs } from './utilities/libs';
 import { MarpSlidesSettings, DEFAULT_SETTINGS } from 'utilities/settings';
 import { ensureDefaultThemes } from './utilities/ensureDefaultThemes';
+import { ensureDefaultMermaidThemes } from './utilities/ensureDefaultMermaidThemes';
+import { DEFAULT_MERMAID_THEME_MANIFEST_VERSION } from './utilities/defaultMermaidThemes';
 import { DEFAULT_THEME_MANIFEST_VERSION } from './utilities/defaultThemes';
+import { MermaidThemeManager, type InstalledMermaidThemeEntry } from './utilities/mermaidThemeManager';
 import { ThemeManager, type InstalledThemeEntry } from './utilities/themeManager';
 import { ThemePropertyOptions } from './utilities/themePropertyOptions';
 import { getPreviewSlideIndex } from './utilities/previewSync';
@@ -39,6 +42,13 @@ export default class MarpSlides extends Plugin {
 			.catch((error: unknown) => {
 				const message = error instanceof Error ? error.message : String(error);
 				console.error('Marp Extended: default theme install failed', message);
+			});
+
+		void ensureDefaultMermaidThemes(this)
+			.then(() => this.refreshThemePropertyOptions())
+			.catch((error: unknown) => {
+				const message = error instanceof Error ? error.message : String(error);
+				console.error('Marp Extended: default Mermaid theme install failed', message);
 			});
 
 		this.registerView(
@@ -110,6 +120,9 @@ export default class MarpSlides extends Plugin {
 		}));
 
 		this.registerEvent(this.app.vault.on('modify', this.onChange.bind(this)));
+		this.registerEvent(this.app.metadataCache.on('changed', (file, data) => {
+			this.refreshPreviewForFile(file, data);
+		}));
 	}
 
 	onunload() {
@@ -122,10 +135,11 @@ export default class MarpSlides extends Plugin {
 			CHROME_PATH: saved?.CHROME_PATH ?? DEFAULT_SETTINGS.CHROME_PATH,
 			DefaultThemesSeeded: saved?.DefaultThemesSeeded ?? DEFAULT_SETTINGS.DefaultThemesSeeded,
 			DefaultThemesVersion: saved?.DefaultThemesVersion ?? DEFAULT_SETTINGS.DefaultThemesVersion,
+			DefaultMermaidThemesSeeded: saved?.DefaultMermaidThemesSeeded ?? DEFAULT_SETTINGS.DefaultMermaidThemesSeeded,
+			DefaultMermaidThemesVersion: saved?.DefaultMermaidThemesVersion ?? DEFAULT_SETTINGS.DefaultMermaidThemesVersion,
 			EnableHTML: saved?.EnableHTML ?? DEFAULT_SETTINGS.EnableHTML,
 			MathTypesettings: saved?.MathTypesettings ?? DEFAULT_SETTINGS.MathTypesettings,
 			HTMLExportMode: saved?.HTMLExportMode ?? DEFAULT_SETTINGS.HTMLExportMode,
-			EnableMarkdownItPlugins: saved?.EnableMarkdownItPlugins ?? DEFAULT_SETTINGS.EnableMarkdownItPlugins,
 		};
 	}
 
@@ -138,11 +152,8 @@ export default class MarpSlides extends Plugin {
 	}
 
 	onChange(file: TAbstractFile) {
-		if (file == this.editorView?.file) {
-			const view = this.getViewInstance(false);
-			if (view) {
-				void view.onChange(this.editorView);
-			}
+		if (file instanceof TFile) {
+			this.refreshPreviewForFile(file);
 		}
 	}
 
@@ -238,6 +249,27 @@ export default class MarpSlides extends Plugin {
 		return previewView;
 	}
 
+	private refreshPreviewForFile(file: TFile, markdownOverride?: string): MarpPreviewView | null {
+		const activeView = this.getActiveMarkdownView();
+		const previewView = this.getViewInstance(false);
+		if (!previewView) {
+			return null;
+		}
+
+		if (activeView?.file?.path === file.path) {
+			this.editorView = activeView;
+			void previewView.displaySlides(activeView, markdownOverride);
+			return previewView;
+		}
+
+		if (this.editorView?.file?.path === file.path) {
+			void previewView.displaySlides(this.editorView, markdownOverride);
+			return previewView;
+		}
+
+		return null;
+	}
+
 	syncPreviewContext(view: MarkdownView): MarpPreviewView | null {
 		const shouldRefresh = this.editorView?.file !== view.file;
 		this.editorView = view;
@@ -323,17 +355,8 @@ export class MarpSlidesSettingTab extends PluginSettingTab {
 					await this.plugin.saveSettings();
 				}));
 		
-		new Setting(containerEl)
-			.setName('MarkdownIt Plugins')
-			.setDesc('Enable the Markdown It Plugins (Mark, Containers, Kroki)')
-			.addToggle(toggle => toggle
-				.setValue(this.plugin.settings.EnableMarkdownItPlugins)
-				.onChange(async (value) => {
-					this.plugin.settings.EnableMarkdownItPlugins = value;
-					await this.plugin.saveSettings();
-				}));
-
 		this.displayThemesSection(containerEl);
+		this.displayMermaidThemesSection(containerEl);
 	}
 
 	private displayThemesSection(containerEl: HTMLElement): void {
@@ -448,6 +471,119 @@ export class MarpSlidesSettingTab extends PluginSettingTab {
 				}));
 		});
 	}
+
+	private displayMermaidThemesSection(containerEl: HTMLElement): void {
+		containerEl.createEl('h3', {text: 'Mermaid themes'});
+
+		const mermaidThemeManager = new MermaidThemeManager(this.app);
+		let themeListEl: HTMLElement;
+
+		new Setting(containerEl)
+			.setName('Installed Mermaid themes')
+			.setDesc(`Mermaid themes are downloaded to ${mermaidThemeManager.getDefaultThemeDirectory()}. Use their names in the mermaidTheme frontmatter property. Latest version: v${DEFAULT_MERMAID_THEME_MANIFEST_VERSION}.`)
+			.addButton(button => button
+				.setButtonText('Refresh defaults')
+				.onClick(async () => {
+					button.setDisabled(true);
+					try {
+						const installed = await mermaidThemeManager.ensureDefaultThemes({ overwrite: true });
+						this.plugin.settings.DefaultMermaidThemesSeeded = true;
+						this.plugin.settings.DefaultMermaidThemesVersion = DEFAULT_MERMAID_THEME_MANIFEST_VERSION;
+						await this.plugin.saveSettings();
+						new Notice(`Refreshed Mermaid themes (${installed.length}).`, 5000);
+						await this.plugin.refreshThemePropertyOptions();
+						await this.renderMermaidThemeList(themeListEl);
+					} catch (error) {
+						const message = error instanceof Error ? error.message : String(error);
+						new Notice(`Mermaid theme refresh failed: ${message}`, 8000);
+					} finally {
+						button.setDisabled(false);
+					}
+				}))
+			.addButton(button => button
+				.setButtonText('Add CSS theme')
+				.setCta()
+				.onClick(() => {
+					new AddMermaidThemeModal(this.app, mermaidThemeManager, async (entry) => {
+						new Notice(`Added Mermaid theme: ${entry.name}`, 5000);
+						await this.plugin.refreshThemePropertyOptions();
+						await this.renderMermaidThemeList(themeListEl);
+					}).open();
+				}));
+
+		themeListEl = containerEl.createDiv({ cls: 'marp-extended-theme-list' });
+		void this.renderMermaidThemeList(themeListEl);
+	}
+
+	private getMermaidThemeDescription(theme: InstalledMermaidThemeEntry): string {
+		const source = theme.source === 'default' ? 'Built-in' : 'Custom';
+		if (theme.source !== 'default') {
+			return `${source} · ${theme.path}`;
+		}
+
+		const installedVersion = theme.version == null ? 'unknown' : `v${theme.version}`;
+		const updateStatus = theme.version === DEFAULT_MERMAID_THEME_MANIFEST_VERSION
+			? 'current'
+			: `latest v${DEFAULT_MERMAID_THEME_MANIFEST_VERSION}`;
+		return `${source} · installed ${installedVersion} · ${updateStatus} · ${theme.path}`;
+	}
+
+	private async renderMermaidThemeList(containerEl: HTMLElement): Promise<void> {
+		containerEl.empty();
+
+		const mermaidThemeManager = new MermaidThemeManager(this.app);
+		const themes = await mermaidThemeManager.listThemes();
+
+		if (themes.length === 0) {
+			containerEl.createEl('p', {
+				cls: 'marp-extended-theme-empty',
+				text: 'No Mermaid themes installed yet. Marp Extended will download defaults on startup, or you can add CSS manually.',
+			});
+			return;
+		}
+
+		themes.forEach((theme) => {
+			const setting = new Setting(containerEl)
+				.setName(theme.name)
+				.setDesc(this.getMermaidThemeDescription(theme));
+
+			if (theme.source === 'default') {
+				const hasUpdate = theme.version !== DEFAULT_MERMAID_THEME_MANIFEST_VERSION;
+				setting.addExtraButton(button => {
+					if (hasUpdate) {
+						button.extraSettingsEl.addClass('marp-extended-theme-update-needed');
+					}
+
+					button
+						.setIcon('refresh-cw')
+						.setTooltip(hasUpdate ? 'Update available: update Mermaid theme CSS from GitHub' : 'Update Mermaid theme CSS from GitHub')
+						.onClick(async () => {
+							button.setDisabled(true);
+							try {
+								const updated = await mermaidThemeManager.updateDefaultTheme(theme.fileName);
+								await this.plugin.refreshThemePropertyOptions();
+								new Notice(`Updated Mermaid theme: ${updated.name}`, 5000);
+								await this.renderMermaidThemeList(containerEl);
+							} catch (error) {
+								const message = error instanceof Error ? error.message : String(error);
+								new Notice(`Mermaid theme update failed: ${message}`, 8000);
+								button.setDisabled(false);
+							}
+						});
+				});
+			}
+
+			setting.addExtraButton(button => button
+				.setIcon('trash')
+				.setTooltip('Delete Mermaid theme CSS')
+				.onClick(async () => {
+					await mermaidThemeManager.removeTheme(theme.path);
+					await this.plugin.refreshThemePropertyOptions();
+					new Notice(`Deleted Mermaid theme: ${theme.name}`, 5000);
+					await this.renderMermaidThemeList(containerEl);
+				}));
+		});
+	}
 }
 
 class AddThemeModal extends Modal {
@@ -505,6 +641,68 @@ class AddThemeModal extends Modal {
 					} catch (error) {
 						const message = error instanceof Error ? error.message : String(error);
 						new Notice(`Theme save failed: ${message}`, 8000);
+						button.setDisabled(false);
+					}
+				}));
+	}
+
+	onClose(): void {
+		this.contentEl.empty();
+	}
+}
+
+class AddMermaidThemeModal extends Modal {
+	private themeName = '';
+	private themeCss = '';
+
+	constructor(
+		app: App,
+		private themeManager: MermaidThemeManager,
+		private onSaved: (entry: InstalledMermaidThemeEntry) => Promise<void>,
+	) {
+		super(app);
+	}
+
+	onOpen(): void {
+		this.titleEl.textContent = 'Add Mermaid CSS theme';
+		const { contentEl } = this;
+		contentEl.empty();
+		contentEl.addClass('marp-extended-add-theme-modal');
+
+		new Setting(contentEl)
+			.setName('Theme name')
+			.setDesc('Optional if the CSS already has a /* @mermaid-theme name */ metadata comment.')
+			.addText(text => text
+				.setPlaceholder('my-mermaid-theme')
+				.onChange((value) => {
+					this.themeName = value;
+				}));
+
+		new Setting(contentEl)
+			.setName('Theme CSS')
+			.setDesc('CSS selectors should target .mermaid-diagram-container and the inline SVG variables such as --bg, --fg, --line, and --accent.')
+			.addTextArea(text => {
+				text.inputEl.rows = 14;
+				text.inputEl.cols = 64;
+				text.setPlaceholder('/* @mermaid-theme my-mermaid-theme */\nsection .mermaid-diagram-container svg { --accent: #1B365D !important; }');
+				text.onChange((value) => {
+					this.themeCss = value;
+				});
+			});
+
+		new Setting(contentEl)
+			.addButton(button => button
+				.setButtonText('Save Mermaid theme')
+				.setCta()
+				.onClick(async () => {
+					button.setDisabled(true);
+					try {
+						const entry = await this.themeManager.addThemeFromCss(this.themeCss, this.themeName);
+						await this.onSaved(entry);
+						this.close();
+					} catch (error) {
+						const message = error instanceof Error ? error.message : String(error);
+						new Notice(`Could not save Mermaid theme: ${message}`, 8000);
 						button.setDisabled(false);
 					}
 				}));

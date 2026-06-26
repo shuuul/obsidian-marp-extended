@@ -68,9 +68,29 @@ export class Libs {
 						}
 						})
 				))
+				.then(() => this.writeMarpEngineConfig(libPathUtility, app))
 				.catch(error => {
 					console.log(error);
 				});
+
+			return;
 		}
+
+		this.writeMarpEngineConfig(libPathUtility, app);
     }
+
+	private writeMarpEngineConfig(libPathUtility: FilePath, app: App): void {
+		const engineConfigPath = libPathUtility.getMarpEngine(app.vault);
+
+		mkdirSync(dirname(engineConfigPath), { recursive: true });
+		writeFileSync(engineConfigPath, this.getMarpEngineConfig(), 'utf-8');
+	}
+
+	private getMarpEngineConfig(): string {
+		return `module.exports = ({ marp }) =>
+	marp
+		.use(require('./markdown-it/markdown-it-mark/dist/markdown-it-mark.min'))
+		.use(require('./markdown-it/markdown-it-container/dist/markdown-it-container.min'), 'container');
+`;
+	}
 }
