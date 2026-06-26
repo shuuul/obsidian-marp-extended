@@ -125,6 +125,16 @@ section p {
   margin-bottom: var(--rhythm-section);
 }
 
+section blockquote {
+  margin: 0 0 var(--rhythm-section) 0;
+  padding: 0 0 0 12pt;
+  border-left: 2pt solid var(--brand);
+  color: var(--dark-warm);
+}
+section blockquote > :last-child {
+  margin-bottom: 0;
+}
+
 .mi {
   font-family: var(--serif);
   font-size: 11pt;
