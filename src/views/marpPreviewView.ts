@@ -8,6 +8,7 @@ import { ThemeManager } from '../utilities/themeManager';
 import { MathOptions } from '@marp-team/marp-core/types/src/math/math';
 import { markdownItMermaid } from '../markdown-it/mermaid';
 import { loadMermaidThemeCssForFile } from '../utilities/mermaidTheme';
+import { ThemeAssetCache } from '../utilities/themeAssetCache';
 import {
     PREVIEW_ZOOM_RESET,
     clampPreviewZoom,
@@ -39,6 +40,7 @@ export class MarpPreviewView extends ItemView  {
     private syncPreviewEnabled = true;
     private displaySlidesRevision = 0;
     private previewProfileMeasureCounter = 0;
+    private themeAssetCache: ThemeAssetCache;
     private settings : MarpSlidesSettings;
 
     private file : TFile | null = null;
@@ -47,6 +49,7 @@ export class MarpPreviewView extends ItemView  {
         super(leaf);
 
         this.settings = settings;
+        this.themeAssetCache = new ThemeAssetCache(this.app);
 
         this.marp = new Marp({
             container: { tag: 'div', id: '__marp-vscode' },
@@ -483,7 +486,12 @@ export class MarpPreviewView extends ItemView  {
                     return;
                 }
                 let html = rendered.html;
-                const { css } = rendered;
+                const css = await this.measurePreviewStepAsync('rewriteThemeAssets', () => (
+                    this.themeAssetCache.rewriteRemoteAssets(rendered.css)
+                ));
+                if (displayRevision !== this.displaySlidesRevision) {
+                    return;
+                }
                 
                 // Replace Backgorund Url for images
                 html = this.measurePreviewStep('rewriteBackgroundUrls', () => (

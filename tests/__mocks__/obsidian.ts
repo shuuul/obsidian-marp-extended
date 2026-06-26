@@ -21,24 +21,34 @@ export const Vault = jest.fn().mockImplementation(() => {
 export const FileSystemAdapter = jest.fn().mockImplementation(() => {
   let _path = "";
   const files = new Map<string, string>();
+  const binaryFiles = new Map<string, ArrayBuffer>();
   const folders = new Set<string>();
   return {
     constructor: () => {},
     write: async (path: string, data: string) => { _path = path; files.set(normalizePath(path), data); },
     read: async (path: string) => files.get(normalizePath(path)) ?? '',
-    exists: async (path: string) => files.has(normalizePath(path)) || folders.has(normalizePath(path)),
+    writeBinary: async (path: string, data: ArrayBuffer) => { _path = path; binaryFiles.set(normalizePath(path), data); },
+    readBinary: async (path: string) => binaryFiles.get(normalizePath(path)) ?? new ArrayBuffer(0),
+    exists: async (path: string) => files.has(normalizePath(path)) || binaryFiles.has(normalizePath(path)) || folders.has(normalizePath(path)),
     mkdir: async (path: string) => { folders.add(normalizePath(path)); },
     remove: async (path: string) => { files.delete(normalizePath(path)); folders.delete(normalizePath(path)); },
     list: async (path: string) => {
       const normalized = normalizePath(path);
       const prefix = normalized.endsWith('/') ? normalized : `${normalized}/`;
       return {
-        files: [...files.keys()].filter((file) => file.startsWith(prefix)),
+        files: [...files.keys(), ...binaryFiles.keys()].filter((file) => file.startsWith(prefix)),
         folders: [...folders].filter((folder) => folder.startsWith(prefix)),
       };
     },
     getBasePath: () => { return _path; },
-    getResourcePath: () => { return  `app://local/${normalizePath(_path)}?aaaa`; }
+    getResourcePath: (path: string) => {
+      const normalizedPath = normalizePath(path);
+      const normalizedLastPath = normalizePath(_path);
+      const resourcePath = normalizedLastPath === normalizedPath || normalizedLastPath.endsWith(`/${normalizedPath}`)
+        ? normalizedLastPath
+        : normalizedPath;
+      return  `app://local/${resourcePath}?aaaa`;
+    }
   }
 });
 
