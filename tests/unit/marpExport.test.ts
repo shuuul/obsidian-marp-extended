@@ -230,9 +230,12 @@ test('export injects selected Mermaid theme CSS and flat mode into the temporary
 	marpCliMock.mockImplementationOnce(async (argv: string[]) => {
 		temporarySourcePath = argv[0];
 		const processed = readFileSync(temporarySourcePath, 'utf-8');
+		expect(processed).toMatch(/^---\ntheme: kami\nmermaidTheme: dracula\nmermaidFlat: true\n---\s*<style class="marp-extended-mermaid-theme">/);
 		expect(processed).toContain('class="marp-extended-mermaid-theme"');
 		expect(processed).toContain('--accent: pink !important');
 		expect(processed).toContain('background: transparent !important');
+		expect(processed).toContain('svg .edge-label rect');
+		expect(processed).toContain('fill: var(--surface, var(--bg)) !important');
 		expect(processed).toContain('data-mermaid-renderer="beautiful-mermaid"');
 		return 0;
 	});

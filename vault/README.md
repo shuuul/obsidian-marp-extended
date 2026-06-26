@@ -70,8 +70,10 @@ footer: "Kami · Marp Extended"
 ```
 
 The `kami` size is `280mm × 158mm`, matching the upstream Kami Marp examples.
-Kami themes also define a `portfolio` size of `210mm × 297mm`, matching the A4
-portrait layout used by Kami's `demo-kaku.pdf` portfolio export.
+Kami themes also define a `portfolio` size of `794px × 1123px`, the integer CSS
+pixel equivalent of A4 portrait at 96dpi. Integer dimensions keep PNG export
+compatible with Chromium's screenshot API while matching Kami's `demo-kaku.pdf`
+portfolio layout.
 
 ## Mermaid support
 

@@ -14,7 +14,7 @@ A custom theme should start with Marp metadata and then define slide-level CSS:
 
 ```css
 /* @theme my-theme */
-/* @marp-extended-theme-version 3 */
+/* @marp-extended-theme-version 4 */
 @import "default";
 
 :root {

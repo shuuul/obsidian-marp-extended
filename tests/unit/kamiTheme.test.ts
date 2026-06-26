@@ -51,5 +51,5 @@ test.each([
 ])('%s supports the A4 portrait portfolio size', (themeFile, themeName) => {
 	const html = renderThemeHtml(themeFile, themeName, 'portfolio');
 
-	expect(html).toContain('viewBox="0 0 793.7007874015749 1122.5196850393702"');
+	expect(html).toContain('viewBox="0 0 794 1123"');
 });

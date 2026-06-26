@@ -8,7 +8,7 @@ export interface DefaultThemeDefinition {
 const MARP_EXTENDED_REPO_RAW_THEMES = 'https://raw.githubusercontent.com/shuuul/obsidian-marp-extended/main/vault/themes';
 
 export const DEFAULT_THEME_DIRECTORY = '.marp-extended/themes';
-export const DEFAULT_THEME_MANIFEST_VERSION = 3;
+export const DEFAULT_THEME_MANIFEST_VERSION = 4;
 export const DEFAULT_THEME_VERSION_COMMENT = '@marp-extended-theme-version';
 
 export const DEFAULT_THEME_DEFINITIONS: DefaultThemeDefinition[] = [

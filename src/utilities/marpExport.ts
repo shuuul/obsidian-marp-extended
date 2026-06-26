@@ -5,7 +5,7 @@ import { existsSync, writeFileSync, unlinkSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { renderMermaidFences } from '../markdown-it/mermaid';
-import { loadMermaidThemeCssForFile, wrapMermaidThemeCss } from './mermaidTheme';
+import { insertMarkdownAfterFrontmatter, loadMermaidThemeCssForFile, wrapMermaidThemeCss } from './mermaidTheme';
 
 export class MarpCLIError extends Error {}
 
@@ -314,8 +314,11 @@ export class MarpExport {
 
         const originalContent = await this.app.vault.cachedRead(file);
         const mermaidThemeCss = await loadMermaidThemeCssForFile(this.app, file, originalContent);
-        const processedContent = wrapMermaidThemeCss(mermaidThemeCss)
-            + renderMermaidFences(filesTool.convertImageWikiLinks(originalContent, file, this.app));
+        const processedMarkdown = renderMermaidFences(filesTool.convertImageWikiLinks(originalContent, file, this.app));
+        const processedContent = insertMarkdownAfterFrontmatter(
+            processedMarkdown,
+            wrapMermaidThemeCss(mermaidThemeCss),
+        );
         const needsTemporarySource = processedContent !== originalContent || filesTool.shouldUseRootExportSource(file);
 
         if (!needsTemporarySource) {

@@ -12,7 +12,11 @@ const MERMAID_FLAT_CSS = `section .mermaid-diagram-container.mermaid-diagram {
 }
 
 section .mermaid-diagram-container.mermaid-diagram svg {
-  --bg: transparent !important;
+  --bg: var(--surface, transparent) !important;
+}
+
+section .mermaid-diagram-container.mermaid-diagram svg .edge-label rect {
+  fill: var(--surface, var(--bg)) !important;
 }`;
 
 function getFrontmatter(markdown: string): string | null {
@@ -93,4 +97,17 @@ export async function loadMermaidThemeCssForFile(app: App, file: TFile, markdown
 
 export function wrapMermaidThemeCss(css: string): string {
 	return css.trim() ? `<style class="marp-extended-mermaid-theme">\n${css.trim()}\n</style>\n` : '';
+}
+
+export function insertMarkdownAfterFrontmatter(markdown: string, content: string): string {
+	if (!content) {
+		return markdown;
+	}
+
+	const frontmatter = markdown.match(/^(---\s*\n[\s\S]*?\n---\s*(?:\n|$))/);
+	if (!frontmatter) {
+		return `${content}${markdown}`;
+	}
+
+	return `${frontmatter[1]}${content}${markdown.slice(frontmatter[1].length)}`;
 }
