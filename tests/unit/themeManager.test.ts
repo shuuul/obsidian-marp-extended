@@ -1,7 +1,7 @@
 import { FileSystemAdapter, requestUrl } from 'obsidian';
 import { beforeEach, expect, test } from '@jest/globals';
 
-import { DEFAULT_THEME_DIRECTORY, DEFAULT_THEME_MANIFEST_VERSION, normalizeThemeName, parseDefaultThemeVersionFromCss, parseThemeNameFromCss, parseThemeSizeNamesFromCss, themeNameToFileName } from '@/utilities/defaultThemes';
+import { DEFAULT_THEME_DEFINITIONS, DEFAULT_THEME_DIRECTORY, DEFAULT_THEME_MANIFEST_VERSION, normalizeThemeName, parseDefaultThemeVersionFromCss, parseThemeNameFromCss, parseThemeSizeNamesFromCss, themeNameToFileName } from '@/utilities/defaultThemes';
 import { ThemeManager } from '@/utilities/themeManager';
 
 function createApp(adapter: any): any {
@@ -75,7 +75,7 @@ test('default theme update pulls repo CSS and overwrites the installed file', as
 	const entry = await manager.updateDefaultTheme('kami');
 
 	expect(requestUrl).toHaveBeenCalledWith(expect.objectContaining({
-		url: expect.stringContaining('/kami.css'),
+		url: expect.stringContaining(`/kami.css?marp-extended-theme-version=${DEFAULT_THEME_MANIFEST_VERSION}`),
 	}));
 	expect(entry).toEqual({
 		name: 'kami',
@@ -85,4 +85,22 @@ test('default theme update pulls repo CSS and overwrites the installed file', as
 		version: DEFAULT_THEME_MANIFEST_VERSION,
 	});
 	expect(await adapter.read(entry.path)).toContain('color: blue');
+});
+
+test('default theme refresh uses versioned repo URLs for every default theme', async () => {
+	const adapter = new FileSystemAdapter();
+	(requestUrl as jest.Mock).mockResolvedValue({
+		status: 200,
+		text: `/* @theme refreshed */\n/* @marp-extended-theme-version ${DEFAULT_THEME_MANIFEST_VERSION} */\nsection { color: blue; }`,
+	});
+
+	const manager = new ThemeManager(createApp(adapter));
+	const installed = await manager.ensureDefaultThemes({ overwrite: true });
+
+	expect(installed).toEqual(DEFAULT_THEME_DEFINITIONS.map((theme) => theme.name));
+	expect(requestUrl).toHaveBeenCalledTimes(DEFAULT_THEME_DEFINITIONS.length);
+	expect(requestUrl).toHaveBeenCalledWith(expect.objectContaining({
+		url: `${DEFAULT_THEME_DEFINITIONS[0].url}?marp-extended-theme-version=${DEFAULT_THEME_MANIFEST_VERSION}`,
+	}));
+	expect(await adapter.read(`${DEFAULT_THEME_DIRECTORY}/${DEFAULT_THEME_DEFINITIONS[0].fileName}`)).toContain('color: blue');
 });

@@ -375,22 +375,29 @@ export class MarpSlidesSettingTab extends PluginSettingTab {
 				.setDesc(this.getThemeDescription(theme));
 
 			if (theme.source === 'default') {
-				setting.addExtraButton(button => button
-					.setIcon('refresh-cw')
-					.setTooltip('Update theme CSS from GitHub')
-					.onClick(async () => {
-						button.setDisabled(true);
-						try {
-							const updated = await themeManager.updateDefaultTheme(theme.fileName);
-							await this.plugin.refreshThemePropertyOptions();
-							new Notice(`Updated Marp theme: ${updated.name}`, 5000);
-							await this.renderThemeList(containerEl);
-						} catch (error) {
-							const message = error instanceof Error ? error.message : String(error);
-							new Notice(`Theme update failed: ${message}`, 8000);
-							button.setDisabled(false);
-						}
-					}));
+				const hasUpdate = theme.version !== DEFAULT_THEME_MANIFEST_VERSION;
+				setting.addExtraButton(button => {
+					if (hasUpdate) {
+						button.extraSettingsEl.addClass('marp-extended-theme-update-needed');
+					}
+
+					button
+						.setIcon('refresh-cw')
+						.setTooltip(hasUpdate ? 'Update available: update theme CSS from GitHub' : 'Update theme CSS from GitHub')
+						.onClick(async () => {
+							button.setDisabled(true);
+							try {
+								const updated = await themeManager.updateDefaultTheme(theme.fileName);
+								await this.plugin.refreshThemePropertyOptions();
+								new Notice(`Updated Marp theme: ${updated.name}`, 5000);
+								await this.renderThemeList(containerEl);
+							} catch (error) {
+								const message = error instanceof Error ? error.message : String(error);
+								new Notice(`Theme update failed: ${message}`, 8000);
+								button.setDisabled(false);
+							}
+						});
+				});
 			}
 
 			setting.addExtraButton(button => button

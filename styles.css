@@ -119,6 +119,14 @@ If your plugin does not need CSS, delete this file.
 	width: var(--icon-size);
 }
 
+.marp-extended-theme-update-needed {
+	color: var(--interactive-accent);
+}
+
+.marp-extended-theme-update-needed svg {
+	stroke-width: 3;
+}
+
 .marp-extended-add-theme-modal .setting-item:has(.marp-extended-theme-css-input) {
 	align-items: stretch;
 	flex-direction: column;

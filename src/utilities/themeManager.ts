@@ -4,6 +4,7 @@ import {
 	DEFAULT_THEME_DEFINITIONS,
 	DEFAULT_THEME_DIRECTORY,
 	DEFAULT_THEME_FILE_NAMES,
+	DEFAULT_THEME_MANIFEST_VERSION,
 	DEFAULT_THEME_VERSION_COMMENT,
 	parseDefaultThemeVersionFromCss,
 	normalizeThemeName,
@@ -197,9 +198,15 @@ export class ThemeManager {
 		return path;
 	}
 
+	private getThemeDownloadUrl(url: string): string {
+		const separator = url.includes('?') ? '&' : '?';
+		return `${url}${separator}marp-extended-theme-version=${DEFAULT_THEME_MANIFEST_VERSION}`;
+	}
+
 	private async downloadThemeCss(url: string): Promise<string> {
+		const downloadUrl = this.getThemeDownloadUrl(url);
 		const response = await requestUrl({
-			url,
+			url: downloadUrl,
 			headers: {
 				Accept: 'text/css,text/plain,*/*',
 				'User-Agent': 'marp-extended-obsidian-plugin',
