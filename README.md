@@ -2,7 +2,7 @@
 
 Marp Extended is an Obsidian plugin for creating, previewing, presenting, and exporting [Marp](https://marp.app/) slide decks from Markdown notes.
 
-> **Fork notice:** This project is a maintained fork of [Samuele Cozzi's Marp Slides for Obsidian](https://github.com/samuele-cozzi/obsidian-marp-slides). The original plugin and documentation remain the upstream foundation; this fork is being renamed and maintained as **Marp Extended**.
+> **Project lineage:** Marp Extended originated from [Samuele Cozzi's Marp Slides for Obsidian](https://github.com/samuele-cozzi/obsidian-marp-slides) and is now maintained as an independent plugin project. Upstream credits are preserved below.
 
 ![Marp Extended preview and export example](assets/marp-extended-example.png)
 
