@@ -18,7 +18,7 @@ Marp Extended is an Obsidian plugin for creating, previewing, presenting, and ex
 ## Features
 
 - Preview Marp slides inside Obsidian.
-- Export slide decks as HTML, PDF, PPTX, or images through Marp CLI.
+- Export slide decks as HTML, PDF, or PPTX through Marp CLI.
 - Present slide decks from the plugin.
 - Use bundled Marp theme CSS installed into `.marp-extended/themes/` on first load, plus custom theme CSS from your vault.
 - Add custom Marp themes by pasting CSS in plugin settings.
@@ -68,13 +68,24 @@ See also:
 
 ## Getting started
 
-1. Install or build the plugin into your vault's `.obsidian/plugins/marp-extended/` directory.
+### Install with BRAT
+
+Marp Extended can be installed from this repository with [BRAT](https://github.com/TfTHacker/obsidian42-brat):
+
+1. Install and enable the **BRAT** plugin in Obsidian.
+2. Open **BRAT** settings and choose **Add Beta plugin**.
+3. Paste this repository URL: `https://github.com/shuuul/obsidian-marp-extended`.
+4. Enable **Marp Extended** in Obsidian community plugin settings.
+
+### First use
+
+1. Install with BRAT, or build the plugin into your vault's `.obsidian/plugins/marp-extended/` directory.
 2. Enable **Marp Extended** in Obsidian community plugin settings.
 3. On first load, Marp Extended downloads the default theme catalog from GitHub into `.marp-extended/themes/`.
 4. Open a Markdown note and run **Slide Preview** from the command palette or ribbon icon.
-5. Use the export commands for PDF, PDF with notes, HTML, PPTX, or PNG.
+5. Use the export commands for PDF, PDF with notes, HTML, or PPTX.
 
-> ⚠️ PDF, PPTX, and image export require Google Chrome, Chromium, or Microsoft Edge. You can set a custom browser path with the `CHROME_PATH` setting.
+> ⚠️ PDF and PPTX export require Google Chrome, Chromium, or Microsoft Edge. You can set a custom browser path with the `CHROME_PATH` setting.
 
 ## Development
 
