@@ -22,6 +22,7 @@ const markdownItContainer = require('markdown-it-container');
 const markdownItMark = require('markdown-it-mark');
 
 export const MARP_PREVIEW_VIEW = 'marp-preview-view';
+const PREVIEW_PROFILE_STORAGE_KEY = 'marp-extended-profile';
 
 export class MarpPreviewView extends ItemView  {
     private marp: Marp; 
@@ -37,6 +38,7 @@ export class MarpPreviewView extends ItemView  {
     private syncPreviewButtonEl: HTMLButtonElement | undefined;
     private syncPreviewEnabled = true;
     private displaySlidesRevision = 0;
+    private previewProfileMeasureCounter = 0;
     private settings : MarpSlidesSettings;
 
     private file : TFile | null = null;
@@ -238,9 +240,9 @@ export class MarpPreviewView extends ItemView  {
         });
     }
 
-    private applyPreviewZoom(): void {
+    private applyPreviewZoom(containerWidth?: number): void {
         if (this.previewContainerEl) {
-            this.previewZoomFitScale = getPreviewZoomFitScale(this.previewContainerEl.clientWidth, this.previewMaxSlideWidth);
+            this.previewZoomFitScale = getPreviewZoomFitScale(containerWidth ?? this.previewContainerEl.clientWidth, this.previewMaxSlideWidth);
             this.previewContainerEl.style.setProperty(
                 '--marp-extended-preview-zoom',
                 String(this.previewZoom * this.previewZoomFitScale),
@@ -282,6 +284,59 @@ export class MarpPreviewView extends ItemView  {
                 this.previewMaxSlideWidth = Math.max(this.previewMaxSlideWidth, dimensions[2]);
             }
         });
+    }
+
+    private isPreviewProfilingEnabled(): boolean {
+        try {
+            return typeof window !== 'undefined'
+                && window.localStorage?.getItem(PREVIEW_PROFILE_STORAGE_KEY) === '1'
+                && typeof performance !== 'undefined';
+        } catch {
+            return false;
+        }
+    }
+
+    private startPreviewMeasure(name: string): string | null {
+        if (!this.isPreviewProfilingEnabled()) {
+            return null;
+        }
+
+        const startMark = `marp-extended:preview:${name}:start:${++this.previewProfileMeasureCounter}`;
+        performance.mark(startMark);
+        return startMark;
+    }
+
+    private endPreviewMeasure(name: string, startMark: string | null): void {
+        if (!startMark) {
+            return;
+        }
+
+        const endMark = startMark.replace(':start:', ':end:');
+        try {
+            performance.mark(endMark);
+            performance.measure(`marp-extended:preview:${name}`, startMark, endMark);
+        } finally {
+            performance.clearMarks(startMark);
+            performance.clearMarks(endMark);
+        }
+    }
+
+    private measurePreviewStep<T>(name: string, callback: () => T): T {
+        const startMark = this.startPreviewMeasure(name);
+        try {
+            return callback();
+        } finally {
+            this.endPreviewMeasure(name, startMark);
+        }
+    }
+
+    private async measurePreviewStepAsync<T>(name: string, callback: () => Promise<T>): Promise<T> {
+        const startMark = this.startPreviewMeasure(name);
+        try {
+            return await callback();
+        } finally {
+            this.endPreviewMeasure(name, startMark);
+        }
     }
 
     private setPreviewZoom(nextZoom: number, anchor?: { clientX: number; clientY: number }): void {
@@ -398,49 +453,69 @@ export class MarpPreviewView extends ItemView  {
 
         if (view.file != null) {
             const displayRevision = ++this.displaySlidesRevision;
+            const displayStartMark = this.startPreviewMeasure('displaySlides');
             this.file = view.file;
-            const filePath = new FilePath(this.settings);
-            const basePath = filePath.getCompleteFileBasePath(view.file);
-            const markdownText = markdownOverride ?? view.getViewData();
-            const mermaidThemeCss = await loadMermaidThemeCssForFile(this.app, view.file, markdownText);
-            if (displayRevision !== this.displaySlidesRevision) {
-                return;
+            try {
+                const filePath = new FilePath(this.settings);
+                const basePath = filePath.getCompleteFileBasePath(view.file);
+                const markdownText = markdownOverride ?? view.getViewData();
+                const mermaidThemeCss = await this.measurePreviewStepAsync('loadMermaidThemeCss', () => (
+                    loadMermaidThemeCssForFile(this.app, view.file as TFile, markdownText)
+                ));
+                if (displayRevision !== this.displaySlidesRevision) {
+                    return;
+                }
+
+                // Convert wiki-link images to standard markdown
+                const processedMarkdown = this.measurePreviewStep('convertImageWikiLinks', () => (
+                    filePath.convertImageWikiLinks(markdownText, view.file as TFile, this.app)
+                ));
+
+                const container = this.previewContainerEl ?? this.contentEl;
+                const previewContainerWidth = this.measurePreviewStep('readPreviewWidth', () => container.clientWidth);
+                container.empty();
+                this.previewSlideEls = [];
+                this.previewMaxSlideWidth = 0;
+
+
+                const rendered = this.measurePreviewStep('marp.render', () => this.marp.render(processedMarkdown));
+                if (displayRevision !== this.displaySlidesRevision) {
+                    return;
+                }
+                let html = rendered.html;
+                const { css } = rendered;
+                
+                // Replace Backgorund Url for images
+                html = this.measurePreviewStep('rewriteBackgroundUrls', () => (
+                    html.replace(/(?!background-image:url\(&quot;http)background-image:url\(&quot;/g, `background-image:url(&quot;${basePath}`)
+                ));
+
+                const htmlFile = `
+                    <!DOCTYPE html>
+                    <html>
+                    <head>
+                    <base href="${basePath}"></base>
+                    <style id="__marp-vscode-style">${css}\n${mermaidThemeCss}</style>
+                    </head>
+                    <body>${html}</body>
+                    </html>
+                    `;
+
+                this.measurePreviewStep('setInnerHTML', () => {
+                    container.innerHTML = htmlFile;
+                });
+                this.measurePreviewStep('refreshSlideDimensions', () => {
+                    this.refreshPreviewSlideDimensions();
+                });
+                this.measurePreviewStep('marpBrowser.update', () => {
+                    this.marpBrowser?.update();
+                });
+                this.measurePreviewStep('applyPreviewZoom', () => {
+                    this.applyPreviewZoom(previewContainerWidth);
+                });
+            } finally {
+                this.endPreviewMeasure('displaySlides', displayStartMark);
             }
-
-            // Convert wiki-link images to standard markdown
-            const processedMarkdown = filePath.convertImageWikiLinks(markdownText, view.file, this.app);
-
-            const container = this.previewContainerEl ?? this.contentEl;
-            container.empty();
-            this.previewSlideEls = [];
-            this.previewMaxSlideWidth = 0;
-
-
-            const rendered = this.marp.render(processedMarkdown);
-            if (displayRevision !== this.displaySlidesRevision) {
-                return;
-            }
-            let html = rendered.html;
-            const { css } = rendered;
-            
-            // Replace Backgorund Url for images
-            html = html.replace(/(?!background-image:url\(&quot;http)background-image:url\(&quot;/g, `background-image:url(&quot;${basePath}`);
-
-            const htmlFile = `
-                <!DOCTYPE html>
-                <html>
-                <head>
-                <base href="${basePath}"></base>
-                <style id="__marp-vscode-style">${css}\n${mermaidThemeCss}</style>
-                </head>
-                <body>${html}</body>
-                </html>
-                `;
-
-            container.innerHTML = htmlFile;
-            this.refreshPreviewSlideDimensions();
-            this.marpBrowser?.update();
-            this.applyPreviewZoom();
         }
         else
         {

@@ -31,6 +31,11 @@ export type MermaidPluginOptions = {
 };
 
 const DEFAULT_CONTAINER_CLASS = 'mermaid-diagram-container';
+const MERMAID_FIGURE_CACHE_LIMIT = 100;
+const PROFILE_STORAGE_KEY = 'marp-extended-profile';
+
+const mermaidFigureCache = new Map<string, string>();
+let mermaidMeasureCounter = 0;
 
 export const DEFAULT_MERMAID_RENDER_OPTIONS: RenderOptions = {
 	bg: '#f5f4ed',
@@ -78,16 +83,86 @@ function buildContainerClass(containerClass: string): string {
 	].join(' ');
 }
 
+function getMermaidFigureCacheKey(
+	source: string,
+	alt: string,
+	containerClass: string,
+	renderOptions: RenderOptions | undefined,
+): string {
+	const normalizedRenderOptions = Object.entries(renderOptions ?? {})
+		.sort(([left], [right]) => left.localeCompare(right));
+	return JSON.stringify([source, alt, containerClass, normalizedRenderOptions]);
+}
+
+function getCachedMermaidFigure(cacheKey: string): string | null {
+	const cached = mermaidFigureCache.get(cacheKey);
+	if (cached == null) {
+		return null;
+	}
+
+	mermaidFigureCache.delete(cacheKey);
+	mermaidFigureCache.set(cacheKey, cached);
+	return cached;
+}
+
+function setCachedMermaidFigure(cacheKey: string, figure: string): void {
+	mermaidFigureCache.set(cacheKey, figure);
+	if (mermaidFigureCache.size <= MERMAID_FIGURE_CACHE_LIMIT) {
+		return;
+	}
+
+	const oldestKey = mermaidFigureCache.keys().next().value;
+	if (oldestKey) {
+		mermaidFigureCache.delete(oldestKey);
+	}
+}
+
+function isMermaidProfilingEnabled(): boolean {
+	try {
+		return typeof window !== 'undefined'
+			&& window.localStorage?.getItem(PROFILE_STORAGE_KEY) === '1'
+			&& typeof performance !== 'undefined';
+	} catch {
+		return false;
+	}
+}
+
+function measureMermaidStep<T>(name: string, callback: () => T): T {
+	if (!isMermaidProfilingEnabled()) {
+		return callback();
+	}
+
+	const startMark = `marp-extended:mermaid:${name}:start:${++mermaidMeasureCounter}`;
+	const endMark = startMark.replace(':start:', ':end:');
+	performance.mark(startMark);
+	try {
+		return callback();
+	} finally {
+		performance.mark(endMark);
+		performance.measure(`marp-extended:mermaid:${name}`, startMark, endMark);
+		performance.clearMarks(startMark);
+		performance.clearMarks(endMark);
+	}
+}
+
 export function renderMermaidFigure(source: string, alt: string, options: MermaidPluginOptions = {}): string {
 	const containerClass = options.containerClass ?? DEFAULT_CONTAINER_CLASS;
+	const cacheKey = getMermaidFigureCacheKey(source, alt, containerClass, options.renderOptions);
+	const cachedFigure = getCachedMermaidFigure(cacheKey);
+	if (cachedFigure != null) {
+		return cachedFigure;
+	}
+
 	const classAttribute = escapeHtml(buildContainerClass(containerClass));
 	const caption = alt ? `<figcaption>${escapeHtml(alt)}</figcaption>` : '';
-	const svg = renderMermaidSVG(source, {
+	const svg = measureMermaidStep('renderSVG', () => renderMermaidSVG(source, {
 		...DEFAULT_MERMAID_RENDER_OPTIONS,
 		...(options.renderOptions ?? {}),
-	});
+	}));
 
-	return `<figure class="${classAttribute}" data-mermaid-renderer="beautiful-mermaid">${svg}${caption}</figure>`;
+	const figure = `<figure class="${classAttribute}" data-mermaid-renderer="beautiful-mermaid">${svg}${caption}</figure>`;
+	setCachedMermaidFigure(cacheKey, figure);
+	return figure;
 }
 
 export function renderMermaidFences(markdown: string, options: MermaidPluginOptions = {}): string {

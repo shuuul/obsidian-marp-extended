@@ -58,6 +58,7 @@ Useful commands:
 | Single test file | `npm run test -- --runInBand tests/unit/filePath.test.ts` |
 | Bundle analysis | `npm run analyze:bundle` |
 | Reload local Obsidian dev plugin | `npm run obsidian:reload` |
+| Profile local Obsidian preview | `npm run obsidian:profile -- path="slides/examples/Kami Agent Slides.md"` |
 | Version metadata sync | `npm run version` |
 
 For manual Obsidian testing, set `OBSIDIAN_VAULT` in `.env.local`; `npm run dev` and `npm run build` auto-copy `main.js`, `manifest.json`, and `styles.css` into:
@@ -83,6 +84,8 @@ styles.css
 ```
 
 `npm run analyze:bundle` writes `metafile.json` for the esbuild analyzer. Remove it after ad-hoc analysis unless a task explicitly asks to keep it.
+
+`npm run obsidian:profile` uses the Obsidian CLI and Chrome DevTools Protocol to capture Chrome Performance metrics and Marp Extended user-timing measures for the preview command. It temporarily enables preview profiling through `localStorage.marp-extended-profile` and accepts `path=`, `command=`, `settle=`, `delay=`, `timeout=`, `cpu=true`, and `out=` arguments. CPU profile capture is optional because CDP profiler stop can be flaky in Obsidian/Electron; when `cpu=true` succeeds, it writes a `.cpuprofile` file to the system temp directory by default. Do not commit generated `.cpuprofile` files.
 
 ## Release flow
 

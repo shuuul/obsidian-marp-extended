@@ -77,12 +77,10 @@ npm test -- --runInBand
 npm run build
 ```
 
-For live Obsidian testing, copy `.env.local.example` to `.env.local` and set `OBSIDIAN_VAULT` to your vault path. `npm run dev` and `npm run build` will then auto-copy `main.js`, `manifest.json`, and `styles.css` into `<vault>/.obsidian/plugins/marp-extended/`. Reload and enable with the Obsidian CLI:
+For live Obsidian testing, copy `.env.local.example` to `.env.local` and set `OBSIDIAN_VAULT` to your vault path. `npm run dev` and `npm run build` will then auto-copy `main.js`, `manifest.json`, and `styles.css` into `<vault>/.obsidian/plugins/marp-extended/`. Reload the dev plugin with the Obsidian CLI:
 
 ```bash
-obsidian reload
-obsidian plugin:enable id=marp-extended
-obsidian dev:errors
+npm run obsidian:reload
 ```
 
 Useful scripts:
@@ -96,6 +94,8 @@ Useful scripts:
 | `npm test` | Run Jest unit tests |
 | `npm run test:coverage` | Run Jest unit tests with coverage |
 | `npm run analyze:bundle` | Build and emit `metafile.json` for esbuild bundle analysis |
+| `npm run obsidian:reload` | Reload the local Obsidian dev plugin and check dev errors |
+| `npm run obsidian:profile -- path="slides/examples/Kami Agent Slides.md"` | Capture preview Chrome metrics and Marp Extended timing marks; pass `cpu=true` for a `.cpuprofile` |
 
 `main.js` is generated. Edit files under `src/`, then rebuild.
 

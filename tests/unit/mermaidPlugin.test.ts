@@ -1,4 +1,5 @@
 import { expect, test } from '@jest/globals';
+import { renderMermaidSVG } from 'beautiful-mermaid';
 
 import { markdownItMermaid, renderMermaidFences } from '@/markdown-it/mermaid';
 
@@ -49,4 +50,16 @@ test('export preprocessing replaces mermaid fences with inline figures', () => {
 	expect(processed).toContain('<svg');
 	expect(processed).toContain('<figcaption>Flow</figcaption>');
 	expect(processed).not.toContain('```mermaid');
+});
+
+test('mermaid figure rendering reuses cached SVG output', () => {
+	const renderMermaidSVGMock = renderMermaidSVG as jest.MockedFunction<typeof renderMermaidSVG>;
+	renderMermaidSVGMock.mockClear();
+	const markdown = '# Slide\n\n```mermaid[Cached]\nflowchart LR\n  CacheA --> CacheB\n```\n';
+
+	const firstRender = renderMermaidFences(markdown);
+	const secondRender = renderMermaidFences(markdown);
+
+	expect(firstRender).toBe(secondRender);
+	expect(renderMermaidSVGMock).toHaveBeenCalledTimes(1);
 });
