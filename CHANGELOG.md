@@ -4,9 +4,11 @@
 
 - Added themed Mermaid diagram rendering as inline SVG for preview/export, including `mermaidTheme` and `mermaidFlat` support.
 - Added default theme update controls for bundled Marp and Mermaid themes.
+- Added the Kami portfolio slide size and refreshed the README example image.
 - Improved preview performance by reducing refresh overhead and caching Mermaid render output plus remote theme assets.
 - Fixed preview slide sync after render updates.
 - Fixed default theme refresh cache busting and Kami blockquote styling.
+- Fixed Kami portfolio PDF/PPTX/HTML exports and removed the PNG export option.
 - Added Obsidian plugin reload tooling for local development.
 - Updated project, vault, CSS, and Obsidian Marp skill documentation for the current Marp Extended release flow and syntax behavior.
 
