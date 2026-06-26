@@ -98,12 +98,6 @@ export default class MarpSlides extends Plugin {
 			callback: (() => this.exportFile('pptx'))
 		});
 
-		this.addCommand({
-			id: 'export-png',
-			name: 'Export PNG',
-			callback: (() => this.exportFile('png'))
-		});		
-
 		// this.addCommand({
 		// 	id: 'export-deck',
 		// 	name: 'Export Deck',
@@ -167,14 +161,19 @@ export default class MarpSlides extends Plugin {
 			return;
 		}
 
+		let progressNotice: Notice | null = null;
 		try {
 			const { MarpExport } = await import('./utilities/marpExport');
 			const marpCli = new MarpExport(this.settings, this.app);
+			progressNotice = new Notice(`Exporting Marp slides as ${type.toUpperCase()}…`, 0);
 			const outputPath = await marpCli.export(file,type);
+			progressNotice.hide();
+			progressNotice = null;
 			if (outputPath) {
 				new Notice(`Exported Marp slides to ${outputPath}`, 7000);
 			}
 		} catch (error) {
+			progressNotice?.hide();
 			const message = error instanceof Error ? error.message : String(error);
 			console.error('Marp export failed:', error);
 			new Notice(`Marp export failed: ${message}`, 8000);

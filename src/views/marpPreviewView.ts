@@ -155,7 +155,6 @@ export class MarpPreviewView extends ItemView  {
         const toolbar = container.createDiv({ cls: 'marp-extended-preview-toolbar' });
         this.addSyncPreviewToolbarButton(toolbar);
         this.addZoomToolbarControls(toolbar);
-        this.addPreviewToolbarButton(toolbar, 'image', 'Export as PNG', 'png');
         this.addPreviewToolbarButton(toolbar, 'code-glyph', 'Export as HTML', 'html');
         this.addPreviewToolbarButton(toolbar, 'slides-marp-export-pdf', 'Export as PDF', 'pdf');
         this.addPreviewToolbarButton(toolbar, 'slides-marp-export-pptx', 'Export as PPTX', 'pptx');
@@ -426,10 +425,6 @@ export class MarpPreviewView extends ItemView  {
     }
 
     addActions() {
-        this.addAction('image', 'Export as PNG', () => {
-            void this.exportFile('png');
-        });
-
         this.addAction('code-glyph', 'Export as HTML', () => {
             void this.exportFile('html');
         });
@@ -454,14 +449,19 @@ export class MarpPreviewView extends ItemView  {
             return;
         }
 
+        let progressNotice: Notice | null = null;
         try {
             const { MarpExport } = await import('../utilities/marpExport');
             const marpCli = new MarpExport(this.settings, this.app);
+            progressNotice = new Notice(`Exporting Marp slides as ${type.toUpperCase()}…`, 0);
             const outputPath = await marpCli.export(file, type);
+            progressNotice.hide();
+            progressNotice = null;
             if (outputPath) {
                 new Notice(`Exported Marp slides to ${outputPath}`, 7000);
             }
         } catch (error) {
+            progressNotice?.hide();
             const message = error instanceof Error ? error.message : String(error);
             console.error('Marp export failed:', error);
             new Notice(`Marp export failed: ${message}`, 8000);

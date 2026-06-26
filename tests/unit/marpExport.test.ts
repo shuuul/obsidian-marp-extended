@@ -24,7 +24,7 @@ const marpCliMock = marpCli as unknown as jest.MockedFunction<(argv: string[], o
 type TestElectronRequire = (moduleName: string) => {
 	remote?: {
 		dialog?: {
-			showOpenDialog: (options: unknown) => Promise<{ canceled: boolean; filePaths?: string[] }>;
+			showSaveDialog?: (options: unknown) => Promise<{ canceled: boolean; filePath?: string }>;
 		};
 	};
 };
@@ -74,15 +74,13 @@ function createDiskBackedFile(root: string, markdownPath: string, content: strin
 
 	return file;
 }
-
-
-function mockFolderPicker(result: { canceled: boolean; filePaths?: string[] }) {
-	const showOpenDialog = jest.fn(async (_options: unknown) => result);
+function mockSaveDialog(result: { canceled: boolean; filePath?: string }) {
+	const showSaveDialog = jest.fn(async (_options: unknown) => result);
 	const electronRequire: TestElectronRequire = (moduleName: string) => {
 		if (moduleName === 'electron') {
 			return {
 				remote: {
-					dialog: { showOpenDialog },
+					dialog: { showSaveDialog },
 				},
 			};
 		}
@@ -91,7 +89,7 @@ function mockFolderPicker(result: { canceled: boolean; filePaths?: string[] }) {
 	};
 	(window as TestWindow).require = electronRequire;
 
-	return showOpenDialog;
+	return showSaveDialog;
 }
 
 beforeEach(() => {
@@ -106,27 +104,27 @@ afterEach(() => {
 	}
 });
 
-test('export selects a folder and passes output path to Marp CLI', async () => {
-	const showOpenDialog = mockFolderPicker({ canceled: false, filePaths: ['/tmp/export'] });
+test('export selects a file and passes output path to Marp CLI', async () => {
+	const showSaveDialog = mockSaveDialog({ canceled: false, filePath: '/tmp/export/custom.pdf' });
 	const exporter = new MarpExport(DEFAULT_SETTINGS);
 
 	await exporter.export(createFile(), 'pdf');
 
-	expect(showOpenDialog).toHaveBeenCalledWith({
-		title: 'Choose export folder',
-		defaultPath: 'vault/slides',
-		properties: ['openDirectory', 'createDirectory'],
+	expect(showSaveDialog).toHaveBeenCalledWith({
+		title: 'Choose export file',
+		defaultPath: 'vault/slides/deck.pdf',
+		filters: [{ name: 'PDF', extensions: ['pdf'] }],
 	});
 	expect(marpCliMock).toHaveBeenCalledTimes(1);
 	expect(marpCliMock.mock.calls[0][0]).toEqual(expect.arrayContaining([
 		'--pdf',
 		'-o',
-		'/tmp/export/deck.pdf',
+		'/tmp/export/custom.pdf',
 	]));
 });
 
 test('export cancellation does not run Marp CLI', async () => {
-	mockFolderPicker({ canceled: true });
+	mockSaveDialog({ canceled: true });
 	const exporter = new MarpExport(DEFAULT_SETTINGS);
 
 	await exporter.export(createFile(), 'pptx');
@@ -134,8 +132,8 @@ test('export cancellation does not run Marp CLI', async () => {
 	expect(marpCliMock).not.toHaveBeenCalled();
 });
 
-test('HTML export uses selected folder for output file', async () => {
-	mockFolderPicker({ canceled: false, filePaths: ['/tmp/export'] });
+test('HTML export uses selected file for output file', async () => {
+	mockSaveDialog({ canceled: false, filePath: '/tmp/export/custom.html' });
 	const exporter = new MarpExport(DEFAULT_SETTINGS);
 
 	await exporter.export(createFile(), 'html');
@@ -145,24 +143,8 @@ test('HTML export uses selected folder for output file', async () => {
 		'--template',
 		'bare',
 		'-o',
-		'/tmp/export/deck.html',
+		'/tmp/export/custom.html',
 	]));
-});
-
-test('PNG export writes the selected PNG output file', async () => {
-	mockFolderPicker({ canceled: false, filePaths: ['/tmp/export'] });
-	const exporter = new MarpExport(DEFAULT_SETTINGS);
-
-	await exporter.export(createFile(), 'png');
-
-	expect(marpCliMock.mock.calls[0][0]).toEqual(expect.arrayContaining([
-		'--image',
-		'png',
-		'-o',
-		'/tmp/export/deck.png',
-	]));
-	expect(marpCliMock.mock.calls[0][0]).not.toContain('--images');
-	expect(marpCliMock.mock.calls[0][0]).not.toContain('--png');
 });
 
 test('export converts wiki-links through a temporary markdown file without changing the source file', async () => {
@@ -177,7 +159,7 @@ test('export converts wiki-links through a temporary markdown file without chang
 
 	mkdirSync(exportDirectory, { recursive: true });
 	linkedImage.path = 'assets/image.png';
-	mockFolderPicker({ canceled: false, filePaths: [exportDirectory] });
+	mockSaveDialog({ canceled: false, filePath: join(exportDirectory, 'deck.pdf') });
 	marpCliMock.mockImplementationOnce(async (argv: string[]) => {
 		temporarySourcePath = argv[0];
 		expect(temporarySourcePath).not.toBe(sourcePath);
@@ -226,7 +208,7 @@ test('export injects selected Mermaid theme CSS and flat mode into the temporary
 		folders: [],
 	});
 	(file.vault.adapter as any).read = async (path: string) => readFileSync(join(root, path), 'utf-8');
-	mockFolderPicker({ canceled: false, filePaths: [exportDirectory] });
+	mockSaveDialog({ canceled: false, filePath: join(exportDirectory, 'deck.html') });
 	marpCliMock.mockImplementationOnce(async (argv: string[]) => {
 		temporarySourcePath = argv[0];
 		const processed = readFileSync(temporarySourcePath, 'utf-8');
@@ -256,7 +238,7 @@ test('export injects selected Mermaid theme CSS and flat mode into the temporary
 	expect(readFileSync(join(root, 'slides/deck.md'), 'utf-8')).toBe(originalContent);
 });
 
-test('export falls back to the source folder when native folder picker is unavailable', async () => {
+test('export falls back to the source path when native save dialog is unavailable', async () => {
 	const exporter = new MarpExport(DEFAULT_SETTINGS);
 
 	const outputPath = await exporter.export(createFile(), 'html');
@@ -269,7 +251,7 @@ test('export falls back to the source folder when native folder picker is unavai
 });
 
 test('export passes configured browser path to Marp CLI', async () => {
-	mockFolderPicker({ canceled: false, filePaths: ['/tmp/export'] });
+	mockSaveDialog({ canceled: false, filePath: '/tmp/export/deck.pdf' });
 	const exporter = new MarpExport({
 		...DEFAULT_SETTINGS,
 		CHROME_PATH: '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
@@ -284,7 +266,7 @@ test('export passes configured browser path to Marp CLI', async () => {
 });
 
 test('export throws when Marp CLI returns a failing exit status', async () => {
-	mockFolderPicker({ canceled: false, filePaths: ['/tmp/export'] });
+	mockSaveDialog({ canceled: false, filePath: '/tmp/export/deck.html' });
 	marpCliMock.mockResolvedValue(1);
 	const exporter = new MarpExport(DEFAULT_SETTINGS);
 
@@ -292,7 +274,7 @@ test('export throws when Marp CLI returns a failing exit status', async () => {
 });
 
 test('export keeps Obsidian app URL createRequire patch while Marp CLI runs', async () => {
-	mockFolderPicker({ canceled: false, filePaths: ['/tmp/export'] });
+	mockSaveDialog({ canceled: false, filePath: '/tmp/export/deck.html' });
 	marpCliMock.mockImplementation(async () => {
 		const nodeModule = require('node:module') as { createRequire(filename: string | URL): NodeRequireFunction };
 
@@ -311,7 +293,7 @@ test('export forces CommonJS engine resolution only while Marp CLI runs', async 
 	const runtimeProcess = process as typeof process & { pkg?: unknown };
 	const hadPkg = Object.prototype.hasOwnProperty.call(runtimeProcess, 'pkg');
 	const originalPkg = runtimeProcess.pkg;
-	mockFolderPicker({ canceled: false, filePaths: ['/tmp/export'] });
+	mockSaveDialog({ canceled: false, filePath: '/tmp/export/deck.html' });
 	delete runtimeProcess.pkg;
 	marpCliMock.mockImplementation(async () => {
 		expect(Object.prototype.hasOwnProperty.call(runtimeProcess, 'pkg')).toBe(true);

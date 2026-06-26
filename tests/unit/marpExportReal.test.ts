@@ -80,7 +80,6 @@ test('real Marp CLI exports a vault sample deck with a managed theme in every fi
 		{ type: 'pdf', path: join(root, 'samples/Academic.pdf') },
 		{ type: 'pdf-with-notes', path: join(root, 'samples/Academic.pdf') },
 		{ type: 'pptx', path: join(root, 'samples/Academic.pptx') },
-		{ type: 'png', path: join(root, 'samples/Academic.png') },
 		{ type: 'html', path: join(root, 'samples/Academic.html') },
 	];
 

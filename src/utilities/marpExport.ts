@@ -9,20 +9,23 @@ import { insertMarkdownAfterFrontmatter, loadMermaidThemeCssForFile, wrapMermaid
 
 export class MarpCLIError extends Error {}
 
-interface ElectronOpenDialogOptions {
+interface ElectronSaveDialogOptions {
     title: string;
     defaultPath?: string;
-    properties: string[];
+    filters?: Array<{
+        name: string;
+        extensions: string[];
+    }>;
 }
 
-interface ElectronOpenDialogResult {
+interface ElectronSaveDialogResult {
     canceled: boolean;
-    filePaths?: string[];
+    filePath?: string;
 }
 
 interface ElectronDialog {
-    showOpenDialog?: (options: ElectronOpenDialogOptions) => Promise<ElectronOpenDialogResult>;
-    showOpenDialogSync?: (options: ElectronOpenDialogOptions) => string[] | undefined;
+    showSaveDialog?: (options: ElectronSaveDialogOptions) => Promise<ElectronSaveDialogResult>;
+    showSaveDialogSync?: (options: ElectronSaveDialogOptions) => string | undefined;
 }
 
 interface ElectronModule {
@@ -68,7 +71,6 @@ const EXPORT_EXTENSIONS: Record<string, string> = {
     pdf: 'pdf',
     'pdf-with-notes': 'pdf',
     pptx: 'pptx',
-    png: 'png',
     html: 'html',
 };
 
@@ -195,11 +197,6 @@ export class MarpExport {
                     break;
                 case 'pptx':
                     argv.push('--pptx');
-                    this.pushOutputPath(argv, outputPath);
-                    break;
-                case 'png':
-                    argv.push('--image');
-                    argv.push('png');
                     this.pushOutputPath(argv, outputPath);
                     break;
                 case 'html':
@@ -354,12 +351,10 @@ export class MarpExport {
             return null;
         }
 
-        const directory = await this.chooseExportDirectory(filesTool.getCompleteFilePath(file));
-        if (!directory) {
-            return null;
-        }
+        const sourceFilePath = filesTool.getCompleteFilePath(file);
+        const defaultPath = join(dirname(sourceFilePath), `${file.basename}.${extension}`);
 
-        return join(directory, `${file.basename}.${extension}`);
+        return this.chooseExportFile(defaultPath, extension);
     }
 
     private pushOutputPath(argv: string[], outputPath: string | null): void {
@@ -380,31 +375,31 @@ export class MarpExport {
         argv.push(this.settings.CHROME_PATH);
     }
 
-    private async chooseExportDirectory(sourceFilePath: string): Promise<string | null> {
+    private async chooseExportFile(defaultPath: string, extension: string): Promise<string | null> {
         const dialog = this.getElectronDialog();
         if (!dialog) {
-            return sourceFilePath ? dirname(sourceFilePath) : null;
+            return defaultPath;
         }
 
-        const options: ElectronOpenDialogOptions = {
-            title: 'Choose export folder',
-            defaultPath: sourceFilePath ? dirname(sourceFilePath) : undefined,
-            properties: ['openDirectory', 'createDirectory'],
+        const options: ElectronSaveDialogOptions = {
+            title: 'Choose export file',
+            defaultPath,
+            filters: [{ name: extension.toUpperCase(), extensions: [extension] }],
         };
 
-        if (dialog.showOpenDialog) {
-            const result = await dialog.showOpenDialog(options);
+        if (dialog.showSaveDialog) {
+            const result = await dialog.showSaveDialog(options);
             if (result.canceled) {
                 return null;
             }
-            return result.filePaths?.[0] ?? null;
+            return result.filePath ?? null;
         }
 
-        if (dialog.showOpenDialogSync) {
-            return dialog.showOpenDialogSync(options)?.[0] ?? null;
+        if (dialog.showSaveDialogSync) {
+            return dialog.showSaveDialogSync(options) ?? null;
         }
 
-        throw new MarpCLIError('Folder picker is unavailable in this environment.');
+        return defaultPath;
     }
 
     private getElectronDialog(): ElectronDialog | null {
