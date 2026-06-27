@@ -55,8 +55,9 @@ Before calling Marp CLI, the plugin:
 2. Resolves a filesystem path for the source note.
 3. Collects existing theme paths from `.marp-extended/themes`.
 4. Resolves the plugin engine config under the installed plugin's `lib3/marp.config.js`.
-5. Converts image wiki-links in the temporary/export source file.
-6. Replaces Mermaid fences with inline `beautiful-mermaid` SVG figures before invoking Marp CLI.
+5. Compiles Marp Extended Kami fenced blocks (`slide`, `lead`, `cols`, `cards`, etc.) into Marp-compatible directives/HTML.
+6. Converts image wiki-links in the temporary/export source file.
+7. Replaces Mermaid fences with inline `beautiful-mermaid` SVG figures before invoking Marp CLI.
 
 The CLI argv always starts with:
 
@@ -109,6 +110,32 @@ Agent guidance:
 - If Mermaid diagrams fail, check the plugin's Mermaid preprocessing/rendering code rather than the export engine config.
 - If `==marked text==` or custom containers fail in export, check whether the copied `lib3/` assets exist in the installed plugin directory.
 - Do not assume these markdown-it extensions are available in vanilla Marp CLI outside this plugin.
+
+## Kami fenced block compiler
+
+Preview (`src/views/marpPreviewView.ts`) and export (`src/utilities/marpExport.ts`) both run `compileKamiFencedBlocks` before Marp rendering. The compiler is implemented in `src/utilities/kamiDsl.ts` and is intentionally small:
+
+````markdown
+```slide[]
+class: cover
+paginate: false
+footer: ""
+```
+
+```cols[]
+### Left
+
+===
+
+### Right
+```
+````
+
+- `slide` metadata becomes Marp spot directives such as `<!-- _class: cover -->`.
+- `lead`, `sub`, `meta`, `co`, `mc`, `note`, and `callout[...]` become Kami theme class wrappers.
+- `cols` and `cards` split children on a line containing only `===`.
+- Nested code fences such as `mermaid[...]` are preserved inside Kami blocks and are processed later by the Mermaid renderer/export preprocessor.
+- Because layout wrappers compile to HTML, Obsidian preview requires the plugin's Enable HTML setting. Export already passes `--html` to Marp CLI.
 
 ## Themes in this repo
 

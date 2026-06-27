@@ -238,6 +238,58 @@ test('export injects selected Mermaid theme CSS and flat mode into the temporary
 	expect(readFileSync(join(root, 'slides/deck.md'), 'utf-8')).toBe(originalContent);
 });
 
+test('export compiles Kami fenced blocks in the temporary markdown file', async () => {
+	const root = mkdtempSync(join(tmpdir(), 'marp-export-kami-dsl-'));
+	tempDirectories.push(root);
+	const originalContent = [
+		'---',
+		'theme: kami',
+		'---',
+		'',
+		'```slide[]',
+		'class: cover',
+		'paginate: false',
+		'```',
+		'',
+		'```cols[]',
+		'### Left',
+		'===',
+		'### Right',
+		'```',
+	].join('\n');
+	const file = createDiskBackedFile(root, 'slides/deck.md', originalContent);
+	const exportDirectory = join(root, 'exports');
+	let temporarySourcePath = '';
+
+	mkdirSync(exportDirectory, { recursive: true });
+	mockSaveDialog({ canceled: false, filePath: join(exportDirectory, 'deck.html') });
+	marpCliMock.mockImplementationOnce(async (argv: string[]) => {
+		temporarySourcePath = argv[0];
+		const processed = readFileSync(temporarySourcePath, 'utf-8');
+		expect(processed).toContain('<!-- _class: cover -->');
+		expect(processed).toContain('<!-- _paginate: false -->');
+		expect(processed).toContain('<div class="c2">');
+		expect(processed).not.toContain('```slide');
+		expect(processed).not.toContain('```cols');
+		return 0;
+	});
+
+	const app = {
+		vault: file.vault,
+		metadataCache: {
+			getFileCache: jest.fn(() => ({ frontmatter: {} })),
+			getFirstLinkpathDest: jest.fn(() => null),
+		},
+	} as unknown as App;
+	const exporter = new MarpExport(DEFAULT_SETTINGS, app);
+
+	await exporter.export(file, 'html');
+
+	expect(temporarySourcePath).not.toBe('');
+	expect(existsSync(temporarySourcePath)).toBe(false);
+	expect(readFileSync(join(root, 'slides/deck.md'), 'utf-8')).toBe(originalContent);
+});
+
 test('export falls back to the source path when native save dialog is unavailable', async () => {
 	const exporter = new MarpExport(DEFAULT_SETTINGS);
 

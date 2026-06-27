@@ -9,6 +9,7 @@ import { FilePath } from '../utilities/filePath'
 import { ThemeManager } from '../utilities/themeManager';
 import { MathOptions } from '@marp-team/marp-core/types/src/math/math';
 import { markdownItMermaid } from '../markdown-it/mermaid';
+import { compileKamiFencedBlocks } from '../utilities/kamiDsl';
 import { loadMermaidThemeCssForFile } from '../utilities/mermaidTheme';
 import { ThemeAssetCache } from '../utilities/themeAssetCache';
 import {
@@ -716,7 +717,7 @@ export class MarpPreviewView extends ItemView  {
             }
 
             const processedMarkdown = this.measurePreviewStep('convertImageWikiLinks', () => (
-                filePath.convertImageWikiLinks(markdownText, sourceFile, this.app)
+                filePath.convertImageWikiLinks(compileKamiFencedBlocks(markdownText), sourceFile, this.app)
             ));
 
             this.previewSlideEls = [];

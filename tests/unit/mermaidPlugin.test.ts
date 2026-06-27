@@ -41,6 +41,18 @@ test('alt text and container class are escaped in generated HTML', () => {
 	expect(html).toContain('<figcaption>&lt;Diagram &amp; flow&gt;</figcaption>');
 });
 
+test('mermaid fence title can be supplied as a bracket attribute', () => {
+	const html = render('```mermaid[title="Kami Mermaid" theme=kami]\nflowchart LR\n  A --> B\n```\n');
+
+	expect(html).toContain('<figcaption>Kami Mermaid</figcaption>');
+});
+
+test('legacy mermaid captions can contain equals signs', () => {
+	const html = render('```mermaid[A = B flow]\nflowchart LR\n  A --> B\n```\n');
+
+	expect(html).toContain('<figcaption>A = B flow</figcaption>');
+});
+
 test('export preprocessing replaces mermaid fences with inline figures', () => {
 	const markdown = '# Slide\n\n```mermaid[Flow]\nflowchart LR\n  A --> B\n```\n';
 	const processed = renderMermaidFences(markdown);
