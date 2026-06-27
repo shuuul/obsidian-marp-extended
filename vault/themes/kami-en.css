@@ -1,6 +1,6 @@
 /* @theme kami-en */
-/* @marp-extended-theme-version 4 */
-/* @size kami 280mm 158mm */
+/* @marp-extended-theme-version 5 */
+/* @size kami 1058px 597px */
 /* @size portfolio 794px 1123px */
 /* Kami Marp theme (EN). Mirrors slides-weasy-en.html tokens. */
 
@@ -35,8 +35,8 @@
 }
 
 section {
-  width: 280mm;
-  height: 158mm;
+  width: 1058px;
+  height: 597px;
   padding: 16mm 20mm;
   background: var(--parchment);
   color: var(--near-black);
