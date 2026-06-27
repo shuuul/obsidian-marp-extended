@@ -31,7 +31,7 @@ afterEach(() => {
 	}
 });
 
-test('loadLibs repairs existing Marp engine config to use bundled markdown-it plugins', () => {
+test('loadLibs repairs existing Marp engine config to use bundled markdown-it plugins', async () => {
 	const root = mkdtempSync(join(tmpdir(), 'marp-libs-'));
 	tempDirectories.push(root);
 	const libRoot = join(root, '.obsidian/plugins/marp-extended/lib3');
@@ -44,7 +44,7 @@ test('loadLibs repairs existing Marp engine config to use bundled markdown-it pl
 	writeFileSync(join(markPath, 'markdown-it-mark.min.js'), 'module.exports = function mark(md) { return md; };', 'utf-8');
 	writeFileSync(join(containerPath, 'markdown-it-container.min.js'), 'module.exports = function container(md) { return md; };', 'utf-8');
 
-	new Libs(DEFAULT_SETTINGS).loadLibs(createApp(root));
+	await new Libs(DEFAULT_SETTINGS).loadLibs(createApp(root));
 
 	const engineConfig = readFileSync(enginePath, 'utf-8');
 	expect(engineConfig).toContain('markdown-it-mark');

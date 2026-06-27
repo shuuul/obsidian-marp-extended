@@ -1,6 +1,4 @@
-import js from '@eslint/js';
-import tsParser from '@typescript-eslint/parser';
-import tseslint from '@typescript-eslint/eslint-plugin';
+import obsidianmd from 'eslint-plugin-obsidianmd';
 import globals from 'globals';
 
 export default [
@@ -9,34 +7,29 @@ export default [
 			'node_modules/**',
 			'coverage/**',
 			'main.js',
+			'esbuild.config.mjs',
+			'version-bump.mjs',
+			'tests/**',
 		],
 	},
-	js.configs.recommended,
 	{
-		files: ['src/**/*.ts', 'tests/**/*.ts'],
 		languageOptions: {
-			parser: tsParser,
-			parserOptions: {
-				sourceType: 'module',
-			},
 			globals: {
 				...globals.browser,
-				...globals.node,
-				...globals.jest,
+			},
+			parserOptions: {
+				projectService: {
+					allowDefaultProject: ['eslint.config.mjs', 'manifest.json'],
+				},
+				tsconfigRootDir: import.meta.dirname,
+				extraFileExtensions: ['.json'],
 			},
 		},
-		plugins: {
-			'@typescript-eslint': tseslint,
-		},
+	},
+	...obsidianmd.configs.recommended,
+	{
 		rules: {
-			...tseslint.configs.recommended.rules,
-			'no-unused-vars': 'off',
-			'@typescript-eslint/no-unused-vars': ['error', { args: 'none' }],
-			'@typescript-eslint/no-explicit-any': 'off',
-			'@typescript-eslint/no-require-imports': 'off',
-			'@typescript-eslint/ban-ts-comment': 'off',
-			'no-prototype-builtins': 'off',
-			'@typescript-eslint/no-empty-function': 'off',
+			'obsidianmd/ui/sentence-case': 'off',
 		},
 	},
 ];

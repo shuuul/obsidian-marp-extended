@@ -123,7 +123,7 @@ export class ThemePropertyOptions {
 		this.sizeNames = [];
 	}
 
-	private getMetadataCacheWithPropertyValues(): MetadataCacheWithPropertyValues | null {
-		return this.app.metadataCache as MetadataCacheWithPropertyValues | null;
+	private getMetadataCacheWithPropertyValues(): MetadataCacheWithPropertyValues {
+		return this.app.metadataCache;
 	}
 }

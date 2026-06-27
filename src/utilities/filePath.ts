@@ -1,7 +1,10 @@
 import { Vault, normalizePath, FileSystemAdapter, TFile, App } from 'obsidian';
 import { MarpSlidesSettings } from './settings';
 import { DEFAULT_THEME_DIRECTORY } from './defaultThemes';
-import { normalize as normalizeFilePath } from 'node:path';
+
+interface VaultWithLinkConfig {
+	getConfig(key: 'newLinkFormat'): string;
+}
 
 export class FilePath  {
 
@@ -12,8 +15,7 @@ export class FilePath  {
     }
 
     private getLinkFormat(file: TFile): string {
-        //console.log(`newLinkFormat: ${(file.vault as any).getConfig("newLinkFormat")}`);
-        return (file.vault as any).getConfig("newLinkFormat");
+        return (file.vault as unknown as VaultWithLinkConfig).getConfig('newLinkFormat');
     }
 
     private isAbsoluteLinkFormat(file: TFile): boolean {
@@ -74,7 +76,28 @@ export class FilePath  {
     }
 
     private normalizeFilePathSeparators(path: string): string {
-        return normalizeFilePath(path.replace(/\\/g, '/'));
+        const normalized = path.replace(/\\/g, '/');
+        const isAbsolute = normalized.startsWith('/');
+        const hasDrivePrefix = /^[A-Za-z]:\//.test(normalized);
+        const parts = normalized.split('/').filter((part) => part.length > 0 && part !== '.');
+        const resolved: string[] = [];
+
+        for (const part of parts) {
+            if (part === '..') {
+                resolved.pop();
+                continue;
+            }
+            resolved.push(part);
+        }
+
+        const joined = resolved.join('/');
+        if (hasDrivePrefix) {
+            return joined;
+        }
+        if (isAbsolute) {
+            return `/${joined}`;
+        }
+        return joined;
     }
 
 	public getCompleteFileBasePath(file: TFile): string{
@@ -151,7 +174,7 @@ export class FilePath  {
     public convertImageWikiLinks(markdown: string, sourceFile: TFile, app: App): string {
         const wikiLinkRegex = /!\[\[([^\]]+)\]\]/g;
 
-        return markdown.replace(wikiLinkRegex, (match, wikiLink) => {
+        return markdown.replace(wikiLinkRegex, (match: string, wikiLink: string) => {
             const [rawLinkPath, rawDisplayText] = wikiLink.split('|', 2);
             const linkPath = rawLinkPath.trim();
             const displayText = rawDisplayText?.trim();
@@ -226,7 +249,10 @@ export class FilePath  {
 
         // Build relative path
         const upCount = sourceParts.length - commonLength;
-        const relativeParts = [...Array(upCount).fill('..'), ...targetParts.slice(commonLength)];
+        const relativeParts = [
+            ...Array.from({ length: upCount }, () => '..'),
+            ...targetParts.slice(commonLength),
+        ];
 
         return relativeParts.join('/');
     }

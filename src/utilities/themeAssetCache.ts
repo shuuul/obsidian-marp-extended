@@ -4,6 +4,7 @@ export const THEME_ASSET_CACHE_DIRECTORY = '.marp-extended/cache/theme-assets';
 
 const CSS_IMPORT_REGEX = /@import\s+(?:url\(\s*(?:(['"])(.*?)\1|([^)'"\s]+))\s*\)|(?:(['"])(.*?)\4))([^;]*);/gi;
 const CSS_URL_REGEX = /url\(\s*(?:(['"])(.*?)\1|([^)'"\s]+))\s*\)/gi;
+const THEME_ASSET_USER_AGENT = 'marp-extended-obsidian-plugin';
 
 interface RewriteFailures {
 	count: number;
@@ -11,12 +12,6 @@ interface RewriteFailures {
 
 function joinVaultPath(...parts: string[]): string {
 	return normalizePath(parts.filter(Boolean).join('/'));
-}
-
-function getUserAgent(): string {
-	return typeof navigator !== 'undefined' && navigator.userAgent
-		? navigator.userAgent
-		: 'marp-extended-obsidian-plugin';
 }
 
 function hashUrl(url: string): string {
@@ -172,7 +167,7 @@ export class ThemeAssetCache {
 				throw: false,
 				headers: {
 					Accept: 'text/css,*/*',
-					'User-Agent': getUserAgent(),
+					'User-Agent': THEME_ASSET_USER_AGENT,
 				},
 			});
 
@@ -214,7 +209,7 @@ export class ThemeAssetCache {
 			throw: false,
 			headers: {
 				Accept: '*/*',
-				'User-Agent': getUserAgent(),
+				'User-Agent': THEME_ASSET_USER_AGENT,
 			},
 		});
 

@@ -1,6 +1,8 @@
 import { ItemView, WorkspaceLeaf, MarkdownView, TFile, setIcon, Notice } from 'obsidian';
 import { Marp } from '@marp-team/marp-core'
 import { browser, type MarpCoreBrowser } from '@marp-team/marp-core/browser'
+import markdownItContainer from 'markdown-it-container';
+import markdownItMark from 'markdown-it-mark';
 
 import { MarpSlidesSettings } from '../utilities/settings'
 import { FilePath } from '../utilities/filePath'
@@ -19,11 +21,70 @@ import {
     zoomPreviewFromWheel,
 } from '../utilities/previewZoom'
 
-const markdownItContainer = require('markdown-it-container');
-const markdownItMark = require('markdown-it-mark');
-
 export const MARP_PREVIEW_VIEW = 'marp-preview-view';
 const PREVIEW_PROFILE_STORAGE_KEY = 'marp-extended-profile';
+let marpBrowserPolyfillReady = false;
+const PREVIEW_IFRAME_STYLE = `
+html,
+body {
+	background: transparent;
+	height: 100%;
+	margin: 0;
+	min-height: 0;
+	overflow: hidden;
+	padding: 0;
+	width: 100%;
+}
+#__marp-vscode {
+	transform: scale(var(--marp-extended-preview-zoom, 1));
+	transform-origin: top left;
+	width: max-content;
+}
+#__marp-vscode > [data-marp-vscode-slide-wrapper] {
+	display: block;
+}
+#__marp-vscode > [data-marp-vscode-slide-wrapper] > svg {
+	display: block;
+	height: 100%;
+	width: 100%;
+}
+section .mermaid-diagram-container.mermaid-diagram {
+	align-items: center;
+	display: flex;
+	flex-direction: column;
+	gap: 0.35em;
+	justify-content: center;
+	margin: 0.5rem auto 0;
+	max-width: calc(100% - 2em);
+	width: fit-content;
+}
+section .mermaid-diagram-container.mermaid-diagram img,
+section .mermaid-diagram-container.mermaid-diagram svg,
+section .mermaid-diagram-container.mermaid-diagram embed {
+	display: block;
+	height: auto;
+	max-height: 430px;
+	max-width: 100%;
+	width: auto;
+}
+section .mermaid-diagram-container.mermaid-diagram svg path,
+section .mermaid-diagram-container.mermaid-diagram svg circle,
+section .mermaid-diagram-container.mermaid-diagram svg ellipse,
+section .mermaid-diagram-container.mermaid-diagram svg rect,
+section .mermaid-diagram-container.mermaid-diagram svg polygon {
+	stroke-width: 2px;
+}
+section .mermaid-diagram-container.mermaid-diagram svg text {
+	font-weight: 600;
+}
+section .mermaid-diagram-container.mermaid-diagram figcaption {
+	color: currentColor;
+	font-size: 0.65em;
+	line-height: 1.3;
+	opacity: 0.72;
+	text-align: center;
+}
+`;
 
 export class MarpPreviewView extends ItemView  {
     private marp: Marp; 
@@ -31,9 +92,11 @@ export class MarpPreviewView extends ItemView  {
     
     private marpBrowser: MarpCoreBrowser | undefined;
     private previewContainerEl: HTMLElement | undefined;
+    private previewIframeEl: HTMLIFrameElement | undefined;
     private previewSlideEls: HTMLElement[] = [];
     private previewMaxSlideWidth = 0;
     private previewResizeObserver: ResizeObserver | undefined;
+    private previewIframeZoomDetach: (() => void) | undefined;
     private previewZoom = PREVIEW_ZOOM_RESET;
     private previewZoomFitScale = PREVIEW_ZOOM_RESET;
     private zoomLabelEl: HTMLElement | undefined;
@@ -95,7 +158,7 @@ export class MarpPreviewView extends ItemView  {
     }
 
     getDisplayText() {
-        return "Deck Preview";
+        return 'Deck preview';
     }
 
     getIcon() {
@@ -109,9 +172,14 @@ export class MarpPreviewView extends ItemView  {
         this.contentEl.addClass('marp-extended-preview-root');
         this.addPreviewToolbar(this.contentEl);
         this.previewContainerEl = this.contentEl.createDiv({ cls: 'marp-extended-preview-content' });
+        this.previewIframeEl = this.previewContainerEl.createEl('iframe', {
+            cls: 'marp-extended-preview-iframe',
+            attr: {
+                title: 'Marp slide preview',
+            },
+        });
         this.registerPreviewZoomGesture();
         this.registerPreviewZoomResizeObserver();
-        this.marpBrowser = browser(this.previewContainerEl);
 
         await this.reloadThemesIfChanged();
 
@@ -121,10 +189,17 @@ export class MarpPreviewView extends ItemView  {
     async onClose() {
         this.previewResizeObserver?.disconnect();
         this.previewResizeObserver = undefined;
+        if (this.previewZoomApplyFrame !== undefined) {
+            window.cancelAnimationFrame(this.previewZoomApplyFrame);
+            this.previewZoomApplyFrame = undefined;
+        }
+        this.previewIframeZoomDetach?.();
+        this.previewIframeZoomDetach = undefined;
         this.previewSlideEls = [];
         this.previewMaxSlideWidth = 0;
-        this.marpBrowser?.cleanup();
+        marpBrowserPolyfillReady = false;
         this.marpBrowser = undefined;
+        this.previewIframeEl = undefined;
     }
 
     async onChange(view : MarkdownView) {
@@ -136,7 +211,6 @@ export class MarpPreviewView extends ItemView  {
         const slide = this.previewSlideEls[targetSlideIndex];
 
         if (!slide) {
-            console.log("Preview slide not found!")
             return;
         }
 
@@ -158,7 +232,7 @@ export class MarpPreviewView extends ItemView  {
         this.addPreviewToolbarButton(toolbar, 'code-glyph', 'Export as HTML', 'html');
         this.addPreviewToolbarButton(toolbar, 'slides-marp-export-pdf', 'Export as PDF', 'pdf');
         this.addPreviewToolbarButton(toolbar, 'slides-marp-export-pptx', 'Export as PPTX', 'pptx');
-        this.addPreviewToolbarButton(toolbar, 'slides-marp-slide-present', 'Preview Slides', 'preview');
+        this.addPreviewToolbarButton(toolbar, 'slides-marp-slide-present', 'Preview slides', 'preview');
     }
 
     private addSyncPreviewToolbarButton(toolbar: HTMLElement) {
@@ -258,13 +332,27 @@ export class MarpPreviewView extends ItemView  {
         });
     }
 
-    private applyPreviewZoom(containerWidth?: number): void {
+    private applyPreviewZoom(): void {
         if (this.previewContainerEl) {
-            this.previewZoomFitScale = getPreviewZoomFitScale(containerWidth ?? this.previewContainerEl.clientWidth, this.previewMaxSlideWidth);
-            this.previewContainerEl.style.setProperty(
+            this.updatePreviewSlideLayout();
+
+            const availableWidth = this.previewContainerEl.clientWidth;
+            const hasLayout = availableWidth > 0 && this.previewMaxSlideWidth > 0;
+            if (hasLayout) {
+                this.previewZoomFitScale = getPreviewZoomFitScale(availableWidth, this.previewMaxSlideWidth);
+            }
+            const effectiveZoom = this.previewZoom * this.previewZoomFitScale;
+            this.previewContainerEl.style.setProperty('--marp-extended-preview-zoom', String(effectiveZoom));
+            this.getPreviewDocument()?.documentElement?.style.setProperty(
                 '--marp-extended-preview-zoom',
-                String(this.previewZoom * this.previewZoomFitScale),
+                String(effectiveZoom),
             );
+
+            if (hasLayout) {
+                this.syncPreviewIframeSize(effectiveZoom);
+            } else {
+                this.schedulePreviewZoomApply();
+            }
         }
 
         if (!this.zoomLabelEl) {
@@ -276,16 +364,122 @@ export class MarpPreviewView extends ItemView  {
         this.zoomLabelEl.setAttribute('aria-label', `Preview zoom ${formattedZoom}`);
     }
 
-    private refreshPreviewSlideDimensions(): void {
+    private previewZoomApplyFrame: number | undefined;
+
+    private schedulePreviewZoomApply(): void {
+        if (this.previewZoomApplyFrame !== undefined) {
+            return;
+        }
+        this.previewZoomApplyFrame = window.requestAnimationFrame(() => {
+            this.previewZoomApplyFrame = undefined;
+            this.applyPreviewZoom();
+        });
+    }
+
+
+    private getPreviewDocument(): Document | null {
+        return this.previewIframeEl?.contentDocument ?? null;
+    }
+
+    private ensureMarpBrowser(doc: Document): void {
+        if (this.marpBrowser) {
+            this.marpBrowser.update();
+            return;
+        }
+
+        if (marpBrowserPolyfillReady) {
+            return;
+        }
+
+        try {
+            this.marpBrowser = browser(doc);
+            marpBrowserPolyfillReady = true;
+        } catch (error) {
+            // marp-core registers its custom elements on the host window's
+            // registry, which survives plugin reloads and rejects re-definition.
+            // The polyfill is not load-bearing for the iframe preview (sizing is
+            // driven by applyPreviewZoom), so suppress the error to keep the
+            // render and zoom path running.
+            console.warn('Marp Core browser polyfill skipped:', error);
+            marpBrowserPolyfillReady = true;
+        }
+    }
+
+    private async renderPreviewDocument(html: string): Promise<void> {
+        const iframe = this.previewIframeEl;
+        if (!iframe) {
+            return;
+        }
+
+        const doc = iframe.contentDocument;
+        if (!doc?.getElementById('__marp-vscode')) {
+            await this.loadPreviewSrcdoc(html);
+            const loadedDoc = iframe.contentDocument;
+            if (!loadedDoc) {
+                throw new Error('Preview iframe document is unavailable.');
+            }
+            this.ensureMarpBrowser(loadedDoc);
+            return;
+        }
+
+        const parsed = new DOMParser().parseFromString(html, 'text/html');
+        doc.head.replaceChildren(
+            ...Array.from(parsed.head.childNodes, (node) => node.cloneNode(true)),
+        );
+        doc.body.replaceChildren(
+            ...Array.from(parsed.body.childNodes, (node) => node.cloneNode(true)),
+        );
+        this.ensureMarpBrowser(doc);
+    }
+
+    private loadPreviewSrcdoc(html: string): Promise<void> {
+        const iframe = this.previewIframeEl;
+        if (!iframe) {
+            return Promise.resolve();
+        }
+
+        return new Promise<void>((resolve, reject) => {
+            const onLoad = () => {
+                iframe.removeEventListener('error', onError);
+                this.registerPreviewIframeZoomGesture();
+                resolve();
+            };
+            const onError = () => {
+                iframe.removeEventListener('load', onLoad);
+                reject(new Error('Preview iframe failed to load'));
+            };
+
+            iframe.addEventListener('load', onLoad, { once: true });
+            iframe.addEventListener('error', onError, { once: true });
+            iframe.srcdoc = html;
+        });
+    }
+
+    private syncPreviewIframeSize(effectiveZoom: number): void {
+        const iframe = this.previewIframeEl;
+        const marpRoot = this.getPreviewDocument()?.getElementById('__marp-vscode');
+        if (!iframe || !marpRoot) {
+            return;
+        }
+
+        const unzoomedWidth = this.previewMaxSlideWidth > 0
+            ? this.previewMaxSlideWidth
+            : marpRoot.scrollWidth;
+        iframe.style.width = `${Math.ceil(unzoomedWidth * effectiveZoom)}px`;
+        iframe.style.height = `${Math.ceil(marpRoot.scrollHeight * effectiveZoom)}px`;
+    }
+
+    private updatePreviewSlideLayout(): void {
         this.previewSlideEls = [];
         this.previewMaxSlideWidth = 0;
 
-        if (!this.previewContainerEl) {
+        const previewDocument = this.getPreviewDocument();
+        if (!previewDocument) {
             return;
         }
 
         this.previewSlideEls = Array.from(
-            this.previewContainerEl.querySelectorAll<HTMLElement>('[data-marp-vscode-slide-wrapper]')
+            previewDocument.querySelectorAll<HTMLElement>('[data-marp-vscode-slide-wrapper]'),
         );
         this.previewSlideEls.forEach((wrapper) => {
             const viewBox = wrapper.querySelector('svg')?.getAttribute('viewBox');
@@ -412,6 +606,35 @@ export class MarpPreviewView extends ItemView  {
         }, { passive: false });
     }
 
+    private registerPreviewIframeZoomGesture(): void {
+        const iframe = this.previewIframeEl;
+        const contentWindow = iframe?.contentWindow;
+        if (!iframe || !contentWindow) {
+            return;
+        }
+
+        this.previewIframeZoomDetach?.();
+        this.previewIframeZoomDetach = undefined;
+
+        const handleWheel = (event: WheelEvent) => {
+            if (!isPreviewZoomWheel(event)) {
+                return;
+            }
+
+            event.preventDefault();
+            const rect = iframe.getBoundingClientRect();
+            this.setPreviewZoom(
+                zoomPreviewFromWheel(this.previewZoom, event.deltaY),
+                { clientX: rect.left + event.clientX, clientY: rect.top + event.clientY },
+            );
+        };
+        const options: AddEventListenerOptions = { passive: false };
+        contentWindow.addEventListener('wheel', handleWheel, options);
+        this.previewIframeZoomDetach = () => {
+            contentWindow.removeEventListener('wheel', handleWheel, options);
+        };
+    }
+
     private registerPreviewZoomResizeObserver(): void {
         if (!this.previewContainerEl || typeof ResizeObserver === 'undefined') {
             return;
@@ -437,7 +660,7 @@ export class MarpPreviewView extends ItemView  {
             void this.exportFile('pptx');
         });
 
-        this.addAction('slides-marp-slide-present', 'Preview Slides', () => {
+        this.addAction('slides-marp-slide-present', 'Preview slides', () => {
             void this.exportFile('preview');
         });
       }
@@ -469,85 +692,71 @@ export class MarpPreviewView extends ItemView  {
     }
     
     async displaySlides(view : MarkdownView, markdownOverride?: string) {
-
-        if (view.file != null) {
-            const displayRevision = ++this.displaySlidesRevision;
-            const displayStartMark = this.startPreviewMeasure('displaySlides');
-            this.file = view.file;
-            try {
-                const filePath = new FilePath(this.settings);
-                const basePath = filePath.getCompleteFileBasePath(view.file);
-                const markdownText = markdownOverride ?? view.getViewData();
-                await this.measurePreviewStepAsync('reloadThemesIfChanged', () => this.reloadThemesIfChanged());
-                if (displayRevision !== this.displaySlidesRevision) {
-                    return;
-                }
-                const mermaidThemeCss = await this.measurePreviewStepAsync('loadMermaidThemeCss', () => (
-                    loadMermaidThemeCssForFile(this.app, view.file as TFile, markdownText)
-                ));
-                if (displayRevision !== this.displaySlidesRevision) {
-                    return;
-                }
-
-                // Convert wiki-link images to standard markdown
-                const processedMarkdown = this.measurePreviewStep('convertImageWikiLinks', () => (
-                    filePath.convertImageWikiLinks(markdownText, view.file as TFile, this.app)
-                ));
-
-                const container = this.previewContainerEl ?? this.contentEl;
-                const previewContainerWidth = this.measurePreviewStep('readPreviewWidth', () => container.clientWidth);
-                container.empty();
-                this.previewSlideEls = [];
-                this.previewMaxSlideWidth = 0;
-
-
-                const rendered = this.measurePreviewStep('marp.render', () => this.marp.render(processedMarkdown));
-                if (displayRevision !== this.displaySlidesRevision) {
-                    return;
-                }
-                let html = rendered.html;
-                const css = await this.measurePreviewStepAsync('rewriteThemeAssets', () => (
-                    this.themeAssetCache.rewriteRemoteAssets(rendered.css)
-                ));
-                if (displayRevision !== this.displaySlidesRevision) {
-                    return;
-                }
-                
-                // Replace Backgorund Url for images
-                html = this.measurePreviewStep('rewriteBackgroundUrls', () => (
-                    html.replace(/(?!background-image:url\(&quot;http)background-image:url\(&quot;/g, `background-image:url(&quot;${basePath}`)
-                ));
-
-                const htmlFile = `
-                    <!DOCTYPE html>
-                    <html>
-                    <head>
-                    <base href="${basePath}"></base>
-                    <style id="__marp-vscode-style">${css}\n${mermaidThemeCss}</style>
-                    </head>
-                    <body>${html}</body>
-                    </html>
-                    `;
-
-                this.measurePreviewStep('setInnerHTML', () => {
-                    container.innerHTML = htmlFile;
-                });
-                this.measurePreviewStep('refreshSlideDimensions', () => {
-                    this.refreshPreviewSlideDimensions();
-                });
-                this.measurePreviewStep('marpBrowser.update', () => {
-                    this.marpBrowser?.update();
-                });
-                this.measurePreviewStep('applyPreviewZoom', () => {
-                    this.applyPreviewZoom(previewContainerWidth);
-                });
-            } finally {
-                this.endPreviewMeasure('displaySlides', displayStartMark);
-            }
+        const sourceFile = view.file;
+        if (!sourceFile) {
+            return;
         }
-        else
-        {
-            console.log("Errore: view.file is null")
+
+        const displayRevision = ++this.displaySlidesRevision;
+        const displayStartMark = this.startPreviewMeasure('displaySlides');
+        this.file = sourceFile;
+        try {
+            const filePath = new FilePath(this.settings);
+            const basePath = filePath.getCompleteFileBasePath(sourceFile);
+            const markdownText = markdownOverride ?? view.getViewData();
+            await this.measurePreviewStepAsync('reloadThemesIfChanged', () => this.reloadThemesIfChanged());
+            if (displayRevision !== this.displaySlidesRevision) {
+                return;
+            }
+            const mermaidThemeCss = await this.measurePreviewStepAsync('loadMermaidThemeCss', () => (
+                loadMermaidThemeCssForFile(this.app, sourceFile, markdownText)
+            ));
+            if (displayRevision !== this.displaySlidesRevision) {
+                return;
+            }
+
+            const processedMarkdown = this.measurePreviewStep('convertImageWikiLinks', () => (
+                filePath.convertImageWikiLinks(markdownText, sourceFile, this.app)
+            ));
+
+            this.previewSlideEls = [];
+            this.previewMaxSlideWidth = 0;
+
+            const rendered = this.measurePreviewStep('marp.render', () => this.marp.render(processedMarkdown));
+            if (displayRevision !== this.displaySlidesRevision) {
+                return;
+            }
+            let html = rendered.html;
+            const css = await this.measurePreviewStepAsync('rewriteThemeAssets', () => (
+                this.themeAssetCache.rewriteRemoteAssets(rendered.css)
+            ));
+            if (displayRevision !== this.displaySlidesRevision) {
+                return;
+            }
+
+            html = this.measurePreviewStep('rewriteBackgroundUrls', () => (
+                html.replace(/(?!background-image:url\(&quot;http)background-image:url\(&quot;/g, `background-image:url(&quot;${basePath}`)
+            ));
+
+            const htmlFile = `<!DOCTYPE html>
+<html>
+<head>
+<base href="${basePath}">
+<style id="__marp-vscode-style">${css}\n${mermaidThemeCss}</style>
+<style id="__marp-extended-preview-style">${PREVIEW_IFRAME_STYLE}</style>
+</head>
+<body>${html}</body>
+</html>`;
+
+            await this.measurePreviewStepAsync('renderPreviewDocument', () => this.renderPreviewDocument(htmlFile));
+            if (displayRevision !== this.displaySlidesRevision) {
+                return;
+            }
+            this.measurePreviewStep('applyPreviewZoom', () => {
+                this.applyPreviewZoom();
+            });
+        } finally {
+            this.endPreviewMeasure('displaySlides', displayStartMark);
         }
 	}
 }

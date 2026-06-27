@@ -1,9 +1,6 @@
-import { TFile, App } from 'obsidian';
+import { Platform, TFile, App } from 'obsidian';
 import { MarpSlidesSettings } from './settings';
 import { FilePath } from './filePath';
-import { existsSync, writeFileSync, unlinkSync } from 'node:fs';
-import { dirname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { renderMermaidFences } from '../markdown-it/mermaid';
 import { insertMarkdownAfterFrontmatter, loadMermaidThemeCssForFile, wrapMermaidThemeCss } from './mermaidTheme';
 
@@ -67,6 +64,27 @@ interface ExportSource {
 
 let marpCliModulePromise: Promise<MarpCliModule> | null = null;
 
+type NodeFsModule = typeof import('node:fs');
+type NodePathModule = typeof import('node:path');
+
+function assertDesktopExport(): void {
+	if (!Platform.isDesktop) {
+		throw new MarpCLIError('Export is only available on desktop Obsidian.');
+	}
+}
+
+function getNodeFs(): NodeFsModule {
+	assertDesktopExport();
+	// eslint-disable-next-line @typescript-eslint/no-require-imports -- Obsidian desktop export uses Node fs via require(); dynamic import() fails at runtime
+	return require('node:fs') as NodeFsModule;
+}
+
+function getNodePath(): NodePathModule {
+	assertDesktopExport();
+	// eslint-disable-next-line @typescript-eslint/no-require-imports -- Obsidian desktop export uses Node path via require(); dynamic import() fails at runtime
+	return require('node:path') as NodePathModule;
+}
+
 const EXPORT_EXTENSIONS: Record<string, string> = {
     pdf: 'pdf',
     'pdf-with-notes': 'pdf',
@@ -87,6 +105,8 @@ function normalizeCreateRequireFilename(filename: string | URL): string | URL {
     }
 
     if (typeof value === 'string' && /^file:\/\//i.test(value)) {
+        // eslint-disable-next-line @typescript-eslint/no-require-imports -- Marp CLI createRequire normalization needs Node url helpers
+        const { fileURLToPath } = require('node:url') as typeof import('node:url');
         return fileURLToPath(value.split('?')[0]);
     }
 
@@ -94,12 +114,13 @@ function normalizeCreateRequireFilename(filename: string | URL): string | URL {
 }
 
 async function withNormalizedCreateRequire<T>(callback: () => Promise<T>): Promise<T> {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports -- ESM node:module exports are read-only; patching needs CommonJS require()
     const nodeModule = require('node:module') as NodeModuleApi;
     const originalCreateRequire = nodeModule.createRequire;
 
-    nodeModule.createRequire = ((filename: string | URL) => (
+    nodeModule.createRequire = (filename: string | URL) => (
         originalCreateRequire(normalizeCreateRequireFilename(filename))
-    )) as NodeCreateRequire;
+    );
 
     try {
         return await callback();
@@ -154,19 +175,21 @@ export class MarpExport {
     }
 
     async export(file: TFile, type: string): Promise<string | null>{
+        const fs = getNodeFs();
+        const path = getNodePath();
         const filesTool = new FilePath(this.settings);
-        const outputPath = await this.getOutputPath(file, type, filesTool);
+        const outputPath = await this.getOutputPath(file, type, filesTool, path);
         if (this.shouldChooseExportDirectory(type) && outputPath == null) {
             return null;
         }
 
         const sourceFilePath = filesTool.getCompleteFilePath(file);
-        const themePaths = filesTool.getThemePaths(file).filter((path) => existsSync(path));
+        const themePaths = filesTool.getThemePaths(file).filter((themePath) => fs.existsSync(themePath));
         const resourcesPath = filesTool.getLibDirectory(file.vault);
         const marpEngineConfig = filesTool.getMarpEngine(file.vault);
 
         if (sourceFilePath != ''){
-            const exportSource = await this.prepareExportSource(file, filesTool, sourceFilePath);
+            const exportSource = await this.prepareExportSource(file, filesTool, sourceFilePath, fs, path);
             const completeFilePath = exportSource.path;
             //console.log(completeFilePath);
 
@@ -223,7 +246,7 @@ export class MarpExport {
                 await this.run(argv, resourcesPath);
                 return outputPath;
             } finally {
-                this.removeTemporaryExportSource(exportSource.temporaryPath);
+                this.removeTemporaryExportSource(exportSource.temporaryPath, fs);
             }
         } 
 
@@ -271,8 +294,6 @@ export class MarpExport {
     }
 
     private async runMarpCli(argv: string[], resourcesPath: string, marpCliModule: MarpCliModule) {
-        //console.info(`Execute Marp CLI [${argv.join(' ')}] (${JSON.stringify(opts)})`)
-        console.info(`Execute Marp CLI [${argv.join(' ')}]`);
         const temp__dirname = __dirname;
         const marpCli = marpCliModule.default ?? marpCliModule.marpCli;
 
@@ -281,7 +302,7 @@ export class MarpExport {
         }
 
         try {    
-            // eslint-disable-next-line no-global-assign
+            // eslint-disable-next-line no-global-assign, no-implicit-globals -- Marp CLI resolves bundled resources via __dirname
             __dirname = resourcesPath;
             const exitCode = await withMarpCliExecutionPatches(() => marpCli(argv, {}));
 
@@ -297,12 +318,18 @@ export class MarpExport {
 
             throw e;
         } finally {
-            // eslint-disable-next-line no-global-assign
+            // eslint-disable-next-line no-global-assign, no-implicit-globals -- Restore the plugin bundle __dirname after Marp CLI export
             __dirname = temp__dirname;
         }
     }
 
-    private async prepareExportSource(file: TFile, filesTool: FilePath, sourceFilePath: string): Promise<ExportSource> {
+    private async prepareExportSource(
+        file: TFile,
+        filesTool: FilePath,
+        sourceFilePath: string,
+        fs: NodeFsModule,
+        path: NodePathModule,
+    ): Promise<ExportSource> {
         if (!this.app) {
             await filesTool.removeFileFromRoot(file);
             await filesTool.copyFileToRoot(file);
@@ -322,37 +349,42 @@ export class MarpExport {
             return { path: sourceFilePath, temporaryPath: null };
         }
 
-        const temporaryPath = this.getTemporaryExportSourcePath(sourceFilePath, file.basename);
-        writeFileSync(temporaryPath, processedContent, { encoding: 'utf-8', flag: 'wx' });
+        const temporaryPath = this.getTemporaryExportSourcePath(sourceFilePath, file.basename, path);
+        fs.writeFileSync(temporaryPath, processedContent, { encoding: 'utf-8', flag: 'wx' });
 
         return { path: temporaryPath, temporaryPath };
     }
 
-    private getTemporaryExportSourcePath(sourceFilePath: string, basename: string): string {
+    private getTemporaryExportSourcePath(sourceFilePath: string, basename: string, path: NodePathModule): string {
         const suffix = `${process.pid}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
-        return join(dirname(sourceFilePath), `.${basename}.marp-export-${suffix}.md`);
+        return path.join(path.dirname(sourceFilePath), `.${basename}.marp-export-${suffix}.md`);
     }
 
-    private removeTemporaryExportSource(temporaryPath: string | null): void {
-        if (!temporaryPath || !existsSync(temporaryPath)) {
+    private removeTemporaryExportSource(temporaryPath: string | null, fs: NodeFsModule): void {
+        if (!temporaryPath || !fs.existsSync(temporaryPath)) {
             return;
         }
 
-        unlinkSync(temporaryPath);
+        fs.unlinkSync(temporaryPath);
     }
 
     private shouldChooseExportDirectory(type: string): boolean {
         return EXPORT_EXTENSIONS[type] != null;
     }
 
-    private async getOutputPath(file: TFile, type: string, filesTool: FilePath): Promise<string | null> {
+    private async getOutputPath(
+        file: TFile,
+        type: string,
+        filesTool: FilePath,
+        path: NodePathModule,
+    ): Promise<string | null> {
         const extension = EXPORT_EXTENSIONS[type];
         if (!extension) {
             return null;
         }
 
         const sourceFilePath = filesTool.getCompleteFilePath(file);
-        const defaultPath = join(dirname(sourceFilePath), `${file.basename}.${extension}`);
+        const defaultPath = path.join(path.dirname(sourceFilePath), `${file.basename}.${extension}`);
 
         return this.chooseExportFile(defaultPath, extension);
     }

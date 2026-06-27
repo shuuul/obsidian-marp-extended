@@ -52,6 +52,13 @@ export const FileSystemAdapter = jest.fn().mockImplementation(() => {
   }
 });
 
+export const Platform = {
+	isDesktop: true,
+	isMobile: false,
+	isIosApp: false,
+	isAndroidApp: false,
+};
+
 export const requestUrl = jest.fn();
 
 export const Notice = jest.fn().mockImplementation(() => ({

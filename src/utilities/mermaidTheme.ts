@@ -83,7 +83,7 @@ export async function loadMermaidThemeCssForMarkdown(app: App, markdown: string)
 
 export async function loadMermaidThemeCssForFile(app: App, file: TFile, markdown: string): Promise<string> {
 	const frontmatter = app.metadataCache.getFileCache?.(file)?.frontmatter;
-	const cacheTheme = frontmatter?.[MERMAID_THEME_PROPERTY];
+	const cacheTheme: unknown = frontmatter?.[MERMAID_THEME_PROPERTY];
 	const themeName = typeof cacheTheme === 'string' && cacheTheme.trim()
 		? cacheTheme.trim()
 		: getMermaidThemeName(markdown);

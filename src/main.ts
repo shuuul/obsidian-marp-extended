@@ -1,4 +1,4 @@
-import { MarkdownView, TAbstractFile, Plugin, addIcon, App, PluginSettingTab, Setting, TFile, Modal, Notice, editorInfoField } from 'obsidian';
+import { MarkdownView, TAbstractFile, Plugin, addIcon, App, PluginSettingTab, Setting, TFile, Modal, Notice } from 'obsidian';
 import { EditorView, type ViewUpdate } from '@codemirror/view';
 
 import { MARP_PREVIEW_VIEW, MarpPreviewView } from './views/marpPreviewView';
@@ -26,7 +26,7 @@ export default class MarpSlides extends Plugin {
 		await this.loadSettings();
 
 		const libsUtility = new Libs(this.settings);
-		libsUtility.loadLibs(this.app);
+		void libsUtility.loadLibs(this.app);
 
 		const themeManager = new ThemeManager(this.app);
 		this.themePropertyOptions = new ThemePropertyOptions(this.app, themeManager);
@@ -64,14 +64,14 @@ export default class MarpSlides extends Plugin {
 		addIcon('slides-marp-export-pptx', ICON_EXPORT_PPTX);
 		addIcon('slides-marp-slide-present', ICON_SLIDE_PRESENT);
 		addIcon('slides-marp-fit-width', ICON_FIT_WIDTH);
-		this.addRibbonIcon('slides-preview-marp', 'Show Slide Preview', async () => {
+		this.addRibbonIcon('slides-preview-marp', 'Show slide preview', async () => {
 			await this.showPreviewSlide();
 		});
 		
 		this.addCommand({
 			id: 'preview',
-			name: 'Slide Preview',
-			callback: () => { this.showPreviewSlide();}
+			name: 'Slide preview',
+			callback: () => { void this.showPreviewSlide(); }
 		});
 		
 		this.addCommand({
@@ -82,7 +82,7 @@ export default class MarpSlides extends Plugin {
 
 		this.addCommand({
 			id: 'export-pdf-notes',
-			name: 'Export PDF with Notes',
+			name: 'Export PDF with notes',
 			callback: (() => this.exportFile('pdf-with-notes'))
 		});
 
@@ -116,14 +116,10 @@ export default class MarpSlides extends Plugin {
 			}
 		}));
 
-		this.registerEvent(this.app.vault.on('modify', this.onChange.bind(this)));
+		this.registerEvent(this.app.vault.on('modify', (file) => this.onChange(file)));
 		this.registerEvent(this.app.metadataCache.on('changed', (file, data) => {
 			this.refreshPreviewForFile(file, data);
 		}));
-	}
-
-	onunload() {
-		this.app.workspace.detachLeavesOfType(MARP_PREVIEW_VIEW);
 	}
 
 	async loadSettings() {
@@ -200,7 +196,7 @@ export default class MarpSlides extends Plugin {
 			active: true,
 		});
 
-		this.app.workspace.revealLeaf(leaf);
+		void this.app.workspace.revealLeaf(leaf);
 
 		return leaf.view as MarpPreviewView;
 	}
@@ -214,7 +210,8 @@ export default class MarpSlides extends Plugin {
 			return;
 		}
 
-		const file = update.state.field(editorInfoField, false)?.file;
+		const activeView = this.getActiveMarkdownView();
+		const file = activeView?.file;
 		if (!file) {
 			return;
 		}
@@ -296,7 +293,7 @@ export default class MarpSlides extends Plugin {
 		const leaf = this.app.workspace.getLeavesOfType(MARP_PREVIEW_VIEW)[0];
 		if (leaf){
 			if (reveal) {
-				this.app.workspace.revealLeaf(leaf);
+				void this.app.workspace.revealLeaf(leaf);
 			}
 			return leaf.view as MarpPreviewView;
 		} else {
@@ -320,10 +317,12 @@ export class MarpSlidesSettingTab extends PluginSettingTab {
 
 		containerEl.empty();
 
-		containerEl.createEl('h3', {text: 'General'});
+		new Setting(containerEl)
+			.setName('Export and preview')
+			.setHeading();
 
 		new Setting(containerEl)
-			.setName('Chrome Path')
+			.setName('Chrome path')
 			.setDesc('Optional. Leave empty to let Marp CLI automatically find Google Chrome, Chromium, or Microsoft Edge. Set this only if auto-detection fails.')
 			.addText(text => text
 				.setPlaceholder('Enter CHROME_PATH')
@@ -335,7 +334,7 @@ export class MarpSlidesSettingTab extends PluginSettingTab {
 		
 		new Setting(containerEl)
 			.setName('Enable HTML')
-			.setDesc('Enable all HTML elements in Marp Markdown. Please Attention when you enable!!!')
+			.setDesc('Enable all HTML elements in Marp Markdown. Please attention when you enable!!!')
 			.addToggle(toggle => toggle
 				.setValue(this.plugin.settings.EnableHTML)
 				.onChange(async (value) => {
@@ -344,11 +343,11 @@ export class MarpSlidesSettingTab extends PluginSettingTab {
 				}));
 	
 		new Setting(containerEl)
-			.setName('Math Typesettings')
+			.setName('Math typesettings')
 			.setDesc('Controls math syntax and the default library for rendering math in Marp Core. A using library can override by math global directive in Markdown.')
 			.addDropdown(toggle => toggle
-				.addOption("mathjax","mathjax")
-				.addOption("katex","katex")
+				.addOption("mathjax","MathJax")
+				.addOption("katex","KaTeX")
 				.setValue(this.plugin.settings.MathTypesettings)
 				.onChange(async (value) => {
 					this.plugin.settings.MathTypesettings = value;
@@ -356,11 +355,11 @@ export class MarpSlidesSettingTab extends PluginSettingTab {
 				}));
 
 		new Setting(containerEl)
-			.setName('HTML Export Mode')
+			.setName('HTML export mode')
 			.setDesc('Choose the Marp CLI HTML template. Bare is minimal; Bespoke adds presentation controls, presenter view, overview, and transitions.')
 			.addDropdown(toggle => toggle
-				.addOption("bare","bare (minimal)")
-				.addOption("bespoke","bespoke (interactive)")
+				.addOption("bare","Bare (minimal)")
+				.addOption("bespoke","Bespoke (interactive)")
 				.setValue(this.plugin.settings.HTMLExportMode)
 				.onChange(async (value) => {
 					this.plugin.settings.HTMLExportMode = value;
@@ -372,7 +371,9 @@ export class MarpSlidesSettingTab extends PluginSettingTab {
 	}
 
 	private displayThemesSection(containerEl: HTMLElement): void {
-		containerEl.createEl('h3', {text: 'Themes'});
+		new Setting(containerEl)
+			.setName('Themes')
+			.setHeading();
 
 		const themeManager = new ThemeManager(this.app);
 		let themeListEl: HTMLElement;
@@ -489,7 +490,9 @@ export class MarpSlidesSettingTab extends PluginSettingTab {
 	}
 
 	private displayMermaidThemesSection(containerEl: HTMLElement): void {
-		containerEl.createEl('h3', {text: 'Mermaid themes'});
+		new Setting(containerEl)
+			.setName('Mermaid themes')
+			.setHeading();
 
 		const mermaidThemeManager = new MermaidThemeManager(this.app);
 		let themeListEl: HTMLElement;

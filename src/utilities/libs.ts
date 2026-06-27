@@ -1,13 +1,37 @@
-import { App } from 'obsidian';
+import { App, Platform } from 'obsidian';
 import { FilePath } from './filePath';
 import { MarpSlidesSettings } from './settings';
 import JSZip from 'jszip';
-import { dirname } from 'node:path';
-import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
-import { get } from 'node:https';
-import { URL } from 'node:url';
+
+type NodeFsModule = typeof import('node:fs');
+type NodePathModule = typeof import('node:path');
+type NodeHttpsModule = typeof import('node:https');
+type NodeUrlModule = typeof import('node:url');
+
+function getNodeFs(): NodeFsModule {
+	// eslint-disable-next-line @typescript-eslint/no-require-imports -- Obsidian desktop plugin installs libs with Node fs via require()
+	return require('node:fs') as NodeFsModule;
+}
+
+function getNodePath(): NodePathModule {
+	// eslint-disable-next-line @typescript-eslint/no-require-imports -- Obsidian desktop plugin installs libs with Node path via require()
+	return require('node:path') as NodePathModule;
+}
+
+function getNodeHttps(): NodeHttpsModule {
+	// eslint-disable-next-line @typescript-eslint/no-require-imports -- Obsidian desktop plugin downloads optional libs with Node https via require()
+	return require('node:https') as NodeHttpsModule;
+}
+
+function getNodeUrl(): NodeUrlModule {
+	// eslint-disable-next-line @typescript-eslint/no-require-imports -- Obsidian desktop plugin downloads optional libs with Node url via require()
+	return require('node:url') as NodeUrlModule;
+}
 
 function download(url: string, redirectCount = 0): Promise<Buffer> {
+	const { get } = getNodeHttps();
+	const { URL } = getNodeUrl();
+
 	return new Promise((resolve, reject) => {
 		get(new URL(url), (response) => {
 			const { statusCode, headers } = response;
@@ -18,7 +42,9 @@ function download(url: string, redirectCount = 0): Promise<Buffer> {
 					reject(new Error(`Too many redirects while downloading ${url}`));
 					return;
 				}
-				resolve(download(new URL(headers.location, url).toString(), redirectCount + 1));
+				void download(new URL(headers.location, url).toString(), redirectCount + 1)
+					.then(resolve)
+					.catch(reject);
 				return;
 			}
 
@@ -43,36 +69,46 @@ export class Libs {
         this.settings = settings;
     }
  
-    loadLibs(app: App){
+    async loadLibs(app: App): Promise<void> {
+		if (!Platform.isDesktop) {
+			return;
+		}
+
+		try {
+			await this.loadLibsDesktop(app);
+		} catch (error: unknown) {
+			const message = error instanceof Error ? error.message : String(error);
+			console.error(`Marp Extended: failed to load markdown-it libraries: ${message}`);
+		}
+    }
+
+	private async loadLibsDesktop(app: App): Promise<void> {
+		const { existsSync, mkdirSync, writeFileSync } = getNodeFs();
+		const { dirname } = getNodePath();
         const libPathUtility = new FilePath(this.settings);
         const libPath = libPathUtility.getLibDirectory(app.vault);
 
         if (!existsSync(libPath)) {
-			//Download binary
 			const downloadUrl = `https://github.com/samuele-cozzi/obsidian-marp-slides/releases/download/lib-v3/lib.zip`;
 
-			download(downloadUrl)
-				.then((buf) => new JSZip().loadAsync(buf))
-				.then((contents) => Promise.all(
-					Object.keys(contents.files).map(async (filename) => {
-						if (contents.files[filename].dir) {
-							return;
-						}
+			const buf = await download(downloadUrl);
+			const contents = await new JSZip().loadAsync(buf);
+			await Promise.all(
+				Object.keys(contents.files).map(async (filename) => {
+					if (contents.files[filename].dir) {
+						return;
+					}
 
-						const file = contents.file(filename);
-						if (file != null){
-							const content = await file.async('nodebuffer');
-							const dest = `${libPathUtility.getLibDirectory(app.vault)}${filename}`;
-							mkdirSync(dirname(dest), { recursive: true });
-							writeFileSync(dest, content);
-						}
-						})
-				))
-				.then(() => this.writeMarpEngineConfig(libPathUtility, app))
-				.catch(error => {
-					console.log(error);
-				});
-
+					const file = contents.file(filename);
+					if (file != null){
+						const content = await file.async('nodebuffer');
+						const dest = `${libPathUtility.getLibDirectory(app.vault)}${filename}`;
+						mkdirSync(dirname(dest), { recursive: true });
+						writeFileSync(dest, content);
+					}
+				}),
+			);
+			this.writeMarpEngineConfig(libPathUtility, app);
 			return;
 		}
 
@@ -80,6 +116,8 @@ export class Libs {
     }
 
 	private writeMarpEngineConfig(libPathUtility: FilePath, app: App): void {
+		const { mkdirSync, writeFileSync } = getNodeFs();
+		const { dirname } = getNodePath();
 		const engineConfigPath = libPathUtility.getMarpEngine(app.vault);
 
 		mkdirSync(dirname(engineConfigPath), { recursive: true });
@@ -88,9 +126,9 @@ export class Libs {
 
 	private getMarpEngineConfig(): string {
 		return `module.exports = ({ marp }) =>
-	marp
-		.use(require('./markdown-it/markdown-it-mark/dist/markdown-it-mark.min'))
-		.use(require('./markdown-it/markdown-it-container/dist/markdown-it-container.min'), 'container');
+marp
+.use(require('./markdown-it/markdown-it-mark/dist/markdown-it-mark.min'))
+.use(require('./markdown-it/markdown-it-container/dist/markdown-it-container.min'), 'container');
 `;
 	}
 }
