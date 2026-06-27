@@ -1,4 +1,9 @@
 {
+  "release-type": "node",
+  "package-name": "marp-extended",
+  "include-v-in-tag": false,
+  "include-v-in-release-name": false,
+  "changelog-path": "CHANGELOG.md",
   "extra-files": [
     {
       "type": "json",

@@ -17,15 +17,12 @@ jobs:
   release-please:
     runs-on: ubuntu-latest
     steps:
-      - uses: google-github-actions/release-please-action@v4
+      - uses: googleapis/release-please-action@v4
         id: release
         with:
           token: ${{ github.token }}
           release-type: node
-          package-name: marp-extended
           config-file: release-please-config.json
-          include-v-in-tags: false
-          changelog-path: CHANGELOG.md
     outputs:
       release_created: ${{ steps.release.outputs.release_created }}
       tag_name: ${{ steps.release.outputs.tag_name }}
@@ -67,7 +64,9 @@ jobs:
         run: |
           TAG="${{ needs.release-please.outputs.tag_name }}"
           VERSION="${TAG#v}"
+          ZIP_NAME="${{ env.PLUGIN_NAME }}-${VERSION}.zip"
+          mv "${{ env.PLUGIN_NAME }}.zip" "$ZIP_NAME"
           gh release upload "$TAG" \
             main.js manifest.json styles.css \
-            "${{ env.PLUGIN_NAME }}.zip#${{ env.PLUGIN_NAME }}-${VERSION}.zip" \
+            "$ZIP_NAME" \
             --repo "${{ github.repository }}" --clobber
