@@ -24,6 +24,7 @@ Marp Extended is an Obsidian plugin for creating, previewing, presenting, and ex
 - Add custom Marp themes by pasting CSS in plugin settings.
 - Convert Obsidian image wiki-links to standard Markdown image links for preview/export.
 - Built-in markdown-it extensions for containers, marks, and Mermaid diagrams rendered with `beautiful-mermaid`.
+- Kami DSL fenced blocks for Obsidian-friendly slide metadata, lead text, callouts, columns, and 2×2 cards.
 
 ## Markdown compatibility
 
@@ -59,6 +60,14 @@ These are converted to standard Markdown image links / Marp image directives. Pa
 When possible, the plugin resolves the image through Obsidian's link resolver and emits a path Marp can read. If the image cannot be resolved, the plugin falls back to treating the wiki-link target as a path relative to the current note.
 
 Other Obsidian-only extensions are not converted automatically. If Marp does not support an Obsidian syntax directly, write it in standard Markdown or Marp syntax.
+
+For Kami-style decks, Marp Extended also supports a small fenced-block DSL that
+compiles to Marp local directives and Kami theme HTML wrappers before
+preview/export. For example, use `slide` blocks instead of Marp local directive
+comments and `cols` / `cards[2x2]` blocks split with `===` for common Kami
+layouts. Previewing these layout wrappers requires the plugin's **Enable HTML**
+setting; export already invokes Marp CLI with HTML enabled. See
+[Kami DSL](docs/kami-dsl.md) for the supported blocks and examples.
 
 See also:
 

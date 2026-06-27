@@ -59,12 +59,35 @@ function readLanguageAndAltText(info: string): { language: string; alt: string }
 
 	const trimmed = info.trim();
 	const languageEnd = /[\s[]/.exec(trimmed);
-	const alt = trimmed.match(/\[(.*?)]/)?.[1] ?? '';
+	const rawAttributes = trimmed.match(/\[(.*?)]/)?.[1]?.trim() ?? '';
+	const alt = parseMermaidTitle(rawAttributes);
 
 	return {
 		language: languageEnd ? trimmed.substring(0, languageEnd.index) : trimmed,
 		alt,
 	};
+}
+
+function parseMermaidTitle(rawAttributes: string): string {
+	if (!rawAttributes) {
+		return '';
+	}
+
+	if (!rawAttributes.includes('=')) {
+		return rawAttributes;
+	}
+
+	const titleMatch = rawAttributes.match(/(?:^|\s)(?:title|alt)=("[^"]*"|'[^']*'|[^\s]+)/);
+	if (!titleMatch) {
+		return rawAttributes;
+	}
+
+	const value = titleMatch[1];
+	if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
+		return value.slice(1, -1);
+	}
+
+	return value;
 }
 
 function escapeHtml(value: string): string {

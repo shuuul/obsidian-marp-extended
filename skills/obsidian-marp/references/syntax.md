@@ -87,19 +87,91 @@ HTML comment examples:
 <!-- color: "#eee" -->
 ```
 
+Marp Extended also accepts Obsidian-friendly `slide` fenced blocks before
+preview/export and compiles them into current-slide Marp spot directives:
+
+````markdown
+```slide[]
+class: cover
+paginate: false
+footer: ""
+header: 01 · Origin
+```
+````
+
+This is equivalent to:
+
+```markdown
+<!-- _class: cover -->
+<!-- _paginate: false -->
+<!-- _footer: "" -->
+<!-- _header: 01 · Origin -->
+```
+
 Use quotes when YAML special characters are present:
 
 ```yaml
 footer: "**Draft** · v0.3"
 ```
 
-## HTML blocks for advanced Obsidian slide layouts
+## Kami fenced blocks for advanced Obsidian slide layouts
 
 Obsidian Markdown and Marp directives cover common slides, but many editorial
-layouts need explicit HTML. In this plugin, hand-written HTML is an accepted
-escape hatch for structures that Markdown cannot express cleanly, such as two
-column grids, cards, callouts, metric tables, title metadata, and Kami-style
-paper layouts.
+layouts need theme-specific wrappers. Marp Extended accepts a small Kami DSL as
+fenced blocks and compiles it before preview/export, keeping source notes closer
+to Obsidian-native Markdown. The layout wrappers compile to HTML, so Obsidian
+preview requires the plugin's Enable HTML setting. Export already runs Marp CLI
+with HTML enabled.
+
+Supported blocks:
+
+| Fence | Compiles to |
+| --- | --- |
+| `slide` | Marp local spot directives (`<!-- _key: value -->`). |
+| `lead` | `<div class="lead">...`. |
+| `sub` | `<div class="sub">...`. |
+| `meta` | `<div class="meta">...`. |
+| `co`, `note` | `<div class="co">...`. |
+| `mc` | `<div class="mc">...`. |
+| `callout[mc]` / `callout[type=mc]` | A custom class callout. Defaults to `co`. |
+| `cols` | `<div class="c2">...` columns, split by a line containing only `===`. |
+| `cards[2x2]` | `<table class="t2x2">...` metric cards, split by `===`. |
+
+Examples:
+
+````markdown
+```lead[]
+Same palette, fonts, layout tokens. Only the editing posture changes.
+```
+
+```cols[]
+### Left column
+
+- Markdown content
+
+===
+
+### Right column
+
+```mermaid[Kami Mermaid]
+flowchart LR
+  A --> B
+```
+```
+
+```cards[2x2]
+### A · Palette
+One ink-blue accent.
+
+===
+
+### B · Type
+One serif per page.
+```
+````
+
+Hand-written HTML remains an escape hatch when the fenced blocks do not express
+the layout you need:
 
 ```markdown
 <div class="c2">
