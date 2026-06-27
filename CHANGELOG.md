@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.5.0
+
+- Migrated slide preview to sandboxed iframe rendering using ESM `markdown-it-container` and `markdown-it-mark` plugins.
+- Restricted Marp CLI export and optional markdown-it lib loading to desktop Obsidian via `Platform.isDesktop` guards.
+- Replaced direct `node:path`/`node:fs` imports with lazy CommonJS `require` for mobile-safe bundling.
+- Bumped minimum Obsidian version to 1.7.2 and kept the plugin desktop-only.
+- Modernized the ESLint toolchain with `eslint-plugin-obsidianmd` and `typescript-eslint`.
+- Cleaned up the preview zoom lifecycle, removed dead debug logging, and fixed unsafe type casts.
+
 ## 0.4.0
 
 - Added themed Mermaid diagram rendering as inline SVG for preview/export, including `mermaidTheme` and `mermaidFlat` support.
