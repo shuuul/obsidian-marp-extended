@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.6.0](https://github.com/shuuul/obsidian-marp-extended/compare/0.5.0...0.6.0) (2026-06-27)
+
+
+### Features
+
+* **kami:** add fenced block DSL ([a7c51df](https://github.com/shuuul/obsidian-marp-extended/commit/a7c51dfcfd905771c46a932f931b07710960457a))
+
 ## 0.5.0
 
 - Migrated slide preview to sandboxed iframe rendering using ESM `markdown-it-container` and `markdown-it-mark` plugins.
