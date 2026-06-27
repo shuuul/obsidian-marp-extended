@@ -89,7 +89,7 @@ styles.css
 
 ## Release flow
 
-The GitHub Actions workflow uses Release Please on pushes to `main`.
+Releases are fully automated by [Release Please](https://github.com/google-github-actions/release-please-action) on pushes to `main`. The fork no longer tracks `upstream` and maintains its own release history (tags `0.1.x` onward); stale inherited upstream tags were removed so Release Please computes versions from the fork's own latest release.
 
 - Config: `release-please-config.json`
 - Workflow: `.github/workflows/release-please.yml`
@@ -102,12 +102,20 @@ Release Please expects [Conventional Commit](https://www.conventionalcommits.org
 - `feat:` for minor releases
 - `feat!:` / `fix!:` / other `!` prefixes for breaking major releases
 
-The release job uploads:
+Flow:
+
+1. Push `feat:`/`fix:`/`chore:` commits to `main`. The `release-please` job runs on every push to `main` and opens (or updates) a single release PR collecting unreleased Conventional Commits. `chore:` commits do not trigger a release.
+2. Merge the release PR. Release Please tags the merge commit (no `v` prefix), creates the GitHub release, and bumps `package.json`, `manifest.json` (`$.version` via `extra-files`), and `CHANGELOG.md`.
+3. The `release-plugin` job then runs (`release_created == 'true'`): it syncs `versions.json` via `npm run version`, commits that to `main`, builds with `npm run build`, and uploads the release assets.
+
+Uploaded release assets:
 
 - `main.js`
 - `manifest.json`
 - `styles.css`
 - `marp-extended-<version>.zip`
+
+Do not create tags or GitHub releases manually; let Release Please own them. `versions.json` is synced by the `release-plugin` job right after the release is created, so it lands on `main` moments after the tag.
 
 ## Architecture
 
