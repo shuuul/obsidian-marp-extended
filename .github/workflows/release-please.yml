@@ -2,6 +2,11 @@ name: release
 
 on:
   workflow_dispatch:
+    inputs:
+      release_version:
+        description: Version to publish from main, e.g. 0.7.1. Leave empty to run release-please only.
+        required: false
+        type: string
   push:
     branches:
       - main
@@ -82,3 +87,57 @@ jobs:
           gh release upload "$TAG" \
             main.js manifest.json styles.css \
             --repo "${{ github.repository }}" --clobber
+
+  manual-release-plugin:
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.release_version != '' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      attestations: write
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ github.token }}
+          ref: main
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Validate manual release version
+        run: |
+          TAG="${{ inputs.release_version }}"
+          PACKAGE_VERSION="$(node -p "require('./package.json').version")"
+          MANIFEST_VERSION="$(node -p "require('./manifest.json').version")"
+          if [ "$TAG" != "$PACKAGE_VERSION" ] || [ "$TAG" != "$MANIFEST_VERSION" ]; then
+            echo "Manual release '$TAG' must match package.json '$PACKAGE_VERSION' and manifest.json '$MANIFEST_VERSION'." >&2
+            exit 1
+          fi
+          if gh release view "$TAG" --repo "${{ github.repository }}" >/dev/null 2>&1; then
+            echo "Release '$TAG' already exists." >&2
+            exit 1
+          fi
+      - name: Build
+        run: |
+          npm ci
+          npm run build
+      - name: Verify release assets
+        run: npm run scan:release
+      - name: Attest release assets
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: |
+            main.js
+            manifest.json
+            styles.css
+      - name: Create release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="${{ inputs.release_version }}"
+          gh release create "$TAG" \
+            main.js manifest.json styles.css \
+            --repo "${{ github.repository }}" \
+            --title "$TAG" \
+            --generate-notes

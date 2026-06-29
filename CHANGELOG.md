@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## [0.7.1](https://github.com/shuuul/obsidian-marp-extended/compare/0.7.0...0.7.1) (2026-06-29)
+
+### Bug Fixes
+
+* **release:** pass Obsidian release checks ([64bdb3f](https://github.com/shuuul/obsidian-marp-extended/commit/64bdb3fb593aaebf18d759f30e02fda60f9c447c))
+
 - Changed export to call an external Marp CLI executable instead of bundling `@marp-team/marp-cli` into `main.js`; settings now support explicit path input, auto-detection, and an optional pinned npx fallback.
 - Removed the unsupported release ZIP asset from the community release workflow and added provenance attestations for `main.js`, `manifest.json`, and `styles.css`.
 - Removed external URLs from packaged theme CSS and replaced plugin `:has()` styling with explicit classes for review compatibility.
