@@ -11,7 +11,7 @@
 - Updated theme settings so bundled defaults are managed/read-only in the UI, can be forked, and custom themes can be edited.
 - Fixed review-listed unsafe TypeScript patterns in Mermaid cache eviction, export error handling, and theme property suggestions.
 
-## [0.7.0](https://github.com/shuuul/obsidian-marp-extended/compare/0.6.0...v0.7.0) (2026-06-29)
+## [0.7.0](https://github.com/shuuul/obsidian-marp-extended/compare/0.6.0...0.7.0) (2026-06-29)
 
 
 ### Features
