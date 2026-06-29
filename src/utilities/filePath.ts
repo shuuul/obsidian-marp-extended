@@ -147,25 +147,6 @@ export class FilePath  {
         return [this.getDefaultThemePath(file)];
     }
 
-    private getPluginDirectory(vault: Vault): string {
-        const path = `${this.getVaultPath(vault, `${vault.configDir}/plugins/marp-extended`)}/`;
-        //console.log(path);
-        return path;
-	}
-
-    public getLibDirectory(vault: Vault): string {
-        const pluginDirectory = this.getPluginDirectory(vault);
-        const path = `${pluginDirectory}lib3/`;
-        //console.log(path);
-        return path;
-	}
-
-    public getMarpEngine(vault: Vault): string {
-        const libDirectory = this.getLibDirectory(vault);
-        const path = `${libDirectory}marp.config.js`;
-        //console.log(path);
-        return path;
-	}
 
     /**
      * Convert Obsidian wiki-link image syntax to standard Markdown.

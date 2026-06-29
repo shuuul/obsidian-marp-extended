@@ -28,12 +28,10 @@ function createRealExportFixture(): VaultFixture {
 	const markdownPath = 'samples/Academic.md';
 	const attachmentPath = 'attachments/kenkyu_woman_seikou.png';
 	const managedThemeDirectory = join(tempVaultRoot, '.marp-extended/themes');
-	const engineDirectory = join(tempVaultRoot, '.obsidian/plugins/marp-extended/lib3');
 	tempDirectories.push(tempVaultRoot);
 	mkdirSync(join(tempVaultRoot, 'samples'), { recursive: true });
 	mkdirSync(join(tempVaultRoot, 'attachments'), { recursive: true });
 	mkdirSync(managedThemeDirectory, { recursive: true });
-	mkdirSync(engineDirectory, { recursive: true });
 	writeFileSync(
 		join(tempVaultRoot, markdownPath),
 		readFileSync(join(fixtureVaultRoot, markdownPath), 'utf-8'),
@@ -46,14 +44,6 @@ function createRealExportFixture(): VaultFixture {
 	writeFileSync(
 		join(managedThemeDirectory, 'academic.css'),
 		readFileSync(join(fixtureVaultRoot, 'themes/academic.css'), 'utf-8'),
-		'utf-8',
-	);
-	writeFileSync(
-		join(engineDirectory, 'marp.config.js'),
-		`module.exports = ({ marp }) => marp
-	.use(require(${JSON.stringify(require.resolve('markdown-it-mark'))}))
-	.use(require(${JSON.stringify(require.resolve('markdown-it-container'))}), 'container');
-`,
 		'utf-8',
 	);
 

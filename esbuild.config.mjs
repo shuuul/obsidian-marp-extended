@@ -36,7 +36,7 @@ const OBSIDIAN_PLUGIN_PATH = OBSIDIAN_VAULT && existsSync(OBSIDIAN_VAULT)
 	? path.join(OBSIDIAN_VAULT, ".obsidian", "plugins", "marp-extended")
 	: null;
 const OBSIDIAN_PLUGIN_DEPLOY_FILES = new Set(["main.js", "manifest.json", "styles.css"]);
-const OBSIDIAN_PLUGIN_RUNTIME_FILES = new Set(["data.json", "lib3"]);
+const OBSIDIAN_PLUGIN_RUNTIME_FILES = new Set(["data.json"]);
 
 function pruneStaleObsidianPluginArtifacts(pluginPath) {
 	const keep = new Set([...OBSIDIAN_PLUGIN_DEPLOY_FILES, ...OBSIDIAN_PLUGIN_RUNTIME_FILES]);

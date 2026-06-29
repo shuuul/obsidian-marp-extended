@@ -1,8 +1,6 @@
 import { ItemView, setIcon, Notice, type WorkspaceLeaf, type MarkdownView, type TFile } from 'obsidian';
 import { Marp } from '@marp-team/marp-core'
 import { browser, type MarpCoreBrowser } from '@marp-team/marp-core/browser'
-import markdownItContainer from 'markdown-it-container';
-import markdownItMark from 'markdown-it-mark';
 
 import type { MarpSlidesSettings } from '../utilities/settings'
 import { FilePath } from '../utilities/filePath'
@@ -132,8 +130,6 @@ export class MarpPreviewView extends ItemView  {
             minifyCSS: true,
             script: false
           })
-            .use(markdownItContainer, "container")
-            .use(markdownItMark)
             .use(markdownItMermaid);
     }
 

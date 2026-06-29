@@ -180,6 +180,7 @@ test('export selects a file and passes output path to external Marp CLI', async 
 		'-o',
 		'/tmp/export/custom.pdf',
 	]));
+	expect(getLastCliArgs()).not.toContain('--engine');
 	expect(getLastCliOptions().stdio).toEqual(['ignore', 'pipe', 'pipe']);
 });
 

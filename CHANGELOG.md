@@ -10,6 +10,7 @@
 - Removed separate default CSS sync markers; managed defaults are overwritten from the packaged CSS on startup.
 - Updated theme settings so bundled defaults are managed/read-only in the UI, can be forked, and custom themes can be edited.
 - Fixed review-listed unsafe TypeScript patterns in Mermaid cache eviction, export error handling, and theme property suggestions.
+- Removed the legacy markdown-it container/mark extensions, downloaded Marp engine files, and `lib3` runtime artifact.
 
 ## [0.7.0](https://github.com/shuuul/obsidian-marp-extended/compare/0.6.0...0.7.0) (2026-06-29)
 

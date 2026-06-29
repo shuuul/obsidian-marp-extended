@@ -125,8 +125,7 @@ Open these decks in Obsidian and run **Marp Extended: Slide Preview**:
 
 1. `samples/Kami.md`
 2. `samples/Kami.en.md`
-3. `samples/Sample Markdown-it Plugins.md`
-4. `samples/Academic.md`
+3. `samples/Academic.md`
 
 Then test export as HTML/PDF/PPTX/PNG. PDF/PPTX/PNG export requires Chrome,
 Chromium, Edge, or a configured browser path.

@@ -23,7 +23,7 @@ Marp Extended is an Obsidian plugin for creating, previewing, presenting, and ex
 - Use bundled Marp theme CSS installed into `.marp-extended/themes/` on first load, plus custom theme CSS from your vault.
 - Add custom Marp themes by pasting CSS in plugin settings.
 - Convert Obsidian image wiki-links to standard Markdown image links for preview/export.
-- Built-in markdown-it extensions for containers, marks, and Mermaid diagrams rendered with `beautiful-mermaid`.
+- Built-in Mermaid diagrams rendered with `beautiful-mermaid`.
 - Kami DSL fenced blocks for Obsidian-friendly slide metadata, lead text, callouts, columns, and 2×2 cards.
 
 ## Markdown compatibility
@@ -160,7 +160,7 @@ Useful scripts:
 
 Developer guidance lives in [`AGENTS.md`](AGENTS.md). Release notes live in [`CHANGELOG.md`](CHANGELOG.md).
 
-Current Marp-related runtime dependencies are `@marp-team/marp-core` `^4.3.0`, `beautiful-mermaid` `^1.1.3`, plus bundled markdown-it extensions `markdown-it-container` and `markdown-it-mark`. Export uses an external `@marp-team/marp-cli` executable or optional npx fallback instead of bundling Marp CLI into `main.js`.
+Current Marp-related runtime dependencies are `@marp-team/marp-core` `^4.3.0` and `beautiful-mermaid` `^1.1.3`. Export uses an external `@marp-team/marp-cli` executable or optional npx fallback instead of bundling Marp CLI into `main.js`.
 
 ## Security note
 

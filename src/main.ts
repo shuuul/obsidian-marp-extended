@@ -3,7 +3,6 @@ import { EditorView, type ViewUpdate } from '@codemirror/view';
 
 import { MARP_PREVIEW_VIEW, MarpPreviewView } from './views/marpPreviewView';
 import { ICON_SLIDE_PREVIEW, ICON_EXPORT_PDF, ICON_EXPORT_PPTX, ICON_SLIDE_PRESENT, ICON_FIT_WIDTH } from './utilities/icons';
-import { Libs } from './utilities/libs';
 import { type MarpSlidesSettings, DEFAULT_SETTINGS } from 'utilities/settings';
 import { ensureDefaultThemes } from './utilities/ensureDefaultThemes';
 import { ensureDefaultMermaidThemes } from './utilities/ensureDefaultMermaidThemes';
@@ -23,10 +22,6 @@ export default class MarpSlides extends Plugin {
 
 	async onload() {
 		await this.loadSettings();
-
-		const libsUtility = new Libs(this.settings);
-		void libsUtility.loadLibs(this.app);
-
 		const themeManager = new ThemeManager(this.app);
 		this.themePropertyOptions = new ThemePropertyOptions(this.app, themeManager);
 		this.themePropertyOptions.register();

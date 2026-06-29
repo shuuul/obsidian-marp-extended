@@ -458,18 +458,12 @@ export class MarpExport {
 
         const sourceFilePath = filesTool.getCompleteFilePath(file);
         const themePaths = filesTool.getThemePaths(file).filter((themePath) => fs.existsSync(themePath));
-        const marpEngineConfig = filesTool.getMarpEngine(file.vault);
-
         if (sourceFilePath != ''){
             const exportSource = await this.prepareExportSource(file, filesTool, sourceFilePath, fs, path);
             const completeFilePath = exportSource.path;
             //console.log(completeFilePath);
 
             const argv: string[] = [completeFilePath,'--allow-local-files'];
-            //const argv: string[] = ['--engine', '@marp-team/marp-core', completeFilePath,'--allow-local-files'];
-
-            argv.push('--engine');
-            argv.push(marpEngineConfig);
 
             if (themePaths.length > 0){
                 argv.push('--theme-set');
