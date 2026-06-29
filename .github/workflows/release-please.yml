@@ -66,23 +66,7 @@ jobs:
           npm ci
           npm run build
       - name: Verify release assets
-        run: |
-          test -f main.js
-          test -f manifest.json
-          test -f styles.css
-          if find . -maxdepth 1 -name "*.zip" | grep -q .; then
-            echo "Unsupported ZIP release asset found." >&2
-            exit 1
-          fi
-          if grep -E "puppeteer|chromium-bidi" main.js; then
-            echo "Bundled browser automation dependency found in main.js." >&2
-            exit 1
-          fi
-          MAIN_JS_BYTES="$(wc -c < main.js | tr -d ' ')"
-          echo "main.js bytes: ${MAIN_JS_BYTES}"
-          if [ "${MAIN_JS_BYTES}" -gt 5242880 ]; then
-            echo "::warning::main.js is larger than 5 MB. This is currently accepted while retaining beautiful-mermaid."
-          fi
+        run: npm run scan:release
       - name: Attest release assets
         uses: actions/attest-build-provenance@v2
         with:

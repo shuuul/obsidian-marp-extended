@@ -5,7 +5,7 @@
 
 @font-face {
   font-family: "JetBrains Mono";
-  src: local("JetBrains Mono Regular"), local("JetBrainsMono-Regular"), url("https://cdn.jsdelivr.net/gh/tw93/Kami@520c3f5736160b7b45ca3d6aa371c7b8098b930e/assets/fonts/JetBrainsMono.woff2") format("woff2");
+  src: local("JetBrains Mono Regular"), local("JetBrainsMono-Regular");
   font-weight: 400;
 }
 

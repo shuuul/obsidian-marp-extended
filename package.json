@@ -16,6 +16,7 @@
 		"typecheck": "tsc --noEmit --skipLibCheck",
 		"lint": "eslint \"src/**/*.ts\"",
 		"lint:fix": "npm run lint -- --fix",
+		"scan:release": "node scripts/scan-release-assets.mjs",
 		"analyze:bundle": "npm run typecheck && node esbuild.config.mjs production --analyze"
 	},
 	"keywords": [],

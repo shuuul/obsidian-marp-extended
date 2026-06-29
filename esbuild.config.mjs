@@ -73,13 +73,27 @@ const copyToObsidian = {
 	},
 };
 
+const sourceMapQuickSortShim = {
+	name: "source-map-js-quick-sort-shim",
+	setup(build) {
+		const shimPath = path.resolve("src/shims/source-map-js-quick-sort.js");
+		build.onResolve({ filter: /source-map-js\/lib\/quick-sort$/ }, () => ({ path: shimPath }));
+		build.onResolve({ filter: /^\.\/quick-sort$/ }, (args) => (
+			args.importer.includes("source-map-js/lib/")
+				? { path: shimPath }
+				: null
+		));
+	},
+};
+
+
 const context = await esbuild.context({
 	banner: {
 		js: banner,
 	},
 	entryPoints: ["main.ts"],
 	bundle: true,
-	plugins: [copyToObsidian],
+	plugins: [sourceMapQuickSortShim, copyToObsidian],
 	platform: "node",
 	external: [
 		"obsidian",

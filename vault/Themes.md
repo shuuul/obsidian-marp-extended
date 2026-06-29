@@ -2,9 +2,7 @@
 
 This note collects Marp theme resources that may be useful while maintaining **Marp Extended** (`marp-extended`), the independent Obsidian plugin at <https://github.com/shuuul/obsidian-marp-extended>.
 
-- [marp-themes · GitHub Topics](https://github.com/topics/marp-themes)
-- [matsubara0507/marp-themes: Theme for Marp Next (github.com)](https://github.com/matsubara0507/marp-themes)
-- [kaisugi/marp-theme-academic: Academic Presentation Slides with Marp (github.com)](https://github.com/kaisugi/marp-theme-academic)
-- [johannesdewit/marp-theme-universiteit-leiden: Unofficial Leiden University theme for producing easy slides with Marp || Officieus Universiteit Leiden thema om gemakkelijk presentaties te maken met Marp (github.com)](https://github.com/johannesdewit/marp-theme-universiteit-leiden)
-- [tw93/Kami Marp templates](https://github.com/tw93/Kami/tree/main/assets/templates/marp)
-- Add candidate themes here before copying CSS into a vault theme folder.
+- [matsubara0507/marp-themes: Theme for Marp Next](https://github.com/matsubara0507/marp-themes) — source for the retained `github` and `olive` themes.
+- [dracula/marp](https://github.com/dracula/marp) — source for the retained `dracula` theme.
+- [tw93/Kami Marp templates](https://github.com/tw93/Kami/tree/main/assets/templates/marp) — source for the retained `kami` and `kami-en` themes.
+- Keep this list limited to sources for themes shipped in `vault/themes/`.

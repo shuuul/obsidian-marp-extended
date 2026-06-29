@@ -94,20 +94,20 @@ Marp Extended can be installed from this repository with [BRAT](https://github.c
 4. Open a Markdown note and run **Slide Preview** from the command palette or ribbon icon.
 5. To export, install or configure Marp CLI (or enable npx fallback) and then use the export commands for PDF, PDF with notes, HTML, or PPTX.
 
-### Optional local fonts
+### Local fonts for bundled themes
 
-Bundled themes can load their upstream web fonts remotely. If you prefer local rendering, install these fonts on your operating system before opening Obsidian; the theme CSS will use matching local fonts when the browser can resolve them.
+Bundled themes do not load font files from the network. Install the matching fonts on your operating system before opening Obsidian when you want the theme to match its upstream design; otherwise the browser uses the CSS fallback stack.
 
-| Theme | Optional local fonts |
+| Theme | Recommended local fonts |
 | --- | --- |
+| `beamer` | CMU Sans Serif, CMU Bright |
+| `dracula` | IBM Plex Sans, IBM Plex Mono |
+| `github` | Lato, Roboto Mono, NasuM, GenShin Gothic / 源真ゴシック |
 | `kami` | TsangerJinKai02 W04, TsangerJinKai02 W05, JetBrains Mono Regular |
 | `kami-en` | JetBrains Mono Regular |
-| `github` | Lato, Roboto Mono, GenShin Gothic / 源真ゴシック |
-| `olive` | Lato, Roboto Mono, GenShin Gothic / 源真ゴシック |
-| `dracula` | IBM Plex Sans, IBM Plex Mono |
-| `beamer` | CMU Sans Serif, CMU Bright |
+| `olive` | Lato, Roboto Mono, NasuM, GenShin Gothic / 源真ゴシック |
 
-Marp Extended does not bundle these font files. When a font is not installed locally, themes fall back to their CSS-defined remote font URLs or system fallback fonts. TsangerJinKai02 may require a separate license for commercial use.
+Marp Extended does not bundle these font files. TsangerJinKai02 may require a separate license for commercial use.
 
 ### Export requirements
 

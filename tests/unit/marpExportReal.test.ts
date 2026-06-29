@@ -25,12 +25,10 @@ const testWithMarpCli = shouldRunRealMarpExports && spawnSync(MARP_CLI_PATH, ['-
 function createRealExportFixture(): VaultFixture {
 	const fixtureVaultRoot = join(process.cwd(), 'vault');
 	const tempVaultRoot = mkdtempSync(join(tmpdir(), 'marp-real-export-vault-'));
-	const markdownPath = 'samples/Academic.md';
-	const attachmentPath = 'attachments/kenkyu_woman_seikou.png';
+	const markdownPath = 'samples/Kami.md';
 	const managedThemeDirectory = join(tempVaultRoot, '.marp-extended/themes');
 	tempDirectories.push(tempVaultRoot);
 	mkdirSync(join(tempVaultRoot, 'samples'), { recursive: true });
-	mkdirSync(join(tempVaultRoot, 'attachments'), { recursive: true });
 	mkdirSync(managedThemeDirectory, { recursive: true });
 	writeFileSync(
 		join(tempVaultRoot, markdownPath),
@@ -38,12 +36,8 @@ function createRealExportFixture(): VaultFixture {
 		'utf-8',
 	);
 	writeFileSync(
-		join(tempVaultRoot, attachmentPath),
-		readFileSync(join(fixtureVaultRoot, attachmentPath)),
-	);
-	writeFileSync(
-		join(managedThemeDirectory, 'academic.css'),
-		readFileSync(join(fixtureVaultRoot, 'themes/academic.css'), 'utf-8'),
+		join(managedThemeDirectory, 'kami.css'),
+		readFileSync(join(fixtureVaultRoot, 'themes/kami.css'), 'utf-8'),
 		'utf-8',
 	);
 
@@ -54,8 +48,8 @@ function createRealExportFixture(): VaultFixture {
 	};
 
 	file.path = markdownPath;
-	file.name = 'Academic.md';
-	file.basename = 'Academic';
+	file.name = 'Kami.md';
+	file.basename = 'Kami';
 	file.parent = { path: 'samples' } as TFile['parent'];
 	file.vault.configDir = '.obsidian';
 	(file.vault.adapter as AdapterWithFullPath).getFullPath = (path: string) => join(tempVaultRoot, path);
@@ -76,10 +70,10 @@ testWithMarpCli('real Marp CLI exports a vault sample deck with a managed theme 
 		MARP_CLI_PATH,
 	});
 	const expectedOutputs = [
-		{ type: 'pdf', path: join(root, 'samples/Academic.pdf') },
-		{ type: 'pdf-with-notes', path: join(root, 'samples/Academic.pdf') },
-		{ type: 'pptx', path: join(root, 'samples/Academic.pptx') },
-		{ type: 'html', path: join(root, 'samples/Academic.html') },
+		{ type: 'pdf', path: join(root, 'samples/Kami.pdf') },
+		{ type: 'pdf-with-notes', path: join(root, 'samples/Kami.pdf') },
+		{ type: 'pptx', path: join(root, 'samples/Kami.pptx') },
+		{ type: 'html', path: join(root, 'samples/Kami.html') },
 	];
 
 	for (const expected of expectedOutputs) {

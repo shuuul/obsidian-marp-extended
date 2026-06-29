@@ -17,7 +17,7 @@ function createApp(adapter: any): any {
 }
 
 test('theme metadata helpers parse and sanitize theme names', () => {
-	expect(parseThemeNameFromCss('/* @theme minimal-turquoise */\nsection {}')).toBe('minimal-turquoise');
+	expect(parseThemeNameFromCss('/* @theme my-theme */\nsection {}')).toBe('my-theme');
 	expect(parseThemeNameFromCss('section {}')).toBeNull();
 	expect(normalizeThemeName('My Theme!')).toBe('my-theme');
 	expect(themeNameToFileName('My Theme!')).toBe('my-theme.css');

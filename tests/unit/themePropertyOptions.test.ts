@@ -22,7 +22,7 @@ test('theme property suggestions include installed Marp themes', async () => {
 	const adapter = new FileSystemAdapter();
 	await adapter.mkdir('.marp-extended');
 	await adapter.mkdir(DEFAULT_THEME_DIRECTORY);
-	await adapter.write(`${DEFAULT_THEME_DIRECTORY}/academic.css`, '/* @theme academic */\nsection {}');
+	await adapter.write(`${DEFAULT_THEME_DIRECTORY}/custom-kami.css`, '/* @theme custom-kami */\nsection {}');
 	await adapter.write(`${DEFAULT_THEME_DIRECTORY}/kami.css`, '/* @theme kami */\nsection {}');
 
 	const app = createApp(adapter, (key) => key === 'theme' ? ['gaia', 'kami'] : ['draft']);
@@ -34,7 +34,7 @@ test('theme property suggestions include installed Marp themes', async () => {
 	expect(app.metadataCache.getFrontmatterPropertyValuesForKey('theme')).toEqual([
 		'gaia',
 		'kami',
-		'academic',
+		'custom-kami',
 	]);
 	expect(app.metadataCache.getFrontmatterPropertyValuesForKey('status')).toEqual(['draft']);
 });
