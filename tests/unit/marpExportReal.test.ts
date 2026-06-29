@@ -1,5 +1,6 @@
 import { TFile } from 'obsidian';
 import { afterEach, expect, test } from '@jest/globals';
+import { spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -15,6 +16,11 @@ type VaultFixture = {
 };
 
 const tempDirectories: string[] = [];
+const shouldRunRealMarpExports = /^(1|true)$/i.test(process.env.RUN_REAL_MARP_EXPORTS ?? '') || Boolean(process.env.MARP_CLI_PATH);
+const MARP_CLI_PATH = process.env.MARP_CLI_PATH || (shouldRunRealMarpExports ? MarpExport.detectCliPath() : null) || 'marp';
+const testWithMarpCli = shouldRunRealMarpExports && spawnSync(MARP_CLI_PATH, ['--version'], { encoding: 'utf-8' }).status === 0
+	? test
+	: test.skip;
 
 function createRealExportFixture(): VaultFixture {
 	const fixtureVaultRoot = join(process.cwd(), 'vault');
@@ -73,9 +79,12 @@ afterEach(() => {
 	}
 });
 
-test('real Marp CLI exports a vault sample deck with a managed theme in every file format', async () => {
+testWithMarpCli('real Marp CLI exports a vault sample deck with a managed theme in every file format', async () => {
 	const { file, root } = createRealExportFixture();
-	const exporter = new MarpExport(DEFAULT_SETTINGS);
+	const exporter = new MarpExport({
+		...DEFAULT_SETTINGS,
+		MARP_CLI_PATH,
+	});
 	const expectedOutputs = [
 		{ type: 'pdf', path: join(root, 'samples/Academic.pdf') },
 		{ type: 'pdf-with-notes', path: join(root, 'samples/Academic.pdf') },
@@ -90,4 +99,4 @@ test('real Marp CLI exports a vault sample deck with a managed theme in every fi
 		expect(existsSync(expected.path)).toBe(true);
 		expect(statSync(expected.path).size).toBeGreaterThan(0);
 	}
-}, 120_000);
+}, 300_000);

@@ -3,12 +3,12 @@
  * Marp / Marpit IGGG theme.
  *
  * @theme github
- * @marp-extended-theme-version 5
  * @author MATSUBARA Nobutada
  * @size 4:3 960px 720px
  * @size 16:9 1280px 720px
  */
 @import url("https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.0.3/styles/github.min.css");
+
 section {
   background-color: white;
   color: #323232;

@@ -7,8 +7,6 @@ import { Libs } from './utilities/libs';
 import { MarpSlidesSettings, DEFAULT_SETTINGS } from 'utilities/settings';
 import { ensureDefaultThemes } from './utilities/ensureDefaultThemes';
 import { ensureDefaultMermaidThemes } from './utilities/ensureDefaultMermaidThemes';
-import { DEFAULT_MERMAID_THEME_MANIFEST_VERSION } from './utilities/defaultMermaidThemes';
-import { DEFAULT_THEME_MANIFEST_VERSION } from './utilities/defaultThemes';
 import { MermaidThemeManager, type InstalledMermaidThemeEntry } from './utilities/mermaidThemeManager';
 import { ThemeManager, type InstalledThemeEntry } from './utilities/themeManager';
 import { ThemePropertyOptions } from './utilities/themePropertyOptions';
@@ -125,11 +123,9 @@ export default class MarpSlides extends Plugin {
 	async loadSettings() {
 		const saved = await this.loadData() as Partial<MarpSlidesSettings> | null;
 		this.settings = {
+			MARP_CLI_PATH: saved?.MARP_CLI_PATH ?? DEFAULT_SETTINGS.MARP_CLI_PATH,
+			MARP_CLI_USE_NPX: saved?.MARP_CLI_USE_NPX ?? DEFAULT_SETTINGS.MARP_CLI_USE_NPX,
 			CHROME_PATH: saved?.CHROME_PATH ?? DEFAULT_SETTINGS.CHROME_PATH,
-			DefaultThemesSeeded: saved?.DefaultThemesSeeded ?? DEFAULT_SETTINGS.DefaultThemesSeeded,
-			DefaultThemesVersion: saved?.DefaultThemesVersion ?? DEFAULT_SETTINGS.DefaultThemesVersion,
-			DefaultMermaidThemesSeeded: saved?.DefaultMermaidThemesSeeded ?? DEFAULT_SETTINGS.DefaultMermaidThemesSeeded,
-			DefaultMermaidThemesVersion: saved?.DefaultMermaidThemesVersion ?? DEFAULT_SETTINGS.DefaultMermaidThemesVersion,
 			EnableHTML: saved?.EnableHTML ?? DEFAULT_SETTINGS.EnableHTML,
 			MathTypesettings: saved?.MathTypesettings ?? DEFAULT_SETTINGS.MathTypesettings,
 			HTMLExportMode: saved?.HTMLExportMode ?? DEFAULT_SETTINGS.HTMLExportMode,
@@ -321,9 +317,71 @@ export class MarpSlidesSettingTab extends PluginSettingTab {
 			.setName('Export and preview')
 			.setHeading();
 
+		let marpCliPathText: { setValue(value: string): void } | null = null;
+		new Setting(containerEl)
+			.setName('Marp CLI path')
+			.setDesc('Optional. Export uses this executable first. Leave empty to auto-detect marp from PATH and common Homebrew locations.')
+			.addText(text => {
+				marpCliPathText = text;
+				text
+					.setPlaceholder('marp or /opt/homebrew/bin/marp')
+					.setValue(this.plugin.settings.MARP_CLI_PATH)
+					.onChange(async (value) => {
+						this.plugin.settings.MARP_CLI_PATH = value;
+						await this.plugin.saveSettings();
+					});
+			})
+			.addButton(button => button
+				.setButtonText('Auto-detect')
+				.onClick(async () => {
+					button.setDisabled(true);
+					try {
+						const { MarpExport } = await import('./utilities/marpExport');
+						const detectedPath = MarpExport.detectCliPath();
+						if (!detectedPath) {
+							new Notice('Marp CLI was not found in PATH or common install locations.', 7000);
+							return;
+						}
+						this.plugin.settings.MARP_CLI_PATH = detectedPath;
+						marpCliPathText?.setValue(detectedPath);
+						await this.plugin.saveSettings();
+						new Notice(`Detected Marp CLI: ${detectedPath}`, 7000);
+					} catch (error) {
+						const message = error instanceof Error ? error.message : String(error);
+						new Notice(`Marp CLI auto-detect failed: ${message}`, 8000);
+					} finally {
+						button.setDisabled(false);
+					}
+				}))
+			.addButton(button => button
+				.setButtonText('Test CLI')
+				.onClick(async () => {
+					button.setDisabled(true);
+					try {
+						const { MarpExport } = await import('./utilities/marpExport');
+						const version = await MarpExport.getCliVersion(this.plugin.settings);
+						new Notice(`Marp CLI found${version ? `: ${version}` : '.'}`, 5000);
+					} catch (error) {
+						const message = error instanceof Error ? error.message : String(error);
+						new Notice(`Marp CLI test failed: ${message}`, 8000);
+					} finally {
+						button.setDisabled(false);
+					}
+				}));
+
+		new Setting(containerEl)
+			.setName('Use npx fallback')
+			.setDesc('If Marp CLI is not found and no path is set, run a pinned @marp-team/marp-cli@4.4.0 through npx. This requires Node.js/npm and may download the package on first use.')
+			.addToggle(toggle => toggle
+				.setValue(this.plugin.settings.MARP_CLI_USE_NPX)
+				.onChange(async (value) => {
+					this.plugin.settings.MARP_CLI_USE_NPX = value;
+					await this.plugin.saveSettings();
+				}));
+
 		new Setting(containerEl)
 			.setName('Chrome path')
-			.setDesc('Optional. Leave empty to let Marp CLI automatically find Google Chrome, Chromium, or Microsoft Edge. Set this only if auto-detection fails.')
+			.setDesc('Optional. Leave empty to let Marp CLI automatically find Google Chrome, Chromium, or Microsoft Edge. Set this only if export auto-detection fails.')
 			.addText(text => text
 				.setPlaceholder('Enter CHROME_PATH')
 				.setValue(this.plugin.settings.CHROME_PATH)
@@ -380,27 +438,7 @@ export class MarpSlidesSettingTab extends PluginSettingTab {
 
 		new Setting(containerEl)
 			.setName('Installed themes')
-			.setDesc(`Default themes are downloaded from GitHub to ${themeManager.getDefaultThemeDirectory()}. Latest default theme version: v${DEFAULT_THEME_MANIFEST_VERSION}. Use their @theme names in Marp frontmatter.`)
-			.addButton(button => button
-				.setButtonText('Refresh defaults')
-				.onClick(async () => {
-					button.setDisabled(true);
-					try {
-						const installed = await themeManager.ensureDefaultThemes({ overwrite: true });
-						this.plugin.settings.DefaultThemesSeeded = true;
-						this.plugin.settings.DefaultThemesVersion = DEFAULT_THEME_MANIFEST_VERSION;
-						await this.plugin.saveSettings();
-						new Notice(`Refreshed Marp Extended themes (${installed.length}).`, 5000);
-						await this.plugin.refreshThemePropertyOptions();
-						this.plugin.refreshActivePreview();
-						await this.renderThemeList(themeListEl);
-					} catch (error) {
-						const message = error instanceof Error ? error.message : String(error);
-						new Notice(`Theme refresh failed: ${message}`, 8000);
-					} finally {
-						button.setDisabled(false);
-					}
-				}))
+			.setDesc(`Bundled default themes are installed as managed CSS files in ${themeManager.getDefaultThemeDirectory()} from the current plugin package. Fork a default theme before editing it. Use @theme names in Marp frontmatter.`)
 			.addButton(button => button
 				.setButtonText('Add CSS theme')
 				.setCta()
@@ -423,11 +461,7 @@ export class MarpSlidesSettingTab extends PluginSettingTab {
 			return `${source} · ${theme.path}`;
 		}
 
-		const installedVersion = theme.version == null ? 'unknown' : `v${theme.version}`;
-		const updateStatus = theme.version === DEFAULT_THEME_MANIFEST_VERSION
-			? 'current'
-			: `latest v${DEFAULT_THEME_MANIFEST_VERSION}`;
-		return `${source} · installed ${installedVersion} · ${updateStatus} · ${theme.path}`;
+		return `${source} · managed by Marp Extended · fork to edit · ${theme.path}`;
 	}
 
 	private async renderThemeList(containerEl: HTMLElement): Promise<void> {
@@ -439,7 +473,7 @@ export class MarpSlidesSettingTab extends PluginSettingTab {
 		if (themes.length === 0) {
 			containerEl.createEl('p', {
 				cls: 'marp-extended-theme-empty',
-				text: 'No themes installed yet. Marp Extended will download default themes on startup, or you can add CSS manually.',
+				text: 'No themes installed yet. Marp Extended will install bundled default themes on startup, or you can add CSS manually.',
 			});
 			return;
 		}
@@ -450,42 +484,61 @@ export class MarpSlidesSettingTab extends PluginSettingTab {
 				.setDesc(this.getThemeDescription(theme));
 
 			if (theme.source === 'default') {
-				const hasUpdate = theme.version !== DEFAULT_THEME_MANIFEST_VERSION;
-				setting.addExtraButton(button => {
-					if (hasUpdate) {
-						button.extraSettingsEl.addClass('marp-extended-theme-update-needed');
-					}
-
-					button
-						.setIcon('refresh-cw')
-						.setTooltip(hasUpdate ? 'Update available: update theme CSS from GitHub' : 'Update theme CSS from GitHub')
+				setting.addExtraButton(button => button
+						.setIcon('copy')
+						.setTooltip('Fork bundled default theme')
 						.onClick(async () => {
 							button.setDisabled(true);
 							try {
-								const updated = await themeManager.updateDefaultTheme(theme.fileName);
+								const forked = await themeManager.forkDefaultTheme(theme.fileName);
 								await this.plugin.refreshThemePropertyOptions();
 								this.plugin.refreshActivePreview();
-								new Notice(`Updated Marp theme: ${updated.name}`, 5000);
+								new Notice(`Forked Marp theme: ${forked.name}`, 5000);
 								await this.renderThemeList(containerEl);
 							} catch (error) {
 								const message = error instanceof Error ? error.message : String(error);
-								new Notice(`Theme update failed: ${message}`, 8000);
+								new Notice(`Theme fork failed: ${message}`, 8000);
 								button.setDisabled(false);
 							}
-						});
-				});
-			}
+						}));
+			} else {
+				setting.addExtraButton(button => button
+					.setIcon('pencil')
+					.setTooltip('Edit custom theme CSS')
+					.onClick(async () => {
+						button.setDisabled(true);
+						try {
+							const css = await themeManager.readThemeCss(theme.path);
+							new AddThemeModal(this.app, themeManager, async (entry) => {
+								new Notice(`Saved Marp theme: ${entry.name}`, 5000);
+								await this.plugin.refreshThemePropertyOptions();
+								this.plugin.refreshActivePreview();
+								await this.renderThemeList(containerEl);
+							}, {
+								entry: theme,
+								initialCss: css,
+								initialName: theme.name,
+								mode: 'edit',
+							}).open();
+						} catch (error) {
+							const message = error instanceof Error ? error.message : String(error);
+							new Notice(`Theme edit failed: ${message}`, 8000);
+						} finally {
+							button.setDisabled(false);
+						}
+					}));
 
-			setting.addExtraButton(button => button
-				.setIcon('trash')
-				.setTooltip('Delete theme CSS')
-				.onClick(async () => {
-					await themeManager.removeTheme(theme.path);
-					await this.plugin.refreshThemePropertyOptions();
-					this.plugin.refreshActivePreview();
-					new Notice(`Deleted Marp theme: ${theme.name}`, 5000);
-					await this.renderThemeList(containerEl);
-				}));
+				setting.addExtraButton(button => button
+					.setIcon('trash')
+					.setTooltip('Delete custom theme CSS')
+					.onClick(async () => {
+						await themeManager.removeTheme(theme.path);
+						await this.plugin.refreshThemePropertyOptions();
+						this.plugin.refreshActivePreview();
+						new Notice(`Deleted Marp theme: ${theme.name}`, 5000);
+						await this.renderThemeList(containerEl);
+					}));
+			}
 		});
 	}
 
@@ -499,26 +552,7 @@ export class MarpSlidesSettingTab extends PluginSettingTab {
 
 		new Setting(containerEl)
 			.setName('Installed Mermaid themes')
-			.setDesc(`Mermaid themes are downloaded to ${mermaidThemeManager.getDefaultThemeDirectory()}. Use their names in the mermaidTheme frontmatter property. Latest version: v${DEFAULT_MERMAID_THEME_MANIFEST_VERSION}.`)
-			.addButton(button => button
-				.setButtonText('Refresh defaults')
-				.onClick(async () => {
-					button.setDisabled(true);
-					try {
-						const installed = await mermaidThemeManager.ensureDefaultThemes({ overwrite: true });
-						this.plugin.settings.DefaultMermaidThemesSeeded = true;
-						this.plugin.settings.DefaultMermaidThemesVersion = DEFAULT_MERMAID_THEME_MANIFEST_VERSION;
-						await this.plugin.saveSettings();
-						new Notice(`Refreshed Mermaid themes (${installed.length}).`, 5000);
-						await this.plugin.refreshThemePropertyOptions();
-						await this.renderMermaidThemeList(themeListEl);
-					} catch (error) {
-						const message = error instanceof Error ? error.message : String(error);
-						new Notice(`Mermaid theme refresh failed: ${message}`, 8000);
-					} finally {
-						button.setDisabled(false);
-					}
-				}))
+			.setDesc(`Bundled Mermaid themes are installed as managed CSS files in ${mermaidThemeManager.getDefaultThemeDirectory()} from the current plugin package. Fork a default before editing it. Use their names in the mermaidTheme frontmatter property.`)
 			.addButton(button => button
 				.setButtonText('Add CSS theme')
 				.setCta()
@@ -540,11 +574,7 @@ export class MarpSlidesSettingTab extends PluginSettingTab {
 			return `${source} · ${theme.path}`;
 		}
 
-		const installedVersion = theme.version == null ? 'unknown' : `v${theme.version}`;
-		const updateStatus = theme.version === DEFAULT_MERMAID_THEME_MANIFEST_VERSION
-			? 'current'
-			: `latest v${DEFAULT_MERMAID_THEME_MANIFEST_VERSION}`;
-		return `${source} · installed ${installedVersion} · ${updateStatus} · ${theme.path}`;
+		return `${source} · managed by Marp Extended · fork to edit · ${theme.path}`;
 	}
 
 	private async renderMermaidThemeList(containerEl: HTMLElement): Promise<void> {
@@ -556,7 +586,7 @@ export class MarpSlidesSettingTab extends PluginSettingTab {
 		if (themes.length === 0) {
 			containerEl.createEl('p', {
 				cls: 'marp-extended-theme-empty',
-				text: 'No Mermaid themes installed yet. Marp Extended will download defaults on startup, or you can add CSS manually.',
+				text: 'No Mermaid themes installed yet. Marp Extended will install bundled defaults on startup, or you can add CSS manually.',
 			});
 			return;
 		}
@@ -567,58 +597,90 @@ export class MarpSlidesSettingTab extends PluginSettingTab {
 				.setDesc(this.getMermaidThemeDescription(theme));
 
 			if (theme.source === 'default') {
-				const hasUpdate = theme.version !== DEFAULT_MERMAID_THEME_MANIFEST_VERSION;
-				setting.addExtraButton(button => {
-					if (hasUpdate) {
-						button.extraSettingsEl.addClass('marp-extended-theme-update-needed');
-					}
-
-					button
-						.setIcon('refresh-cw')
-						.setTooltip(hasUpdate ? 'Update available: update Mermaid theme CSS from GitHub' : 'Update Mermaid theme CSS from GitHub')
+				setting.addExtraButton(button => button
+						.setIcon('copy')
+						.setTooltip('Fork bundled Mermaid theme')
 						.onClick(async () => {
 							button.setDisabled(true);
 							try {
-								const updated = await mermaidThemeManager.updateDefaultTheme(theme.fileName);
+								const forked = await mermaidThemeManager.forkDefaultTheme(theme.fileName);
 								await this.plugin.refreshThemePropertyOptions();
-								new Notice(`Updated Mermaid theme: ${updated.name}`, 5000);
+								new Notice(`Forked Mermaid theme: ${forked.name}`, 5000);
 								await this.renderMermaidThemeList(containerEl);
 							} catch (error) {
 								const message = error instanceof Error ? error.message : String(error);
-								new Notice(`Mermaid theme update failed: ${message}`, 8000);
+								new Notice(`Mermaid theme fork failed: ${message}`, 8000);
 								button.setDisabled(false);
 							}
-						});
-				});
-			}
+						}));
+			} else {
+				setting.addExtraButton(button => button
+					.setIcon('pencil')
+					.setTooltip('Edit custom Mermaid theme CSS')
+					.onClick(async () => {
+						button.setDisabled(true);
+						try {
+							const css = await mermaidThemeManager.readThemeCss(theme.path);
+							new AddMermaidThemeModal(this.app, mermaidThemeManager, async (entry) => {
+								new Notice(`Saved Mermaid theme: ${entry.name}`, 5000);
+								await this.plugin.refreshThemePropertyOptions();
+								await this.renderMermaidThemeList(containerEl);
+							}, {
+								entry: theme,
+								initialCss: css,
+								initialName: theme.name,
+								mode: 'edit',
+							}).open();
+						} catch (error) {
+							const message = error instanceof Error ? error.message : String(error);
+							new Notice(`Mermaid theme edit failed: ${message}`, 8000);
+						} finally {
+							button.setDisabled(false);
+						}
+					}));
 
-			setting.addExtraButton(button => button
-				.setIcon('trash')
-				.setTooltip('Delete Mermaid theme CSS')
-				.onClick(async () => {
-					await mermaidThemeManager.removeTheme(theme.path);
-					await this.plugin.refreshThemePropertyOptions();
-					new Notice(`Deleted Mermaid theme: ${theme.name}`, 5000);
-					await this.renderMermaidThemeList(containerEl);
-				}));
+				setting.addExtraButton(button => button
+					.setIcon('trash')
+					.setTooltip('Delete custom Mermaid theme CSS')
+					.onClick(async () => {
+						await mermaidThemeManager.removeTheme(theme.path);
+						await this.plugin.refreshThemePropertyOptions();
+						new Notice(`Deleted Mermaid theme: ${theme.name}`, 5000);
+						await this.renderMermaidThemeList(containerEl);
+					}));
+			}
 		});
 	}
+}
+
+interface ThemeModalOptions<TEntry> {
+	entry?: TEntry;
+	initialCss?: string;
+	initialName?: string;
+	mode?: 'add' | 'edit';
 }
 
 class AddThemeModal extends Modal {
 	private themeName = '';
 	private themeCss = '';
+	private mode: 'add' | 'edit';
+	private entry?: InstalledThemeEntry;
 
 	constructor(
 		app: App,
 		private themeManager: ThemeManager,
 		private onSaved: (entry: InstalledThemeEntry) => Promise<void>,
+		options: ThemeModalOptions<InstalledThemeEntry> = {},
 	) {
 		super(app);
+		this.themeName = options.initialName ?? '';
+		this.themeCss = options.initialCss ?? '';
+		this.mode = options.mode ?? 'add';
+		this.entry = options.entry;
 	}
 
 	onOpen(): void {
-		this.titleEl.textContent = 'Add Marp CSS theme';
+		this.titleEl.textContent = this.mode === 'edit' ? 'Edit Marp CSS theme' : 'Add Marp CSS theme';
 		const { contentEl } = this;
 		contentEl.empty();
 		contentEl.addClass('marp-extended-add-theme-modal');
@@ -628,36 +690,41 @@ class AddThemeModal extends Modal {
 			.setDesc('Optional if the CSS already has a /* @theme name */ metadata comment.')
 			.addText(text => text
 				.setPlaceholder('my-theme')
-				.onChange((value) => {
-					this.themeName = value;
-				}));
+				.setValue(this.themeName)
+					.onChange((value) => {
+						this.themeName = value;
+					}));
 
-		new Setting(contentEl)
+		const cssSetting = new Setting(contentEl)
 			.setName('Theme CSS')
 			.setDesc('Paste a Marp theme CSS file. It will be saved into .marp-extended/themes/.')
 			.addTextArea(text => {
 				text.inputEl.rows = 18;
 				text.inputEl.addClass('marp-extended-theme-css-input');
 				text.setPlaceholder('/* @theme my-theme */\n\n@import "default";\n\nsection { ... }')
-					.onChange((value) => {
-						this.themeCss = value;
-					});
+					.setValue(this.themeCss)
+						.onChange((value) => {
+							this.themeCss = value;
+						});
 			});
+		cssSetting.settingEl.addClass('marp-extended-theme-css-setting');
 
 		new Setting(contentEl)
 			.addButton(button => button
 				.setButtonText('Cancel')
 				.onClick(() => this.close()))
 			.addButton(button => button
-				.setButtonText('Save theme')
+				.setButtonText(this.mode === 'edit' ? 'Save changes' : 'Save theme')
 				.setCta()
 				.onClick(async () => {
 					button.setDisabled(true);
 					try {
-						const entry = await this.themeManager.addThemeFromCss(this.themeCss, this.themeName);
-						await this.onSaved(entry);
-						this.close();
-					} catch (error) {
+						const entry = this.mode === 'edit' && this.entry
+								? await this.themeManager.updateCustomThemeFromCss(this.entry.path, this.themeCss, this.themeName)
+								: await this.themeManager.addThemeFromCss(this.themeCss, this.themeName);
+							await this.onSaved(entry);
+							this.close();
+						} catch (error) {
 						const message = error instanceof Error ? error.message : String(error);
 						new Notice(`Theme save failed: ${message}`, 8000);
 						button.setDisabled(false);
@@ -673,17 +740,24 @@ class AddThemeModal extends Modal {
 class AddMermaidThemeModal extends Modal {
 	private themeName = '';
 	private themeCss = '';
+	private mode: 'add' | 'edit';
+	private entry?: InstalledMermaidThemeEntry;
 
 	constructor(
 		app: App,
 		private themeManager: MermaidThemeManager,
 		private onSaved: (entry: InstalledMermaidThemeEntry) => Promise<void>,
+		options: ThemeModalOptions<InstalledMermaidThemeEntry> = {},
 	) {
 		super(app);
+		this.themeName = options.initialName ?? '';
+		this.themeCss = options.initialCss ?? '';
+		this.mode = options.mode ?? 'add';
+		this.entry = options.entry;
 	}
 
 	onOpen(): void {
-		this.titleEl.textContent = 'Add Mermaid CSS theme';
+		this.titleEl.textContent = this.mode === 'edit' ? 'Edit Mermaid CSS theme' : 'Add Mermaid CSS theme';
 		const { contentEl } = this;
 		contentEl.empty();
 		contentEl.addClass('marp-extended-add-theme-modal');
@@ -693,32 +767,41 @@ class AddMermaidThemeModal extends Modal {
 			.setDesc('Optional if the CSS already has a /* @mermaid-theme name */ metadata comment.')
 			.addText(text => text
 				.setPlaceholder('my-mermaid-theme')
-				.onChange((value) => {
-					this.themeName = value;
-				}));
+				.setValue(this.themeName)
+					.onChange((value) => {
+						this.themeName = value;
+					}));
 
-		new Setting(contentEl)
+		const cssSetting = new Setting(contentEl)
 			.setName('Theme CSS')
 			.setDesc('CSS selectors should target .mermaid-diagram-container and the inline SVG variables such as --bg, --fg, --line, and --accent.')
 			.addTextArea(text => {
 				text.inputEl.rows = 14;
 				text.inputEl.cols = 64;
+				text.inputEl.addClass('marp-extended-theme-css-input');
 				text.setPlaceholder('/* @mermaid-theme my-mermaid-theme */\nsection .mermaid-diagram-container svg { --accent: #1B365D !important; }');
-				text.onChange((value) => {
-					this.themeCss = value;
-				});
+				text.setValue(this.themeCss);
+					text.onChange((value) => {
+						this.themeCss = value;
+					});
 			});
+		cssSetting.settingEl.addClass('marp-extended-theme-css-setting');
 
 		new Setting(contentEl)
 			.addButton(button => button
-				.setButtonText('Save Mermaid theme')
-				.setCta()
-				.onClick(async () => {
-					button.setDisabled(true);
-					try {
-						const entry = await this.themeManager.addThemeFromCss(this.themeCss, this.themeName);
-						await this.onSaved(entry);
-						this.close();
+				.setButtonText('Cancel')
+				.onClick(() => this.close()))
+				.addButton(button => button
+					.setButtonText(this.mode === 'edit' ? 'Save changes' : 'Save Mermaid theme')
+					.setCta()
+					.onClick(async () => {
+						button.setDisabled(true);
+						try {
+							const entry = this.mode === 'edit' && this.entry
+								? await this.themeManager.updateCustomThemeFromCss(this.entry.path, this.themeCss, this.themeName)
+								: await this.themeManager.addThemeFromCss(this.themeCss, this.themeName);
+							await this.onSaved(entry);
+							this.close();
 					} catch (error) {
 						const message = error instanceof Error ? error.message : String(error);
 						new Notice(`Could not save Mermaid theme: ${message}`, 8000);

@@ -1,11 +1,12 @@
-import { FileSystemAdapter, requestUrl } from 'obsidian';
-import { beforeEach, expect, test } from '@jest/globals';
+import { FileSystemAdapter } from 'obsidian';
+import { expect, test } from '@jest/globals';
 
-import { DEFAULT_THEME_DEFINITIONS, DEFAULT_THEME_DIRECTORY, DEFAULT_THEME_MANIFEST_VERSION, normalizeThemeName, parseDefaultThemeVersionFromCss, parseThemeNameFromCss, parseThemeSizeNamesFromCss, themeNameToFileName } from '@/utilities/defaultThemes';
-import { DEFAULT_MERMAID_THEME_DEFINITIONS, DEFAULT_MERMAID_THEME_DIRECTORY, DEFAULT_MERMAID_THEME_MANIFEST_VERSION, parseDefaultMermaidThemeVersionFromCss, parseMermaidThemeNameFromCss } from '@/utilities/defaultMermaidThemes';
+import { DEFAULT_THEME_DEFINITIONS, DEFAULT_THEME_DIRECTORY, normalizeThemeName, parseThemeNameFromCss, parseThemeSizeNamesFromCss, themeNameToFileName } from '@/utilities/defaultThemes';
+import { DEFAULT_MERMAID_THEME_DEFINITIONS, DEFAULT_MERMAID_THEME_DIRECTORY, parseMermaidThemeNameFromCss } from '@/utilities/defaultMermaidThemes';
 import { MermaidThemeManager } from '@/utilities/mermaidThemeManager';
 import { ThemeManager } from '@/utilities/themeManager';
 import { ensureDefaultThemes } from '@/utilities/ensureDefaultThemes';
+import { ensureDefaultMermaidThemes } from '@/utilities/ensureDefaultMermaidThemes';
 
 function createApp(adapter: any): any {
 	return {
@@ -15,10 +16,6 @@ function createApp(adapter: any): any {
 	};
 }
 
-beforeEach(() => {
-	(requestUrl as jest.Mock).mockReset();
-});
-
 test('theme metadata helpers parse and sanitize theme names', () => {
 	expect(parseThemeNameFromCss('/* @theme minimal-turquoise */\nsection {}')).toBe('minimal-turquoise');
 	expect(parseThemeNameFromCss('section {}')).toBeNull();
@@ -26,10 +23,7 @@ test('theme metadata helpers parse and sanitize theme names', () => {
 	expect(themeNameToFileName('My Theme!')).toBe('my-theme.css');
 	expect(parseThemeSizeNamesFromCss('/* @size 16:9 1280px 720px */\n/* @size print-wide 280mm 158mm */')).toEqual(['16:9', 'print-wide']);
 	expect(parseThemeSizeNamesFromCss('/* @size 4:3 false */')).toEqual([]);
-	expect(parseDefaultThemeVersionFromCss(`/* @marp-extended-theme-version ${DEFAULT_THEME_MANIFEST_VERSION} */`)).toBe(DEFAULT_THEME_MANIFEST_VERSION);
-	expect(parseDefaultThemeVersionFromCss('/* @theme custom */\nsection {}')).toBeNull();
 	expect(parseMermaidThemeNameFromCss('/* @mermaid-theme kami */\nsection {}')).toBe('kami');
-	expect(parseDefaultMermaidThemeVersionFromCss(`/* @marp-extended-mermaid-theme-version ${DEFAULT_MERMAID_THEME_MANIFEST_VERSION} */`)).toBe(DEFAULT_MERMAID_THEME_MANIFEST_VERSION);
 });
 
 test('pasted theme CSS is saved under the default theme directory', async () => {
@@ -43,17 +37,64 @@ test('pasted theme CSS is saved under the default theme directory', async () => 
 		fileName: 'my-theme.css',
 		path: `${DEFAULT_THEME_DIRECTORY}/my-theme.css`,
 		source: 'custom',
-		version: null,
 	});
 	expect(await adapter.read(entry.path)).toContain('/* @theme my-theme */');
 	expect((await manager.listThemes())[0].source).toBe('custom');
+});
+
+test('custom Marp themes cannot overwrite bundled default names', async () => {
+	const adapter = new FileSystemAdapter();
+	const manager = new ThemeManager(createApp(adapter));
+
+	await expect(manager.addThemeFromCss('section { color: red; }', 'kami'))
+		.rejects.toThrow('Bundled default themes cannot be overwritten');
+	await expect(manager.addThemeFromCss('/* @theme github */\nsection {}'))
+		.rejects.toThrow('Bundled default themes cannot be overwritten');
+});
+
+test('custom Marp themes can be edited and renamed', async () => {
+	const adapter = new FileSystemAdapter();
+	const manager = new ThemeManager(createApp(adapter));
+	const entry = await manager.addThemeFromCss('section { color: red; }', 'local');
+
+	const updated = await manager.updateCustomThemeFromCss(entry.path, '/* @theme local */\nsection { color: blue; }', 'Local Updated!');
+
+	expect(updated).toEqual({
+		name: 'local-updated',
+		fileName: 'local-updated.css',
+		path: `${DEFAULT_THEME_DIRECTORY}/local-updated.css`,
+		source: 'custom',
+	});
+	expect(await adapter.exists(entry.path)).toBe(false);
+	expect(await adapter.read(updated.path)).toContain('/* @theme local-updated */');
+	expect(await adapter.read(updated.path)).toContain('color: blue');
+});
+
+test('default Marp themes can be forked but not edited directly', async () => {
+	const adapter = new FileSystemAdapter();
+	await adapter.mkdir('.marp-extended');
+	await adapter.mkdir(DEFAULT_THEME_DIRECTORY);
+	await adapter.write(`${DEFAULT_THEME_DIRECTORY}/kami.css`, DEFAULT_THEME_DEFINITIONS[0].css);
+	const manager = new ThemeManager(createApp(adapter));
+
+	const forked = await manager.forkDefaultTheme('kami');
+
+	expect(forked).toEqual({
+		name: 'kami-fork',
+		fileName: 'kami-fork.css',
+		path: `${DEFAULT_THEME_DIRECTORY}/kami-fork.css`,
+		source: 'custom',
+	});
+	expect(await adapter.read(forked.path)).toContain('/* @theme kami-fork */');
+	await expect(manager.updateCustomThemeFromCss(`${DEFAULT_THEME_DIRECTORY}/kami.css`, 'section {}', 'kami'))
+		.rejects.toThrow('Bundled default themes cannot be edited');
 });
 
 test('theme list includes default themes before custom themes in managed directory', async () => {
 	const adapter = new FileSystemAdapter();
 	await adapter.mkdir('.marp-extended');
 	await adapter.mkdir(DEFAULT_THEME_DIRECTORY);
-	await adapter.write(`${DEFAULT_THEME_DIRECTORY}/kami.css`, `/* @theme kami */\n/* @marp-extended-theme-version ${DEFAULT_THEME_MANIFEST_VERSION} */\nsection {}`);
+	await adapter.write(`${DEFAULT_THEME_DIRECTORY}/kami.css`, '/* @theme kami */\nsection {}');
 	await adapter.write(`${DEFAULT_THEME_DIRECTORY}/local.css`, '/* @theme local */\nsection {}');
 
 	const manager = new ThemeManager(createApp(adapter));
@@ -63,120 +104,104 @@ test('theme list includes default themes before custom themes in managed directo
 		'default:kami',
 		'custom:local',
 	]);
-	expect(themes[0].version).toBe(DEFAULT_THEME_MANIFEST_VERSION);
 });
 
-test('default theme update pulls repo CSS and overwrites the installed file', async () => {
+test('default theme refresh writes every packaged default theme', async () => {
 	const adapter = new FileSystemAdapter();
-	await adapter.mkdir('.marp-extended');
-	await adapter.mkdir(DEFAULT_THEME_DIRECTORY);
-	await adapter.write(`${DEFAULT_THEME_DIRECTORY}/kami.css`, '/* @theme kami */\nsection { color: red; }');
-	(requestUrl as jest.Mock).mockResolvedValueOnce({
-		status: 200,
-		text: `/* @theme kami */\n/* @marp-extended-theme-version ${DEFAULT_THEME_MANIFEST_VERSION} */\nsection { color: blue; }`,
-	});
-
-	const manager = new ThemeManager(createApp(adapter));
-	const entry = await manager.updateDefaultTheme('kami');
-
-	expect(requestUrl).toHaveBeenCalledWith(expect.objectContaining({
-		url: expect.stringContaining(`/kami.css?marp-extended-theme-version=${DEFAULT_THEME_MANIFEST_VERSION}`),
-	}));
-	expect(entry).toEqual({
-		name: 'kami',
-		fileName: 'kami.css',
-		path: `${DEFAULT_THEME_DIRECTORY}/kami.css`,
-		source: 'default',
-		version: DEFAULT_THEME_MANIFEST_VERSION,
-	});
-	expect(await adapter.read(entry.path)).toContain('color: blue');
-});
-
-test('default theme update retries stale cached CSS before writing', async () => {
-	const adapter = new FileSystemAdapter();
-	await adapter.mkdir('.marp-extended');
-	await adapter.mkdir(DEFAULT_THEME_DIRECTORY);
-	(requestUrl as jest.Mock)
-		.mockResolvedValueOnce({
-			status: 200,
-			text: '/* @theme kami */\n/* @marp-extended-theme-version 2 */\nsection { color: red; }',
-		})
-		.mockResolvedValueOnce({
-			status: 200,
-			text: `/* @theme kami */\n/* @marp-extended-theme-version ${DEFAULT_THEME_MANIFEST_VERSION} */\nsection { color: blue; }`,
-		});
-
-	const manager = new ThemeManager(createApp(adapter));
-	const entry = await manager.updateDefaultTheme('kami');
-
-	expect(requestUrl).toHaveBeenCalledTimes(2);
-	expect(requestUrl).toHaveBeenNthCalledWith(2, expect.objectContaining({
-		url: expect.stringContaining(`marp-extended-theme-version=${DEFAULT_THEME_MANIFEST_VERSION}&cache-bust=`),
-	}));
-	expect(entry.version).toBe(DEFAULT_THEME_MANIFEST_VERSION);
-	expect(await adapter.read(entry.path)).toContain('color: blue');
-});
-
-test('default theme refresh uses versioned repo URLs for every default theme', async () => {
-	const adapter = new FileSystemAdapter();
-	(requestUrl as jest.Mock).mockResolvedValue({
-		status: 200,
-		text: `/* @theme refreshed */\n/* @marp-extended-theme-version ${DEFAULT_THEME_MANIFEST_VERSION} */\nsection { color: blue; }`,
-	});
 
 	const manager = new ThemeManager(createApp(adapter));
 	const installed = await manager.ensureDefaultThemes({ overwrite: true });
 
 	expect(installed).toEqual(DEFAULT_THEME_DEFINITIONS.map((theme) => theme.name));
-	expect(requestUrl).toHaveBeenCalledTimes(DEFAULT_THEME_DEFINITIONS.length);
-	expect(requestUrl).toHaveBeenCalledWith(expect.objectContaining({
-		url: `${DEFAULT_THEME_DEFINITIONS[0].url}?marp-extended-theme-version=${DEFAULT_THEME_MANIFEST_VERSION}`,
-	}));
-	expect(await adapter.read(`${DEFAULT_THEME_DIRECTORY}/${DEFAULT_THEME_DEFINITIONS[0].fileName}`)).toContain('color: blue');
+	expect(await adapter.read(`${DEFAULT_THEME_DIRECTORY}/${DEFAULT_THEME_DEFINITIONS[0].fileName}`)).toContain('/* @theme kami */');
+	expect(await adapter.read(`${DEFAULT_THEME_DIRECTORY}/${DEFAULT_THEME_DEFINITIONS[0].fileName}`)).not.toContain('@marp-extended-theme-');
 });
 
-test('startup default theme ensure overwrites outdated installed default themes', async () => {
+test('startup default theme ensure always overwrites installed defaults from package CSS', async () => {
 	const adapter = new FileSystemAdapter();
 	await adapter.mkdir('.marp-extended');
 	await adapter.mkdir(DEFAULT_THEME_DIRECTORY);
-	await adapter.write(`${DEFAULT_THEME_DIRECTORY}/kami.css`, '/* @theme kami */\n/* @marp-extended-theme-version 2 */\nsection { color: red; }');
-	(requestUrl as jest.Mock).mockResolvedValue({
-		status: 200,
-		text: `/* @theme refreshed */\n/* @marp-extended-theme-version ${DEFAULT_THEME_MANIFEST_VERSION} */\nsection { color: blue; }`,
-	});
+	await adapter.write(`${DEFAULT_THEME_DIRECTORY}/kami.css`, '/* @theme kami */\nsection { color: red; }');
 	const plugin = {
 		app: createApp(adapter),
-		settings: {
-			DefaultThemesSeeded: true,
-			DefaultThemesVersion: DEFAULT_THEME_MANIFEST_VERSION - 1,
-		},
-		saveSettings: jest.fn(),
 	};
 
 	await ensureDefaultThemes(plugin as any);
 
-	expect(requestUrl).toHaveBeenCalledTimes(DEFAULT_THEME_DEFINITIONS.length);
-	expect(plugin.settings.DefaultThemesVersion).toBe(DEFAULT_THEME_MANIFEST_VERSION);
-	expect(plugin.saveSettings).toHaveBeenCalledTimes(1);
-	expect(await adapter.read(`${DEFAULT_THEME_DIRECTORY}/kami.css`)).toContain('color: blue');
+	expect(await adapter.read(`${DEFAULT_THEME_DIRECTORY}/kami.css`)).toBe(DEFAULT_THEME_DEFINITIONS[0].css.endsWith('\n') ? DEFAULT_THEME_DEFINITIONS[0].css : `${DEFAULT_THEME_DEFINITIONS[0].css}\n`);
 });
 
-test('default Mermaid theme refresh uses versioned repo URLs', async () => {
+test('default Mermaid theme refresh writes every packaged default theme', async () => {
 	const adapter = new FileSystemAdapter();
-	(requestUrl as jest.Mock).mockResolvedValue({
-		status: 200,
-		text: `/* @mermaid-theme refreshed */\n/* @marp-extended-mermaid-theme-version ${DEFAULT_MERMAID_THEME_MANIFEST_VERSION} */\nsection .mermaid-diagram-container svg {}`,
-	});
 
 	const manager = new MermaidThemeManager(createApp(adapter));
 	const installed = await manager.ensureDefaultThemes({ overwrite: true });
 
 	expect(installed).toEqual(DEFAULT_MERMAID_THEME_DEFINITIONS.map((theme) => theme.name));
-	expect(requestUrl).toHaveBeenCalledTimes(DEFAULT_MERMAID_THEME_DEFINITIONS.length);
-	expect(requestUrl).toHaveBeenCalledWith(expect.objectContaining({
-		url: `${DEFAULT_MERMAID_THEME_DEFINITIONS[0].url}?marp-extended-mermaid-theme-version=${DEFAULT_MERMAID_THEME_MANIFEST_VERSION}`,
-	}));
-	expect(await adapter.read(`${DEFAULT_MERMAID_THEME_DIRECTORY}/${DEFAULT_MERMAID_THEME_DEFINITIONS[0].fileName}`)).toContain('@mermaid-theme refreshed');
+	expect(await adapter.read(`${DEFAULT_MERMAID_THEME_DIRECTORY}/${DEFAULT_MERMAID_THEME_DEFINITIONS[0].fileName}`)).toContain('/* @mermaid-theme kami */');
+	expect(await adapter.read(`${DEFAULT_MERMAID_THEME_DIRECTORY}/${DEFAULT_MERMAID_THEME_DEFINITIONS[0].fileName}`)).not.toContain('@marp-extended-mermaid-theme-');
+});
+
+test('custom Mermaid themes cannot overwrite bundled default names', async () => {
+	const adapter = new FileSystemAdapter();
+	const manager = new MermaidThemeManager(createApp(adapter));
+
+	await expect(manager.addThemeFromCss('section .mermaid-diagram-container svg {}', 'kami'))
+		.rejects.toThrow('Bundled default Mermaid themes cannot be overwritten');
+	await expect(manager.addThemeFromCss('/* @mermaid-theme github */\nsection .mermaid-diagram-container svg {}'))
+		.rejects.toThrow('Bundled default Mermaid themes cannot be overwritten');
+});
+
+test('custom Mermaid themes can be edited and renamed', async () => {
+	const adapter = new FileSystemAdapter();
+	const manager = new MermaidThemeManager(createApp(adapter));
+	const entry = await manager.addThemeFromCss('section .mermaid-diagram-container svg { --accent: red; }', 'local');
+
+	const updated = await manager.updateCustomThemeFromCss(entry.path, '/* @mermaid-theme local */\nsection .mermaid-diagram-container svg { --accent: blue; }', 'Local Updated!');
+
+	expect(updated).toEqual({
+		name: 'local-updated',
+		fileName: 'local-updated.css',
+		path: `${DEFAULT_MERMAID_THEME_DIRECTORY}/local-updated.css`,
+		source: 'custom',
+	});
+	expect(await adapter.exists(entry.path)).toBe(false);
+	expect(await adapter.read(updated.path)).toContain('/* @mermaid-theme local-updated */');
+	expect(await adapter.read(updated.path)).toContain('--accent: blue');
+});
+
+test('default Mermaid themes can be forked but not edited directly', async () => {
+	const adapter = new FileSystemAdapter();
+	await adapter.mkdir('.marp-extended');
+	await adapter.mkdir(DEFAULT_MERMAID_THEME_DIRECTORY);
+	await adapter.write(`${DEFAULT_MERMAID_THEME_DIRECTORY}/kami.css`, DEFAULT_MERMAID_THEME_DEFINITIONS[0].css);
+	const manager = new MermaidThemeManager(createApp(adapter));
+
+	const forked = await manager.forkDefaultTheme('kami');
+
+	expect(forked).toEqual({
+		name: 'kami-fork',
+		fileName: 'kami-fork.css',
+		path: `${DEFAULT_MERMAID_THEME_DIRECTORY}/kami-fork.css`,
+		source: 'custom',
+	});
+	expect(await adapter.read(forked.path)).toContain('/* @mermaid-theme kami-fork */');
+	await expect(manager.updateCustomThemeFromCss(`${DEFAULT_MERMAID_THEME_DIRECTORY}/kami.css`, 'section {}', 'kami'))
+		.rejects.toThrow('Bundled default Mermaid themes cannot be edited');
+});
+
+test('startup Mermaid theme ensure always overwrites installed defaults from package CSS', async () => {
+	const adapter = new FileSystemAdapter();
+	await adapter.mkdir('.marp-extended');
+	await adapter.mkdir(DEFAULT_MERMAID_THEME_DIRECTORY);
+	await adapter.write(`${DEFAULT_MERMAID_THEME_DIRECTORY}/kami.css`, '/* @mermaid-theme kami */\nsection { color: red; }');
+	const plugin = {
+		app: createApp(adapter),
+	};
+
+	await ensureDefaultMermaidThemes(plugin as any);
+
+	expect(await adapter.read(`${DEFAULT_MERMAID_THEME_DIRECTORY}/kami.css`)).toBe(DEFAULT_MERMAID_THEME_DEFINITIONS[0].css.endsWith('\n') ? DEFAULT_MERMAID_THEME_DEFINITIONS[0].css : `${DEFAULT_MERMAID_THEME_DEFINITIONS[0].css}\n`);
 });
 
 test('Mermaid theme CSS loads directly from normalized theme file', async () => {

@@ -1,6 +1,5 @@
 /* @theme beamer */
 
-/* @marp-extended-theme-version 5 */
 @import "default";
 
 :root {
@@ -71,7 +70,7 @@ code {
 /* formatting page numbers  */
 section::after {
   font-size: 0.6em;
-  /* https://github.com/yhatt/marp/issues/263 */
+  /* Marp pagination workaround */
   content: attr(data-marpit-pagination) ' / ' attr(data-marpit-pagination-total);
   position: absolute;
   text-align: right;

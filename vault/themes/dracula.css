@@ -2,7 +2,6 @@
 /*!
  * Marp Dracula theme.
  * @theme dracula
- * @marp-extended-theme-version 5
  * @author Daniel Nicolas Gisolfi
  *
  * @auto-scaling true
@@ -11,7 +10,7 @@
  */
  
 @import url("https://fonts.googleapis.com/css?family=Lato:400,900|IBM+Plex+Sans:400,700");
-
+ 
 :root {
   --dracula-background: #282a36;
   --dracula-current-line: #44475a;

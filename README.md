@@ -12,13 +12,13 @@ Marp Extended is an Obsidian plugin for creating, previewing, presenting, and ex
 | --- | --- |
 | Plugin name | Marp Extended |
 | Plugin/package ID | `marp-extended` |
-| Current version | `0.4.0` |
+| Current version | `0.6.0` |
 | Repository | <https://github.com/shuuul/obsidian-marp-extended> |
 
 ## Features
 
 - Preview Marp slides inside Obsidian.
-- Export slide decks as HTML, PDF, or PPTX through Marp CLI.
+- Export slide decks as HTML, PDF, or PPTX through a user-installed Marp CLI.
 - Present slide decks from the plugin.
 - Use bundled Marp theme CSS installed into `.marp-extended/themes/` on first load, plus custom theme CSS from your vault.
 - Add custom Marp themes by pasting CSS in plugin settings.
@@ -90,11 +90,41 @@ Marp Extended can be installed from this repository with [BRAT](https://github.c
 
 1. Install with BRAT, or build the plugin into your vault's `.obsidian/plugins/marp-extended/` directory.
 2. Enable **Marp Extended** in Obsidian community plugin settings.
-3. On first load, Marp Extended downloads the default theme catalog from GitHub into `.marp-extended/themes/`.
+3. On first load, Marp Extended installs bundled, managed default theme CSS into `.marp-extended/themes/`. Fork a bundled theme in settings before editing it.
 4. Open a Markdown note and run **Slide Preview** from the command palette or ribbon icon.
-5. Use the export commands for PDF, PDF with notes, HTML, or PPTX.
+5. To export, install or configure Marp CLI (or enable npx fallback) and then use the export commands for PDF, PDF with notes, HTML, or PPTX.
 
-> ⚠️ PDF and PPTX export require Google Chrome, Chromium, or Microsoft Edge. You can set a custom browser path with the `CHROME_PATH` setting.
+### Optional local fonts
+
+Bundled themes can load their upstream web fonts remotely. If you prefer local rendering, install these fonts on your operating system before opening Obsidian; the theme CSS will use matching local fonts when the browser can resolve them.
+
+| Theme | Optional local fonts |
+| --- | --- |
+| `kami` | TsangerJinKai02 W04, TsangerJinKai02 W05, JetBrains Mono Regular |
+| `kami-en` | JetBrains Mono Regular |
+| `github` | Lato, Roboto Mono, GenShin Gothic / 源真ゴシック |
+| `olive` | Lato, Roboto Mono, GenShin Gothic / 源真ゴシック |
+| `dracula` | IBM Plex Sans, IBM Plex Mono |
+| `beamer` | CMU Sans Serif, CMU Bright |
+
+Marp Extended does not bundle these font files. When a font is not installed locally, themes fall back to their CSS-defined remote font URLs or system fallback fonts. TsangerJinKai02 may require a separate license for commercial use.
+
+### Export requirements
+
+Preview and presentation work from the plugin bundle. Export runs an external Marp CLI command so Marp Extended does not bundle the full CLI/Puppeteer toolchain.
+
+Install Marp CLI globally, set an explicit executable path in **Settings → Marp Extended → Marp CLI path**, or enable **Use npx fallback** to let the plugin run a pinned Marp CLI package through `npx` when no executable is found:
+
+```bash
+npm install -g @marp-team/marp-cli
+marp --version
+```
+
+Use **Auto-detect** in settings to search `PATH` and common Homebrew locations such as `/opt/homebrew/bin/marp`. If `marp` is not found automatically, set **Marp CLI path** to the executable path, such as `/opt/homebrew/bin/marp` or `C:\Users\you\AppData\Roaming\npm\marp.cmd`.
+
+The npx fallback uses `@marp-team/marp-cli@4.4.0`. It requires Node.js/npm and may download the package on first use.
+
+> ⚠️ PDF and PPTX export require Google Chrome, Chromium, or Microsoft Edge. You can set a custom browser path with the `CHROME_PATH` setting if Marp CLI cannot auto-detect your browser.
 
 ## Development
 
@@ -130,7 +160,7 @@ Useful scripts:
 
 Developer guidance lives in [`AGENTS.md`](AGENTS.md). Release notes live in [`CHANGELOG.md`](CHANGELOG.md).
 
-Current Marp-related runtime dependencies are `@marp-team/marp-cli` `^4.4.0`, `@marp-team/marp-core` `^4.3.0`, `beautiful-mermaid` `^1.1.3`, plus bundled markdown-it extensions `markdown-it-container` and `markdown-it-mark`.
+Current Marp-related runtime dependencies are `@marp-team/marp-core` `^4.3.0`, `beautiful-mermaid` `^1.1.3`, plus bundled markdown-it extensions `markdown-it-container` and `markdown-it-mark`. Export uses an external `@marp-team/marp-cli` executable or optional npx fallback instead of bundling Marp CLI into `main.js`.
 
 ## Security note
 
@@ -140,7 +170,7 @@ Runtime dependencies audit clean with `npm audit --omit=dev`. A full `npm audit`
 
 Marp Extended builds on the original [Marp Slides for Obsidian](https://github.com/samuele-cozzi/obsidian-marp-slides) plugin by Samuele Cozzi.
 
-Bundled default themes include CSS from [matsubara0507/marp-themes](https://github.com/matsubara0507/marp-themes), [kaisugi/marp-theme-academic](https://github.com/kaisugi/marp-theme-academic), [dracula/marp](https://github.com/dracula/marp), and [tw93/Kami](https://github.com/tw93/Kami), plus Marp Extended sample themes. These upstream projects are MIT-licensed; keep their notices when redistributing modified theme CSS. Kami's Chinese theme references TsangerJinKai02 fonts, whose commercial usage may require a separate font license.
+Bundled default themes are limited to `kami`, `kami-en`, `github`, `beamer`, `olive`, and `dracula`, with CSS from [tw93/Kami](https://github.com/tw93/Kami), [matsubara0507/marp-themes](https://github.com/matsubara0507/marp-themes), [dracula/marp](https://github.com/dracula/marp), plus the Marp Extended Beamer sample theme. These upstream projects are MIT-licensed; keep their notices when redistributing modified theme CSS. Kami's Chinese theme references TsangerJinKai02 fonts, whose commercial usage may require a separate font license.
 
 Many thanks to:
 

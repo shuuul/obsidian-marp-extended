@@ -67,9 +67,10 @@ export class ThemePropertyOptions {
 		}
 
 		const originalGetValues = metadataCache.getFrontmatterPropertyValuesForKey;
+		const boundOriginalGetValues = originalGetValues.bind(metadataCache);
 		this.originalGetValues = originalGetValues;
 		this.patchedGetValues = (...args: unknown[]) => {
-			const originalValues = originalGetValues.call(metadataCache, ...args);
+			const originalValues: unknown = boundOriginalGetValues(...args);
 			const propertyKey = getPropertyKey(args[0]);
 
 			if (!propertyKey) {

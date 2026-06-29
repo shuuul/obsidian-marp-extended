@@ -1,5 +1,16 @@
 # Changelog
 
+## Unreleased
+
+- Changed export to call an external Marp CLI executable instead of bundling `@marp-team/marp-cli` into `main.js`; settings now support explicit path input, auto-detection, and an optional pinned npx fallback.
+- Removed the unsupported release ZIP asset from the community release workflow and added provenance attestations for `main.js`, `manifest.json`, and `styles.css`.
+- Removed external URLs from packaged theme CSS and replaced plugin `:has()` styling with explicit classes for review compatibility.
+- Limited default Marp and Mermaid theme installation to `kami`, `kami-en`, `github`, `beamer`, `olive`, and `dracula` while keeping the other vault CSS files as non-default examples.
+- Embedded those default Marp and Mermaid theme CSS files in the plugin bundle so first-run install and restore-default actions no longer fetch CSS from GitHub.
+- Removed separate default CSS sync markers; managed defaults are overwritten from the packaged CSS on startup.
+- Updated theme settings so bundled defaults are managed/read-only in the UI, can be forked, and custom themes can be edited.
+- Fixed review-listed unsafe TypeScript patterns in Mermaid cache eviction, export error handling, and theme property suggestions.
+
 ## [0.6.0](https://github.com/shuuul/obsidian-marp-extended/compare/0.5.0...0.6.0) (2026-06-27)
 
 

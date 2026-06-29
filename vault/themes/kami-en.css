@@ -1,12 +1,11 @@
 /* @theme kami-en */
-/* @marp-extended-theme-version 5 */
 /* @size kami 1058px 597px */
 /* @size portfolio 794px 1123px */
 /* Kami Marp theme (EN). Mirrors slides-weasy-en.html tokens. */
 
 @font-face {
   font-family: "JetBrains Mono";
-  src: url("../../fonts/JetBrainsMono.woff2") format("woff2");
+  src: local("JetBrains Mono Regular"), local("JetBrainsMono-Regular"), url("https://cdn.jsdelivr.net/gh/tw93/Kami@520c3f5736160b7b45ca3d6aa371c7b8098b930e/assets/fonts/JetBrainsMono.woff2") format("woff2");
   font-weight: 400;
 }
 
@@ -61,19 +60,22 @@ section p, section ul, section ol, section table {
   letter-spacing: 2pt;
   text-transform: uppercase;
   color: var(--stone);
-  margin-bottom: 2pt;
 }
 
 .eyebrow,
 section > header {
-  all: unset;
   display: block;
+  box-sizing: border-box;
+  margin: 0 0 2pt;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
   font-family: var(--mono);
   font-size: 9.5pt;
   letter-spacing: 2pt;
   text-transform: uppercase;
   color: var(--stone);
-  margin-bottom: 2pt;
 }
 
 section h2 {

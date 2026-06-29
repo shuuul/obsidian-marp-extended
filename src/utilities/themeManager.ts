@@ -1,12 +1,9 @@
-import { App, normalizePath, requestUrl } from 'obsidian';
+import { App, normalizePath } from 'obsidian';
 
 import {
 	DEFAULT_THEME_DEFINITIONS,
 	DEFAULT_THEME_DIRECTORY,
 	DEFAULT_THEME_FILE_NAMES,
-	DEFAULT_THEME_MANIFEST_VERSION,
-	DEFAULT_THEME_VERSION_COMMENT,
-	parseDefaultThemeVersionFromCss,
 	normalizeThemeName,
 	parseThemeNameFromCss,
 	themeNameToFileName,
@@ -19,7 +16,6 @@ export interface InstalledThemeEntry {
 	fileName: string;
 	path: string;
 	source: ThemeSource;
-	version: number | null;
 }
 
 export interface EnsureDefaultThemesOptions {
@@ -38,6 +34,14 @@ function getDefaultThemeDefinition(fileNameOrThemeName: string) {
 	return DEFAULT_THEME_DEFINITIONS.find((theme) =>
 		theme.fileName === fileNameOrThemeName || theme.name === fileNameOrThemeName
 	);
+}
+
+function replaceThemeNameInCss(css: string, themeName: string): string {
+	if (parseThemeNameFromCss(css)) {
+		return css.replace(/(@theme\s+)([A-Za-z0-9_-]+)/, `$1${themeName}`);
+	}
+
+	return `/* @theme ${themeName} */\n\n${css.trim()}`;
 }
 
 function uniqueByPath(entries: InstalledThemeEntry[]): InstalledThemeEntry[] {
@@ -68,8 +72,7 @@ export class ThemeManager {
 				continue;
 			}
 
-			const css = await this.downloadThemeCss(theme.url);
-			await this.writeDefaultTheme(theme.fileName, css);
+			await this.writeDefaultTheme(theme.fileName, theme.css);
 			installed.push(theme.name);
 		}
 
@@ -94,39 +97,50 @@ export class ThemeManager {
 	}
 
 	async addThemeFromCss(css: string, preferredName = ''): Promise<InstalledThemeEntry> {
-		const trimmedCss = css.trim();
-		if (!trimmedCss) {
-			throw new Error('Paste a Marp theme CSS first.');
-		}
-
-		const parsedThemeName = parseThemeNameFromCss(trimmedCss);
-		const rawThemeName = parsedThemeName || preferredName.trim();
-		if (!rawThemeName) {
-			throw new Error('Theme CSS must include an @theme metadata comment, or you must provide a theme name.');
-		}
-		const themeName = normalizeThemeName(rawThemeName);
-
-		let cssToWrite = trimmedCss;
-		if (!parsedThemeName) {
-			cssToWrite = `/* @theme ${themeName} */\n\n${trimmedCss}`;
-		}
+		const themeFile = this.prepareCustomThemeFile(css, preferredName);
 
 		await this.ensureVaultFolder(DEFAULT_THEME_DIRECTORY);
 
-		const fileName = themeNameToFileName(themeName);
-		const path = joinVaultPath(DEFAULT_THEME_DIRECTORY, fileName);
-		await this.app.vault.adapter.write(path, `${cssToWrite}\n`);
+		const path = joinVaultPath(DEFAULT_THEME_DIRECTORY, themeFile.fileName);
+		await this.app.vault.adapter.write(path, `${themeFile.css}\n`);
 
 		return {
-			name: themeName,
-			fileName,
+			name: themeFile.name,
+			fileName: themeFile.fileName,
 			path,
-			source: DEFAULT_THEME_FILE_NAMES.has(fileName) ? 'default' : 'custom',
-			version: DEFAULT_THEME_FILE_NAMES.has(fileName) ? parseDefaultThemeVersionFromCss(cssToWrite) : null,
+			source: 'custom',
 		};
 	}
 
-	async updateDefaultTheme(fileNameOrThemeName: string): Promise<InstalledThemeEntry> {
+	async updateCustomThemeFromCss(path: string, css: string, preferredName = ''): Promise<InstalledThemeEntry> {
+		const oldPath = normalizePath(path);
+		const oldFileName = fileNameFromPath(oldPath);
+		if (DEFAULT_THEME_FILE_NAMES.has(oldFileName)) {
+			throw new Error('Bundled default themes cannot be edited. Fork the theme first.');
+		}
+
+		const themeFile = this.prepareCustomThemeFile(css, preferredName, { preferProvidedName: true });
+		await this.ensureVaultFolder(DEFAULT_THEME_DIRECTORY);
+
+		const nextPath = joinVaultPath(DEFAULT_THEME_DIRECTORY, themeFile.fileName);
+		if (nextPath !== oldPath && await this.app.vault.adapter.exists(nextPath)) {
+			throw new Error(`A theme named ${themeFile.name} already exists.`);
+		}
+
+		await this.app.vault.adapter.write(nextPath, `${themeFile.css}\n`);
+		if (nextPath !== oldPath && await this.app.vault.adapter.exists(oldPath)) {
+			await this.app.vault.adapter.remove(oldPath);
+		}
+
+		return {
+			name: themeFile.name,
+			fileName: themeFile.fileName,
+			path: nextPath,
+			source: 'custom',
+		};
+	}
+
+	async forkDefaultTheme(fileNameOrThemeName: string): Promise<InstalledThemeEntry> {
 		const theme = getDefaultThemeDefinition(fileNameOrThemeName);
 		if (!theme) {
 			throw new Error(`Unknown default theme: ${fileNameOrThemeName}`);
@@ -134,20 +148,57 @@ export class ThemeManager {
 
 		await this.ensureVaultFolder(DEFAULT_THEME_DIRECTORY);
 
-		const css = await this.downloadThemeCss(theme.url);
-		const path = await this.writeDefaultTheme(theme.fileName, css);
+		const themeName = await this.nextAvailableCustomThemeName(`${theme.name}-fork`);
+		const fileName = themeNameToFileName(themeName);
+		const path = joinVaultPath(DEFAULT_THEME_DIRECTORY, fileName);
+		const css = replaceThemeNameInCss(theme.css, themeName);
+		await this.app.vault.adapter.write(path, css.endsWith('\n') ? css : `${css}\n`);
 
 		return {
-			name: parseThemeNameFromCss(css) ?? theme.name,
-			fileName: theme.fileName,
+			name: themeName,
+			fileName,
 			path,
-			source: 'default',
-			version: parseDefaultThemeVersionFromCss(css),
+			source: 'custom',
 		};
 	}
 
 	async removeTheme(path: string): Promise<void> {
 		await this.app.vault.adapter.remove(normalizePath(path));
+	}
+
+	async readThemeCss(path: string): Promise<string> {
+		return this.app.vault.adapter.read(normalizePath(path));
+	}
+
+	private prepareCustomThemeFile(
+		css: string,
+		preferredName = '',
+		options: { preferProvidedName?: boolean } = {},
+	): { name: string; fileName: string; css: string } {
+		const trimmedCss = css.trim();
+		if (!trimmedCss) {
+			throw new Error('Paste a Marp theme CSS first.');
+		}
+
+		const parsedThemeName = parseThemeNameFromCss(trimmedCss);
+		const providedThemeName = preferredName.trim();
+		const rawThemeName = options.preferProvidedName
+			? providedThemeName || parsedThemeName
+			: parsedThemeName || providedThemeName;
+		if (!rawThemeName) {
+			throw new Error('Theme CSS must include an @theme metadata comment, or you must provide a theme name.');
+		}
+
+		const themeName = normalizeThemeName(rawThemeName);
+		const fileName = themeNameToFileName(themeName);
+		if (DEFAULT_THEME_FILE_NAMES.has(fileName)) {
+			throw new Error('Bundled default themes cannot be overwritten. Fork the theme with a custom name.');
+		}
+
+		const cssToWrite = parsedThemeName
+			? replaceThemeNameInCss(trimmedCss, themeName)
+			: `/* @theme ${themeName} */\n\n${trimmedCss}`;
+		return { name: themeName, fileName, css: cssToWrite };
 	}
 
 	private async listThemesFromDirectory(directory: string, source: ThemeSource): Promise<InstalledThemeEntry[]> {
@@ -173,7 +224,6 @@ export class ThemeManager {
 				fileName,
 				path,
 				source: themeSource,
-				version: themeSource === 'default' ? parseDefaultThemeVersionFromCss(css) : null,
 			});
 		}
 
@@ -198,52 +248,21 @@ export class ThemeManager {
 		return path;
 	}
 
-	private getThemeDownloadUrl(url: string): string {
-		const separator = url.includes('?') ? '&' : '?';
-		return `${url}${separator}marp-extended-theme-version=${DEFAULT_THEME_MANIFEST_VERSION}`;
+	private async nextAvailableCustomThemeName(baseName: string): Promise<string> {
+		const normalizedBaseName = normalizeThemeName(baseName);
+		let themeName = normalizedBaseName;
+		let index = 2;
+
+		while (true) {
+			const fileName = themeNameToFileName(themeName);
+			const path = joinVaultPath(DEFAULT_THEME_DIRECTORY, fileName);
+			if (!DEFAULT_THEME_FILE_NAMES.has(fileName) && !(await this.app.vault.adapter.exists(path))) {
+				return themeName;
+			}
+
+			themeName = `${normalizedBaseName}-${index}`;
+			index += 1;
+		}
 	}
 
-	private getUncachedThemeDownloadUrl(url: string): string {
-		const separator = url.includes('?') ? '&' : '?';
-		return `${url}${separator}marp-extended-theme-version=${DEFAULT_THEME_MANIFEST_VERSION}&cache-bust=${Date.now()}`;
-	}
-
-	private async downloadThemeCss(url: string): Promise<string> {
-		const css = await this.fetchThemeCss(this.getThemeDownloadUrl(url));
-		if (parseDefaultThemeVersionFromCss(css) === DEFAULT_THEME_MANIFEST_VERSION) {
-			return css;
-		}
-
-		const uncachedCss = await this.fetchThemeCss(this.getUncachedThemeDownloadUrl(url));
-		const version = parseDefaultThemeVersionFromCss(uncachedCss);
-		if (version !== DEFAULT_THEME_MANIFEST_VERSION) {
-			throw new Error(`Downloaded theme version ${version ?? 'unknown'} does not match expected v${DEFAULT_THEME_MANIFEST_VERSION}: ${url}`);
-		}
-
-		return uncachedCss;
-	}
-
-	private async fetchThemeCss(downloadUrl: string): Promise<string> {
-		const response = await requestUrl({
-			url: downloadUrl,
-			headers: {
-				Accept: 'text/css,text/plain,*/*',
-				'User-Agent': 'marp-extended-obsidian-plugin',
-			},
-		});
-
-		if (response.status < 200 || response.status >= 300) {
-			throw new Error(`Theme download failed with status ${response.status}: ${downloadUrl}`);
-		}
-
-		if (!parseThemeNameFromCss(response.text)) {
-			throw new Error(`Downloaded CSS is missing @theme metadata: ${downloadUrl}`);
-		}
-
-		if (parseDefaultThemeVersionFromCss(response.text) == null) {
-			throw new Error(`Downloaded CSS is missing ${DEFAULT_THEME_VERSION_COMMENT} metadata: ${downloadUrl}`);
-		}
-
-		return response.text;
-	}
 }

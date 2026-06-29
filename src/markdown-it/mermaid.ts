@@ -134,9 +134,9 @@ function setCachedMermaidFigure(cacheKey: string, figure: string): void {
 		return;
 	}
 
-	const oldestKey = mermaidFigureCache.keys().next().value;
-	if (oldestKey !== undefined) {
-		mermaidFigureCache.delete(oldestKey);
+	const oldestEntry = mermaidFigureCache.keys().next();
+	if (!oldestEntry.done) {
+		mermaidFigureCache.delete(oldestEntry.value);
 	}
 }
 

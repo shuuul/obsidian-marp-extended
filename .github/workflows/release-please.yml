@@ -33,6 +33,8 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      attestations: write
+      id-token: write
     steps:
       - uses: actions/checkout@v4
         with:
@@ -55,18 +57,36 @@ jobs:
         run: |
           npm ci
           npm run build
-          mkdir ${{ env.PLUGIN_NAME }}
-          cp main.js manifest.json styles.css ${{ env.PLUGIN_NAME }}
-          zip -r ${{ env.PLUGIN_NAME }}.zip ${{ env.PLUGIN_NAME }}
+      - name: Verify release assets
+        run: |
+          test -f main.js
+          test -f manifest.json
+          test -f styles.css
+          if find . -maxdepth 1 -name "*.zip" | grep -q .; then
+            echo "Unsupported ZIP release asset found." >&2
+            exit 1
+          fi
+          if grep -E "puppeteer|chromium-bidi" main.js; then
+            echo "Bundled browser automation dependency found in main.js." >&2
+            exit 1
+          fi
+          MAIN_JS_BYTES="$(wc -c < main.js | tr -d ' ')"
+          echo "main.js bytes: ${MAIN_JS_BYTES}"
+          if [ "${MAIN_JS_BYTES}" -gt 5242880 ]; then
+            echo "::warning::main.js is larger than 5 MB. This is currently accepted while retaining beautiful-mermaid."
+          fi
+      - name: Attest release assets
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: |
+            main.js
+            manifest.json
+            styles.css
       - name: Upload release assets
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           TAG="${{ needs.release-please.outputs.tag_name }}"
-          VERSION="${TAG#v}"
-          ZIP_NAME="${{ env.PLUGIN_NAME }}-${VERSION}.zip"
-          mv "${{ env.PLUGIN_NAME }}.zip" "$ZIP_NAME"
           gh release upload "$TAG" \
             main.js manifest.json styles.css \
-            "$ZIP_NAME" \
             --repo "${{ github.repository }}" --clobber

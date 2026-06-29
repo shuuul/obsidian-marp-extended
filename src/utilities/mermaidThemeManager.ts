@@ -1,12 +1,9 @@
-import { App, normalizePath, requestUrl } from 'obsidian';
+import { App, normalizePath } from 'obsidian';
 
 import {
 	DEFAULT_MERMAID_THEME_DEFINITIONS,
 	DEFAULT_MERMAID_THEME_DIRECTORY,
 	DEFAULT_MERMAID_THEME_FILE_NAMES,
-	DEFAULT_MERMAID_THEME_MANIFEST_VERSION,
-	DEFAULT_MERMAID_THEME_VERSION_COMMENT,
-	parseDefaultMermaidThemeVersionFromCss,
 	parseMermaidThemeNameFromCss,
 } from './defaultMermaidThemes';
 import { normalizeThemeName, themeNameToFileName } from './defaultThemes';
@@ -18,7 +15,6 @@ export interface InstalledMermaidThemeEntry {
 	fileName: string;
 	path: string;
 	source: MermaidThemeSource;
-	version: number | null;
 }
 
 export interface EnsureDefaultMermaidThemesOptions {
@@ -37,6 +33,14 @@ function getDefaultMermaidThemeDefinition(fileNameOrThemeName: string) {
 	return DEFAULT_MERMAID_THEME_DEFINITIONS.find((theme) =>
 		theme.fileName === fileNameOrThemeName || theme.name === fileNameOrThemeName
 	);
+}
+
+function replaceMermaidThemeNameInCss(css: string, themeName: string): string {
+	if (parseMermaidThemeNameFromCss(css)) {
+		return css.replace(/(@mermaid-theme\s+)([A-Za-z0-9_-]+)/, `$1${themeName}`);
+	}
+
+	return `/* @mermaid-theme ${themeName} */\n\n${css.trim()}`;
 }
 
 function uniqueByPath(entries: InstalledMermaidThemeEntry[]): InstalledMermaidThemeEntry[] {
@@ -67,8 +71,7 @@ export class MermaidThemeManager {
 				continue;
 			}
 
-			const css = await this.downloadThemeCss(theme.url);
-			await this.writeDefaultTheme(theme.fileName, css);
+			await this.writeDefaultTheme(theme.fileName, theme.css);
 			installed.push(theme.name);
 		}
 
@@ -101,7 +104,55 @@ export class MermaidThemeManager {
 		return theme ? this.app.vault.adapter.read(theme.path) : null;
 	}
 
-	async updateDefaultTheme(fileNameOrThemeName: string): Promise<InstalledMermaidThemeEntry> {
+	async removeTheme(path: string): Promise<void> {
+		await this.app.vault.adapter.remove(normalizePath(path));
+	}
+
+	async addThemeFromCss(css: string, preferredName = ''): Promise<InstalledMermaidThemeEntry> {
+		const themeFile = this.prepareCustomThemeFile(css, preferredName);
+
+		await this.ensureVaultFolder(DEFAULT_MERMAID_THEME_DIRECTORY);
+
+		const path = joinVaultPath(DEFAULT_MERMAID_THEME_DIRECTORY, themeFile.fileName);
+		await this.app.vault.adapter.write(path, `${themeFile.css}\n`);
+
+		return {
+			name: themeFile.name,
+			fileName: themeFile.fileName,
+			path,
+			source: 'custom',
+		};
+	}
+
+	async updateCustomThemeFromCss(path: string, css: string, preferredName = ''): Promise<InstalledMermaidThemeEntry> {
+		const oldPath = normalizePath(path);
+		const oldFileName = fileNameFromPath(oldPath);
+		if (DEFAULT_MERMAID_THEME_FILE_NAMES.has(oldFileName)) {
+			throw new Error('Bundled default Mermaid themes cannot be edited. Fork the theme first.');
+		}
+
+		const themeFile = this.prepareCustomThemeFile(css, preferredName, { preferProvidedName: true });
+		await this.ensureVaultFolder(DEFAULT_MERMAID_THEME_DIRECTORY);
+
+		const nextPath = joinVaultPath(DEFAULT_MERMAID_THEME_DIRECTORY, themeFile.fileName);
+		if (nextPath !== oldPath && await this.app.vault.adapter.exists(nextPath)) {
+			throw new Error(`A Mermaid theme named ${themeFile.name} already exists.`);
+		}
+
+		await this.app.vault.adapter.write(nextPath, `${themeFile.css}\n`);
+		if (nextPath !== oldPath && await this.app.vault.adapter.exists(oldPath)) {
+			await this.app.vault.adapter.remove(oldPath);
+		}
+
+		return {
+			name: themeFile.name,
+			fileName: themeFile.fileName,
+			path: nextPath,
+			source: 'custom',
+		};
+	}
+
+	async forkDefaultTheme(fileNameOrThemeName: string): Promise<InstalledMermaidThemeEntry> {
 		const theme = getDefaultMermaidThemeDefinition(fileNameOrThemeName);
 		if (!theme) {
 			throw new Error(`Unknown default Mermaid theme: ${fileNameOrThemeName}`);
@@ -109,49 +160,53 @@ export class MermaidThemeManager {
 
 		await this.ensureVaultFolder(DEFAULT_MERMAID_THEME_DIRECTORY);
 
-		const css = await this.downloadThemeCss(theme.url);
-		const path = await this.writeDefaultTheme(theme.fileName, css);
+		const themeName = await this.nextAvailableCustomThemeName(`${theme.name}-fork`);
+		const fileName = themeNameToFileName(themeName);
+		const path = joinVaultPath(DEFAULT_MERMAID_THEME_DIRECTORY, fileName);
+		const css = replaceMermaidThemeNameInCss(theme.css, themeName);
+		await this.app.vault.adapter.write(path, css.endsWith('\n') ? css : `${css}\n`);
 
 		return {
-			name: parseMermaidThemeNameFromCss(css) ?? theme.name,
-			fileName: theme.fileName,
+			name: themeName,
+			fileName,
 			path,
-			source: 'default',
-			version: parseDefaultMermaidThemeVersionFromCss(css),
+			source: 'custom',
 		};
 	}
 
-	async removeTheme(path: string): Promise<void> {
-		await this.app.vault.adapter.remove(normalizePath(path));
+	async readThemeCss(path: string): Promise<string> {
+		return this.app.vault.adapter.read(normalizePath(path));
 	}
 
-	async addThemeFromCss(css: string, preferredName = ''): Promise<InstalledMermaidThemeEntry> {
+	private prepareCustomThemeFile(
+		css: string,
+		preferredName = '',
+		options: { preferProvidedName?: boolean } = {},
+	): { name: string; fileName: string; css: string } {
 		const trimmedCss = css.trim();
 		if (!trimmedCss) {
 			throw new Error('Paste a Mermaid theme CSS first.');
 		}
 
 		const parsedThemeName = parseMermaidThemeNameFromCss(trimmedCss);
-		const rawThemeName = parsedThemeName || preferredName.trim();
+		const providedThemeName = preferredName.trim();
+		const rawThemeName = options.preferProvidedName
+			? providedThemeName || parsedThemeName
+			: parsedThemeName || providedThemeName;
 		if (!rawThemeName) {
 			throw new Error('Mermaid theme CSS must include an @mermaid-theme metadata comment, or you must provide a theme name.');
 		}
+
 		const themeName = normalizeThemeName(rawThemeName);
-		const cssToWrite = parsedThemeName ? trimmedCss : `/* @mermaid-theme ${themeName} */\n\n${trimmedCss}`;
-
-		await this.ensureVaultFolder(DEFAULT_MERMAID_THEME_DIRECTORY);
-
 		const fileName = themeNameToFileName(themeName);
-		const path = joinVaultPath(DEFAULT_MERMAID_THEME_DIRECTORY, fileName);
-		await this.app.vault.adapter.write(path, `${cssToWrite}\n`);
+		if (DEFAULT_MERMAID_THEME_FILE_NAMES.has(fileName)) {
+			throw new Error('Bundled default Mermaid themes cannot be overwritten. Fork the theme with a custom name.');
+		}
 
-		return {
-			name: themeName,
-			fileName,
-			path,
-			source: DEFAULT_MERMAID_THEME_FILE_NAMES.has(fileName) ? 'default' : 'custom',
-			version: DEFAULT_MERMAID_THEME_FILE_NAMES.has(fileName) ? parseDefaultMermaidThemeVersionFromCss(cssToWrite) : null,
-		};
+		const cssToWrite = parsedThemeName
+			? replaceMermaidThemeNameInCss(trimmedCss, themeName)
+			: `/* @mermaid-theme ${themeName} */\n\n${trimmedCss}`;
+		return { name: themeName, fileName, css: cssToWrite };
 	}
 
 	private async listThemesFromDirectory(directory: string, source: MermaidThemeSource): Promise<InstalledMermaidThemeEntry[]> {
@@ -177,7 +232,6 @@ export class MermaidThemeManager {
 				fileName,
 				path,
 				source: themeSource,
-				version: themeSource === 'default' ? parseDefaultMermaidThemeVersionFromCss(css) : null,
 			});
 		}
 
@@ -202,33 +256,21 @@ export class MermaidThemeManager {
 		return path;
 	}
 
-	private getThemeDownloadUrl(url: string): string {
-		const separator = url.includes('?') ? '&' : '?';
-		return `${url}${separator}marp-extended-mermaid-theme-version=${DEFAULT_MERMAID_THEME_MANIFEST_VERSION}`;
+	private async nextAvailableCustomThemeName(baseName: string): Promise<string> {
+		const normalizedBaseName = normalizeThemeName(baseName);
+		let themeName = normalizedBaseName;
+		let index = 2;
+
+		while (true) {
+			const fileName = themeNameToFileName(themeName);
+			const path = joinVaultPath(DEFAULT_MERMAID_THEME_DIRECTORY, fileName);
+			if (!DEFAULT_MERMAID_THEME_FILE_NAMES.has(fileName) && !(await this.app.vault.adapter.exists(path))) {
+				return themeName;
+			}
+
+			themeName = `${normalizedBaseName}-${index}`;
+			index += 1;
+		}
 	}
 
-	private async downloadThemeCss(url: string): Promise<string> {
-		const downloadUrl = this.getThemeDownloadUrl(url);
-		const response = await requestUrl({
-			url: downloadUrl,
-			headers: {
-				Accept: 'text/css,text/plain,*/*',
-				'User-Agent': 'marp-extended-obsidian-plugin',
-			},
-		});
-
-		if (response.status < 200 || response.status >= 300) {
-			throw new Error(`Mermaid theme download failed with status ${response.status}: ${url}`);
-		}
-
-		if (!parseMermaidThemeNameFromCss(response.text)) {
-			throw new Error(`Downloaded CSS is missing @mermaid-theme metadata: ${url}`);
-		}
-
-		if (parseDefaultMermaidThemeVersionFromCss(response.text) == null) {
-			throw new Error(`Downloaded CSS is missing ${DEFAULT_MERMAID_THEME_VERSION_COMMENT} metadata: ${url}`);
-		}
-
-		return response.text;
-	}
 }
