@@ -1,17 +1,17 @@
-import { ItemView, WorkspaceLeaf, MarkdownView, TFile, setIcon, Notice } from 'obsidian';
+import { ItemView, setIcon, Notice, type WorkspaceLeaf, type MarkdownView, type TFile } from 'obsidian';
 import { Marp } from '@marp-team/marp-core'
 import { browser, type MarpCoreBrowser } from '@marp-team/marp-core/browser'
 import markdownItContainer from 'markdown-it-container';
 import markdownItMark from 'markdown-it-mark';
 
-import { MarpSlidesSettings } from '../utilities/settings'
+import type { MarpSlidesSettings } from '../utilities/settings'
 import { FilePath } from '../utilities/filePath'
 import { ThemeManager } from '../utilities/themeManager';
-import { MathOptions } from '@marp-team/marp-core/types/src/math/math';
 import { markdownItMermaid } from '../markdown-it/mermaid';
 import { compileKamiFencedBlocks } from '../utilities/kamiDsl';
 import { loadMermaidThemeCssForFile } from '../utilities/mermaidTheme';
 import { ThemeAssetCache } from '../utilities/themeAssetCache';
+import { MarpExport } from '../utilities/marpExport';
 import {
     PREVIEW_ZOOM_RESET,
     clampPreviewZoom,
@@ -123,12 +123,12 @@ export class MarpPreviewView extends ItemView  {
         return new Marp({
             container: { tag: 'div', id: '__marp-vscode' },
             slideContainer: { tag: 'div', 'data-marp-vscode-slide-wrapper': '' },
-            html: this.settings.EnableHTML,
+            html: true,
             inlineSVG: {
                 enabled: true,
                 backdropSelector: false
             },
-            math: this.settings.MathTypesettings as MathOptions,
+            math: 'mathjax',
             minifyCSS: true,
             script: false
           })
@@ -675,7 +675,6 @@ export class MarpPreviewView extends ItemView  {
 
         let progressNotice: Notice | null = null;
         try {
-            const { MarpExport } = await import('../utilities/marpExport');
             const marpCli = new MarpExport(this.settings, this.app);
             progressNotice = new Notice(`Exporting Marp slides as ${type.toUpperCase()}…`, 0);
             const outputPath = await marpCli.export(file, type);

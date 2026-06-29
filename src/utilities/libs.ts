@@ -1,12 +1,16 @@
-import { App, Platform } from 'obsidian';
+import type * as NodeFs from 'node:fs';
+import type * as NodeHttps from 'node:https';
+import type * as NodePath from 'node:path';
+import type * as NodeUrl from 'node:url';
+import { Platform, type App } from 'obsidian';
 import { FilePath } from './filePath';
-import { MarpSlidesSettings } from './settings';
+import type { MarpSlidesSettings } from './settings';
 import JSZip from 'jszip';
 
-type NodeFsModule = typeof import('node:fs');
-type NodePathModule = typeof import('node:path');
-type NodeHttpsModule = typeof import('node:https');
-type NodeUrlModule = typeof import('node:url');
+type NodeFsModule = typeof NodeFs;
+type NodePathModule = typeof NodePath;
+type NodeHttpsModule = typeof NodeHttps;
+type NodeUrlModule = typeof NodeUrl;
 
 function getNodeFs(): NodeFsModule {
 	// eslint-disable-next-line @typescript-eslint/no-require-imports -- Obsidian desktop plugin installs libs with Node fs via require()

@@ -1,16 +1,17 @@
-import { MarkdownView, TAbstractFile, Plugin, addIcon, App, PluginSettingTab, Setting, TFile, Modal, Notice } from 'obsidian';
+import { MarkdownView, Plugin, addIcon, PluginSettingTab, Setting, TFile, Modal, Notice, type App, type TAbstractFile } from 'obsidian';
 import { EditorView, type ViewUpdate } from '@codemirror/view';
 
 import { MARP_PREVIEW_VIEW, MarpPreviewView } from './views/marpPreviewView';
 import { ICON_SLIDE_PREVIEW, ICON_EXPORT_PDF, ICON_EXPORT_PPTX, ICON_SLIDE_PRESENT, ICON_FIT_WIDTH } from './utilities/icons';
 import { Libs } from './utilities/libs';
-import { MarpSlidesSettings, DEFAULT_SETTINGS } from 'utilities/settings';
+import { type MarpSlidesSettings, DEFAULT_SETTINGS } from 'utilities/settings';
 import { ensureDefaultThemes } from './utilities/ensureDefaultThemes';
 import { ensureDefaultMermaidThemes } from './utilities/ensureDefaultMermaidThemes';
 import { MermaidThemeManager, type InstalledMermaidThemeEntry } from './utilities/mermaidThemeManager';
 import { ThemeManager, type InstalledThemeEntry } from './utilities/themeManager';
 import { ThemePropertyOptions } from './utilities/themePropertyOptions';
 import { getPreviewSlideIndexFromLineReader } from './utilities/previewSync';
+import { MarpExport } from './utilities/marpExport';
 
 
 export default class MarpSlides extends Plugin {
@@ -126,9 +127,6 @@ export default class MarpSlides extends Plugin {
 			MARP_CLI_PATH: saved?.MARP_CLI_PATH ?? DEFAULT_SETTINGS.MARP_CLI_PATH,
 			MARP_CLI_USE_NPX: saved?.MARP_CLI_USE_NPX ?? DEFAULT_SETTINGS.MARP_CLI_USE_NPX,
 			CHROME_PATH: saved?.CHROME_PATH ?? DEFAULT_SETTINGS.CHROME_PATH,
-			EnableHTML: saved?.EnableHTML ?? DEFAULT_SETTINGS.EnableHTML,
-			MathTypesettings: saved?.MathTypesettings ?? DEFAULT_SETTINGS.MathTypesettings,
-			HTMLExportMode: saved?.HTMLExportMode ?? DEFAULT_SETTINGS.HTMLExportMode,
 		};
 	}
 
@@ -155,7 +153,6 @@ export default class MarpSlides extends Plugin {
 
 		let progressNotice: Notice | null = null;
 		try {
-			const { MarpExport } = await import('./utilities/marpExport');
 			const marpCli = new MarpExport(this.settings, this.app);
 			progressNotice = new Notice(`Exporting Marp slides as ${type.toUpperCase()}…`, 0);
 			const outputPath = await marpCli.export(file,type);
@@ -336,7 +333,6 @@ export class MarpSlidesSettingTab extends PluginSettingTab {
 				.onClick(async () => {
 					button.setDisabled(true);
 					try {
-						const { MarpExport } = await import('./utilities/marpExport');
 						const detectedPath = MarpExport.detectCliPath();
 						if (!detectedPath) {
 							new Notice('Marp CLI was not found in PATH or common install locations.', 7000);
@@ -358,7 +354,6 @@ export class MarpSlidesSettingTab extends PluginSettingTab {
 				.onClick(async () => {
 					button.setDisabled(true);
 					try {
-						const { MarpExport } = await import('./utilities/marpExport');
 						const version = await MarpExport.getCliVersion(this.plugin.settings);
 						new Notice(`Marp CLI found${version ? `: ${version}` : '.'}`, 5000);
 					} catch (error) {
@@ -379,51 +374,41 @@ export class MarpSlidesSettingTab extends PluginSettingTab {
 					await this.plugin.saveSettings();
 				}));
 
+		let chromePathText: { setValue(value: string): void } | null = null;
 		new Setting(containerEl)
 			.setName('Chrome path')
 			.setDesc('Optional. Leave empty to let Marp CLI automatically find Google Chrome, Chromium, or Microsoft Edge. Set this only if export auto-detection fails.')
-			.addText(text => text
-				.setPlaceholder('Enter CHROME_PATH')
-				.setValue(this.plugin.settings.CHROME_PATH)
-				.onChange(async (value) => {
-					this.plugin.settings.CHROME_PATH = value;
-					await this.plugin.saveSettings();
+			.addText(text => {
+				chromePathText = text;
+				text
+					.setPlaceholder('Enter CHROME_PATH')
+					.setValue(this.plugin.settings.CHROME_PATH)
+					.onChange(async (value) => {
+						this.plugin.settings.CHROME_PATH = value;
+						await this.plugin.saveSettings();
+					});
+			})
+			.addButton(button => button
+				.setButtonText('Auto-detect')
+				.onClick(async () => {
+					button.setDisabled(true);
+					try {
+						const detectedPath = MarpExport.detectBrowserPath();
+						if (!detectedPath) {
+							new Notice('Chrome, Chromium, or Microsoft Edge was not found in PATH or common install locations.', 7000);
+							return;
+						}
+						this.plugin.settings.CHROME_PATH = detectedPath;
+						chromePathText?.setValue(detectedPath);
+						await this.plugin.saveSettings();
+						new Notice(`Detected browser: ${detectedPath}`, 7000);
+					} catch (error) {
+						const message = error instanceof Error ? error.message : String(error);
+						new Notice(`Browser auto-detect failed: ${message}`, 8000);
+					} finally {
+						button.setDisabled(false);
+					}
 				}));
-		
-		new Setting(containerEl)
-			.setName('Enable HTML')
-			.setDesc('Enable all HTML elements in Marp Markdown. Please attention when you enable!!!')
-			.addToggle(toggle => toggle
-				.setValue(this.plugin.settings.EnableHTML)
-				.onChange(async (value) => {
-					this.plugin.settings.EnableHTML = value;
-					await this.plugin.saveSettings();
-				}));
-	
-		new Setting(containerEl)
-			.setName('Math typesettings')
-			.setDesc('Controls math syntax and the default library for rendering math in Marp Core. A using library can override by math global directive in Markdown.')
-			.addDropdown(toggle => toggle
-				.addOption("mathjax","MathJax")
-				.addOption("katex","KaTeX")
-				.setValue(this.plugin.settings.MathTypesettings)
-				.onChange(async (value) => {
-					this.plugin.settings.MathTypesettings = value;
-					await this.plugin.saveSettings();
-				}));
-
-		new Setting(containerEl)
-			.setName('HTML export mode')
-			.setDesc('Choose the Marp CLI HTML template. Bare is minimal; Bespoke adds presentation controls, presenter view, overview, and transitions.')
-			.addDropdown(toggle => toggle
-				.addOption("bare","Bare (minimal)")
-				.addOption("bespoke","Bespoke (interactive)")
-				.setValue(this.plugin.settings.HTMLExportMode)
-				.onChange(async (value) => {
-					this.plugin.settings.HTMLExportMode = value;
-					await this.plugin.saveSettings();
-				}));
-		
 		this.displayThemesSection(containerEl);
 		this.displayMermaidThemesSection(containerEl);
 	}

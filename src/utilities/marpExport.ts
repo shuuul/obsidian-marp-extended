@@ -1,3 +1,6 @@
+import type * as NodeChildProcess from 'node:child_process';
+import type * as NodeFs from 'node:fs';
+import type * as NodePath from 'node:path';
 import { Platform, TFile, App } from 'obsidian';
 import { MarpSlidesSettings } from './settings';
 import { FilePath } from './filePath';
@@ -58,9 +61,9 @@ interface MarpCliInvocation {
     isNpxFallback: boolean;
 }
 
-type NodeChildProcessModule = typeof import('node:child_process');
-type NodeFsModule = typeof import('node:fs');
-type NodePathModule = typeof import('node:path');
+type NodeChildProcessModule = typeof NodeChildProcess;
+type NodeFsModule = typeof NodeFs;
+type NodePathModule = typeof NodePath;
 
 const DEFAULT_MARP_CLI_COMMAND = 'marp';
 const DEFAULT_NPX_MARP_CLI_PACKAGE = '@marp-team/marp-cli@4.4.0';
@@ -75,6 +78,24 @@ const COMMON_MARP_CLI_DIRECTORIES = [
     '/bin',
 ];
 
+const COMMON_DARWIN_BROWSER_PATHS = [
+    '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
+    '/Applications/Chromium.app/Contents/MacOS/Chromium',
+    '/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge',
+    `${process.env.HOME ?? ''}/Applications/Google Chrome.app/Contents/MacOS/Google Chrome`,
+    `${process.env.HOME ?? ''}/Applications/Chromium.app/Contents/MacOS/Chromium`,
+    `${process.env.HOME ?? ''}/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge`,
+];
+const COMMON_WINDOWS_BROWSER_PATHS = [
+    `${process.env.PROGRAMFILES ?? ''}\\Google\\Chrome\\Application\\chrome.exe`,
+    `${process.env['PROGRAMFILES(X86)'] ?? ''}\\Google\\Chrome\\Application\\chrome.exe`,
+    `${process.env.LOCALAPPDATA ?? ''}\\Google\\Chrome\\Application\\chrome.exe`,
+    `${process.env.PROGRAMFILES ?? ''}\\Microsoft\\Edge\\Application\\msedge.exe`,
+    `${process.env['PROGRAMFILES(X86)'] ?? ''}\\Microsoft\\Edge\\Application\\msedge.exe`,
+    `${process.env.LOCALAPPDATA ?? ''}\\Microsoft\\Edge\\Application\\msedge.exe`,
+];
+
+const HTML_EXPORT_TEMPLATE = 'bespoke';
 function assertDesktopExport(): void {
 	if (!Platform.isDesktop) {
 		throw new MarpCLIError('Export is only available on desktop Obsidian.');
@@ -173,6 +194,45 @@ function detectExecutablePath(executableNames: string[]): string | null {
 
 function detectMarpCliPath(): string | null {
     return detectExecutablePath(getMarpCliExecutableNames());
+}
+
+function getBrowserExecutableNames(): string[] {
+    if (process.platform === 'win32') {
+        return ['chrome.exe', 'msedge.exe', 'chromium.exe'];
+    }
+
+    return [
+        'google-chrome',
+        'google-chrome-stable',
+        'chromium',
+        'chromium-browser',
+        'microsoft-edge',
+        'microsoft-edge-stable',
+        'chrome',
+        'msedge',
+    ];
+}
+
+function detectBrowserPath(): string | null {
+    const pathExecutable = detectExecutablePath(getBrowserExecutableNames());
+    if (pathExecutable) {
+        return pathExecutable;
+    }
+
+    const fs = getNodeFs();
+    const platformPaths = process.platform === 'darwin'
+        ? COMMON_DARWIN_BROWSER_PATHS
+        : process.platform === 'win32'
+            ? COMMON_WINDOWS_BROWSER_PATHS
+            : [];
+
+    for (const browserPath of uniqueStrings(platformPaths)) {
+        if (isExecutableFile(fs, browserPath)) {
+            return browserPath;
+        }
+    }
+
+    return null;
 }
 
 function getNpxExecutable(): string {
@@ -373,6 +433,10 @@ export class MarpExport {
         return detectMarpCliPath();
     }
 
+    static detectBrowserPath(): string | null {
+        return detectBrowserPath();
+    }
+
     static async getCliVersion(settings: MarpSlidesSettings): Promise<string> {
         const result = await execMarpCliWithFallback(settings, ['--version']);
         return (result.stdout || result.stderr).trim();
@@ -432,23 +496,12 @@ export class MarpExport {
                     break;
                 case 'html':
                     argv.push('--template');
-                    argv.push(this.settings.HTMLExportMode);
+                    argv.push(HTML_EXPORT_TEMPLATE);
                     this.pushOutputPath(argv, outputPath);
                     break;
                 case 'preview':
                     argv.push('--preview');
                     break;
-                default:
-                    //argv.push('--template');
-                    //argv.push('bare');
-                    //argv.push('bespoke');
-                    //argv.push('--engine');
-                    //argv.remove(completeFilePath);
-                    //process.env.PORT = "5001";
-                    //argv.push('PORT=5001');
-                    //argv.push('--server');
-                    
-                    //argv.push('--watch');
             }
             try {
                 await this.run(argv);

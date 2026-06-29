@@ -2,7 +2,7 @@ import { spawn } from 'node:child_process';
 import { App, TFile } from 'obsidian';
 import { expect, jest, test, beforeEach, afterEach } from '@jest/globals';
 import { EventEmitter } from 'node:events';
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { basename as pathBasename, dirname, join } from 'node:path';
 
@@ -208,6 +208,23 @@ test('Marp CLI version check runs the configured executable', async () => {
 	expect(getLastCliArgs()).toEqual(['--version']);
 });
 
+test('browser auto-detect finds an executable on PATH', () => {
+	const root = mkdtempSync(join(tmpdir(), 'marp-browser-path-'));
+	tempDirectories.push(root);
+	const executableName = process.platform === 'win32' ? 'chrome.exe' : 'google-chrome';
+	const executablePath = join(root, executableName);
+	const previousPath = process.env.PATH;
+	writeFileSync(executablePath, '');
+	chmodSync(executablePath, 0o755);
+	process.env.PATH = previousPath ? `${root}${process.platform === 'win32' ? ';' : ':'}${previousPath}` : root;
+
+	try {
+		expect(MarpExport.detectBrowserPath()).toBe(executablePath);
+	} finally {
+		process.env.PATH = previousPath;
+	}
+});
+
 test('Marp CLI version check explains missing executable errors', async () => {
 	spawnMock.mockImplementationOnce(() => createMockChildProcess({
 		error: Object.assign(new Error('spawn marp ENOENT'), { code: 'ENOENT' }),
@@ -285,7 +302,7 @@ test('export cancellation does not run Marp CLI', async () => {
 	expect(spawnMock).not.toHaveBeenCalled();
 });
 
-test('HTML export uses selected file for output file', async () => {
+test('HTML export uses Bespoke template and selected output file', async () => {
 	mockSaveDialog({ canceled: false, filePath: '/tmp/export/custom.html' });
 	const exporter = new MarpExport(DEFAULT_SETTINGS);
 
@@ -294,7 +311,7 @@ test('HTML export uses selected file for output file', async () => {
 	expect(getLastCliArgs()).toEqual(expect.arrayContaining([
 		'--html',
 		'--template',
-		'bare',
+		'bespoke',
 		'-o',
 		'/tmp/export/custom.html',
 	]));
