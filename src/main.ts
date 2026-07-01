@@ -186,7 +186,12 @@ export default class MarpSlides extends Plugin {
 
 		void this.app.workspace.revealLeaf(leaf);
 
-		return leaf.view as MarpPreviewView;
+		const view = this.getMarpPreviewView(leaf.view);
+		if (!view) {
+			throw new Error('Marp preview view failed to initialize.');
+		}
+
+		return view;
 	}
 
 	private handleEditorUpdate(update: ViewUpdate): void {
@@ -278,15 +283,23 @@ export default class MarpSlides extends Plugin {
 	}
 
 	getViewInstance(reveal = true): MarpPreviewView | null {
-		const leaf = this.app.workspace.getLeavesOfType(MARP_PREVIEW_VIEW)[0];
-		if (leaf){
+		for (const leaf of this.app.workspace.getLeavesOfType(MARP_PREVIEW_VIEW)) {
+			const view = this.getMarpPreviewView(leaf.view);
+			if (!view) {
+				continue;
+			}
+
 			if (reveal) {
 				void this.app.workspace.revealLeaf(leaf);
 			}
-			return leaf.view as MarpPreviewView;
-		} else {
-			return null;
+			return view;
 		}
+
+		return null;
+	}
+
+	private getMarpPreviewView(view: unknown): MarpPreviewView | null {
+		return view instanceof MarpPreviewView ? view : null;
 	}
 }
 
