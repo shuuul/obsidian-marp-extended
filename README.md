@@ -166,9 +166,9 @@ Current Marp-related runtime dependencies are `@marp-team/marp-core` `^4.3.0` an
 
 ## Security note
 
-Runtime dependencies audit clean with `npm audit --omit=dev`. A full `npm audit` currently reports a dev-only moderate `js-yaml` advisory through Istanbul/Jest coverage tooling (`@istanbuljs/load-nyc-config` → `babel-plugin-istanbul` → Jest/ts-jest). `npm audit fix --force` would make breaking test-stack changes, so avoid it unless you are intentionally updating that tooling.
+Runtime and development dependencies audit clean with `npm audit` and `npm audit --omit=dev`.
 
-## Upstream credits
+## Acknowledgment
 
 Marp Extended builds on the original [Marp Slides for Obsidian](https://github.com/samuele-cozzi/obsidian-marp-slides) plugin by Samuele Cozzi.
 
