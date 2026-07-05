@@ -1,19 +1,13 @@
 # Marp Extended for Obsidian
 
+[![GitHub release](https://img.shields.io/github/v/release/shuuul/obsidian-marp-extended?label=release)](https://github.com/shuuul/obsidian-marp-extended/releases)
+[![Obsidian plugin](https://img.shields.io/badge/Obsidian%20plugin-marp--extended-7C3AED?logo=obsidian&logoColor=white)](https://community.obsidian.md/plugins/marp-extended)
+
 Marp Extended is an Obsidian plugin for creating, previewing, presenting, and exporting [Marp](https://marp.app/) slide decks from Markdown notes.
 
 > **Project lineage:** Marp Extended originated from [Samuele Cozzi's Marp Slides for Obsidian](https://github.com/samuele-cozzi/obsidian-marp-slides) and is now maintained as an independent plugin project. Upstream credits are preserved below.
 
 ![Marp Extended preview and export example](assets/marp-extended-example.png)
-
-## Project status
-
-| Field | Value |
-| --- | --- |
-| Plugin name | Marp Extended |
-| Plugin/package ID | `marp-extended` |
-| Current version | `0.8.0` <!-- x-release-please-version --> |
-| Repository | <https://github.com/shuuul/obsidian-marp-extended> |
 
 ## Features
 
@@ -77,9 +71,17 @@ See also:
 
 ## Getting started
 
+### Install from Obsidian Community plugins
+
+Marp Extended is submitted to the Obsidian community plugin directory:
+
+<https://community.obsidian.md/plugins/marp-extended>
+
+Open the plugin page in Obsidian or search for **Marp Extended** in **Settings → Community plugins → Browse**.
+
 ### Install with BRAT
 
-Marp Extended can be installed from this repository with [BRAT](https://github.com/TfTHacker/obsidian42-brat):
+Marp Extended can also be installed from this repository with [BRAT](https://github.com/TfTHacker/obsidian42-brat):
 
 1. Install and enable the **BRAT** plugin in Obsidian.
 2. Open **BRAT** settings and choose **Add Beta plugin**.
@@ -88,7 +90,7 @@ Marp Extended can be installed from this repository with [BRAT](https://github.c
 
 ### First use
 
-1. Install with BRAT, or build the plugin into your vault's `.obsidian/plugins/marp-extended/` directory.
+1. Install from the Obsidian community plugin directory, install with BRAT, or build the plugin into your vault's `.obsidian/plugins/marp-extended/` directory.
 2. Enable **Marp Extended** in Obsidian community plugin settings.
 3. On first load, Marp Extended installs bundled, managed default theme CSS into `.marp-extended/themes/`. Fork a bundled theme in settings before editing it.
 4. Open a Markdown note and run **Slide Preview** from the command palette or ribbon icon.
