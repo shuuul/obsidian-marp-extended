@@ -16,9 +16,8 @@ src/views/marpPreviewView.ts   # Custom ItemView for rendered slide preview
 src/utilities/settings.ts      # Settings interface and defaults
 src/utilities/filePath.ts      # Vault/resource path resolution and image wiki-link conversion
 src/utilities/marpExport.ts    # Marp CLI export orchestration
-src/utilities/libs.ts          # Downloads/extracts optional markdown-it plugin assets
+src/utilities/mermaid.ts       # Mermaid fence rendering for preview/export
 src/utilities/icons.ts         # SVG icons registered with Obsidian
-src/config/marp.config.js      # Marp CLI engine config for markdown-it plugins
 tests/                         # Jest tests and Obsidian mocks
 vault/                         # Sample vault notes and theme references
 manifest.json                  # Obsidian plugin metadata
@@ -158,7 +157,6 @@ Export flow: command/action → `MarpExport.export()` → `FilePath` source/them
 ## Gotchas
 
 - Export except HTML requires Chrome/Chromium/Edge or a configured `CHROME_PATH`.
-- `src/utilities/libs.ts` still downloads optional markdown-it assets from the upstream `samuele-cozzi` release URL. Decide whether to move this to fork-owned release assets before publishing independent releases.
 - `MarpExport.export()` writes processed Markdown to the resolved export source before invoking Marp CLI. Be careful with source-file mutation semantics.
 - Preview sync uses an `EditorSuggest` subclass as a cursor listener and counts `---` separators, with a lightweight frontmatter delimiter adjustment.
 - Runtime dependencies should audit clean with `npm audit --omit=dev`. Full `npm audit` may still report a dev-only `js-yaml` advisory through Jest/coverage tooling.

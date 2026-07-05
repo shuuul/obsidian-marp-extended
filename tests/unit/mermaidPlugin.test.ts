@@ -1,15 +1,13 @@
 import { expect, test } from '@jest/globals';
+import { Marp } from '@marp-team/marp-core';
 import { renderMermaidSVG } from 'beautiful-mermaid';
 
-import { markdownItMermaid, renderMermaidFences } from '@/markdown-it/mermaid';
-
-const MarkdownIt = require('markdown-it');
+import { mermaidFencePlugin, renderMermaidFences } from '@/utilities/mermaid';
 
 function render(markdown: string, options = {}): string {
-	const md = new MarkdownIt();
-	md.use(markdownItMermaid, options);
+	const marp = new Marp({ html: true }).use(mermaidFencePlugin, options);
 
-	return md.render(markdown);
+	return marp.render(markdown).html;
 }
 
 test('mermaid fence renders an inline beautiful-mermaid SVG with caption', () => {
@@ -27,8 +25,8 @@ test('mermaid fence renders an inline beautiful-mermaid SVG with caption', () =>
 test('unsupported fences delegate to the existing fence renderer', () => {
 	const html = render('```typescript\nconst value = 1;\n```\n');
 
-	expect(html).toContain('<pre><code class="language-typescript">');
-	expect(html).toContain('const value = 1;');
+	expect(html).toContain('class="language-typescript"');
+	expect(html).toContain('value');
 	expect(html).not.toContain('mermaid-diagram-container');
 });
 

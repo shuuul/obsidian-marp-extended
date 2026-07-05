@@ -1,26 +1,26 @@
 import { renderMermaidSVG, type RenderOptions } from 'beautiful-mermaid';
 
-type MarkdownIt = {
+type MarpMarkdownRenderer = {
 	utils: {
 		escapeHtml(value: string): string;
 		unescapeAll(value: string): string;
 	};
 	renderer: {
 		rules: {
-			fence?: MarkdownItFenceRenderer;
+			fence?: MarpFenceRenderer;
 		};
 	};
 };
 
-type MarkdownItFenceRenderer = (
-	tokens: MarkdownItToken[],
+type MarpFenceRenderer = (
+	tokens: MarpFenceToken[],
 	idx: number,
 	options: unknown,
 	env: unknown,
 	self: unknown,
 ) => string;
 
-type MarkdownItToken = {
+type MarpFenceToken = {
 	info: string;
 	content: string;
 };
@@ -200,7 +200,7 @@ export function renderMermaidFences(markdown: string, options: MermaidPluginOpti
 	});
 }
 
-export function markdownItMermaid(md: MarkdownIt, options: MermaidPluginOptions = {}): void {
+export function mermaidFencePlugin(md: MarpMarkdownRenderer, options: MermaidPluginOptions = {}): void {
 	const defaultFence = md.renderer.rules.fence;
 
 	md.renderer.rules.fence = (tokens, idx, renderOptions, env, self) => {

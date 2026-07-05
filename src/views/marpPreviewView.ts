@@ -5,7 +5,7 @@ import { browser, type MarpCoreBrowser } from '@marp-team/marp-core/browser'
 import type { MarpSlidesSettings } from '../utilities/settings'
 import { FilePath } from '../utilities/filePath'
 import { ThemeManager } from '../utilities/themeManager';
-import { markdownItMermaid } from '../markdown-it/mermaid';
+import { mermaidFencePlugin } from '../utilities/mermaid';
 import { compileKamiFencedBlocks } from '../utilities/kamiDsl';
 import { loadMermaidThemeCssForFile } from '../utilities/mermaidTheme';
 import { ThemeAssetCache } from '../utilities/themeAssetCache';
@@ -130,7 +130,7 @@ export class MarpPreviewView extends ItemView  {
             minifyCSS: true,
             script: false
           })
-            .use(markdownItMermaid);
+            .use(mermaidFencePlugin);
     }
 
     private async reloadThemesIfChanged(): Promise<void> {

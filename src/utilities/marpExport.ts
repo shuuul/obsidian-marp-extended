@@ -4,7 +4,7 @@ import type * as NodePath from 'node:path';
 import { Platform, TFile, App } from 'obsidian';
 import { MarpSlidesSettings } from './settings';
 import { FilePath } from './filePath';
-import { renderMermaidFences } from '../markdown-it/mermaid';
+import { renderMermaidFences } from './mermaid';
 import { compileKamiFencedBlocks } from './kamiDsl';
 import { insertMarkdownAfterFrontmatter, loadMermaidThemeCssForFile, wrapMermaidThemeCss } from './mermaidTheme';
 
