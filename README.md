@@ -12,7 +12,7 @@ Marp Extended is an Obsidian plugin for creating, previewing, presenting, and ex
 | --- | --- |
 | Plugin name | Marp Extended |
 | Plugin/package ID | `marp-extended` |
-| Current version | `0.6.0` |
+| Current version | `0.8.0` <!-- x-release-please-version --> |
 | Repository | <https://github.com/shuuul/obsidian-marp-extended> |
 
 ## Features
