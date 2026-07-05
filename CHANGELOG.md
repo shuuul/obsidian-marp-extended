@@ -2,6 +2,20 @@
 
 ## Unreleased
 
+## [0.8.0](https://github.com/shuuul/obsidian-marp-extended/compare/0.7.1...0.8.0) (2026-07-05)
+
+
+### Features
+
+* **editor:** add configurable Mermaid previews ([63335f4](https://github.com/shuuul/obsidian-marp-extended/commit/63335f45dffb395ca11e5a5511a90c253985b271))
+* **kami:** use comment marker DSL ([71458b1](https://github.com/shuuul/obsidian-marp-extended/commit/71458b12128076c9d6b3e1156e776f9a3b292441))
+
+
+### Bug Fixes
+
+* **export:** improve Marp CLI fallback cleanup ([6148cde](https://github.com/shuuul/obsidian-marp-extended/commit/6148cde75b2d37aa3b5e421ad4b6ccdf6425ff20))
+* **preview:** ignore stale preview leaves ([1e2d99c](https://github.com/shuuul/obsidian-marp-extended/commit/1e2d99cf4abd63d60a19b69ea411cab83ca4b9f0))
+
 ## [0.7.1](https://github.com/shuuul/obsidian-marp-extended/compare/0.7.0...0.7.1) (2026-06-29)
 
 ### Bug Fixes
