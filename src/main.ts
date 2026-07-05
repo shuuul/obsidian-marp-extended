@@ -11,6 +11,8 @@ import { ThemeManager, type InstalledThemeEntry } from './utilities/themeManager
 import { ThemePropertyOptions } from './utilities/themePropertyOptions';
 import { getPreviewSlideIndexFromLineReader } from './utilities/previewSync';
 import { MarpExport } from './utilities/marpExport';
+import { createMermaidEditorExtension } from './editor/mermaidEditorExtension';
+import { KAMI_TEMPLATE_COMMANDS, insertKamiTemplate } from './utilities/kamiTemplates';
 
 
 export default class MarpSlides extends Plugin {
@@ -97,6 +99,14 @@ export default class MarpSlides extends Plugin {
 		// 	name: 'Export Deck',
 		// 	callback: (() => this.exportFile(''))
 		// });
+		for (const command of KAMI_TEMPLATE_COMMANDS) {
+			this.addCommand({
+				id: command.id,
+				name: command.name,
+				editorCallback: (editor) => insertKamiTemplate(editor, command),
+			});
+		}
+
 
 		// This adds a settings tab so the user can configure various aspects of the plugin
 		this.addSettingTab(new MarpSlidesSettingTab(this.app, this));
@@ -104,6 +114,7 @@ export default class MarpSlides extends Plugin {
 		this.registerEditorExtension(EditorView.updateListener.of((update: ViewUpdate) => {
 			this.handleEditorUpdate(update);
 		}));
+		this.registerEditorExtension(createMermaidEditorExtension(this.app));
 		this.registerEvent(this.app.workspace.on('active-leaf-change', (leaf) => {
 			if (leaf?.view instanceof MarkdownView) {
 				this.refreshPreviewForEditor(leaf.view);

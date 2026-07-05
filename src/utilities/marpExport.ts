@@ -5,7 +5,7 @@ import { Platform, TFile, App } from 'obsidian';
 import { MarpSlidesSettings } from './settings';
 import { FilePath } from './filePath';
 import { renderMermaidFences } from './mermaid';
-import { compileKamiFencedBlocks } from './kamiDsl';
+import { compileKamiCommentBlocks } from './kamiDsl';
 import { insertMarkdownAfterFrontmatter, loadMermaidThemeCssForFile, wrapMermaidThemeCss } from './mermaidTheme';
 
 export class MarpCLIError extends Error {}
@@ -529,7 +529,7 @@ export class MarpExport {
 
         const originalContent = await this.app.vault.cachedRead(file);
         const mermaidThemeCss = await loadMermaidThemeCssForFile(this.app, file, originalContent);
-        const compiledMarkdown = compileKamiFencedBlocks(originalContent);
+        const compiledMarkdown = compileKamiCommentBlocks(originalContent);
         const processedMarkdown = renderMermaidFences(filesTool.convertImageWikiLinks(compiledMarkdown, file, this.app));
         const processedContent = insertMarkdownAfterFrontmatter(
             processedMarkdown,

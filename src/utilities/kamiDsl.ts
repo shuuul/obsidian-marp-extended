@@ -1,9 +1,9 @@
-type FenceAttributes = {
+type MarkerAttributes = {
 	positional: string[];
 	values: Record<string, string>;
 };
 
-type KamiBlockName = 'slide' | 'lead' | 'sub' | 'meta' | 'co' | 'mc' | 'note' | 'callout' | 'cols' | 'cards';
+type KamiBlockName = 'lead' | 'sub' | 'meta' | 'co' | 'mc' | 'note' | 'callout' | 'cols' | 'cards';
 
 const KAMI_BLOCK_CLASS_BY_NAME: Partial<Record<KamiBlockName, string>> = {
 	lead: 'lead',
@@ -22,7 +22,7 @@ function escapeHtml(value: string): string {
 		.replace(/"/g, '&quot;');
 }
 
-function parseFenceAttributes(rawInfo: string): FenceAttributes {
+function parseMarkerAttributes(rawInfo: string): MarkerAttributes {
 	const bracketMatch = rawInfo.match(/\[(.*)]/);
 	const rawAttributes = bracketMatch?.[1].trim() ?? '';
 	if (!rawAttributes) {
@@ -51,6 +51,10 @@ function parseFenceAttributes(rawInfo: string): FenceAttributes {
 }
 
 function unquoteValue(value: string): string {
+	if (value === '""' || value === "''") {
+		return value;
+	}
+
 	if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
 		return value.slice(1, -1);
 	}
@@ -58,37 +62,9 @@ function unquoteValue(value: string): string {
 	return value;
 }
 
-function parseMetadataLines(body: string): Record<string, string> {
-	const values: Record<string, string> = {};
-	for (const line of body.split(/\r?\n/)) {
-		const trimmed = line.trim();
-		if (!trimmed || trimmed.startsWith('#')) {
-			continue;
-		}
-
-		const separatorIndex = trimmed.indexOf(':');
-		if (separatorIndex === -1) {
-			continue;
-		}
-
-		const key = trimmed.slice(0, separatorIndex).trim();
-		const value = trimmed.slice(separatorIndex + 1).trim();
-		if (key) {
-			values[key] = value;
-		}
-	}
-
-	return values;
-}
-
-function renderSlideMetadata(rawInfo: string, body: string): string {
-	const attributes = parseFenceAttributes(rawInfo);
-	const metadata = {
-		...attributes.values,
-		...parseMetadataLines(body),
-	};
-
-	return Object.entries(metadata)
+function renderSlideMetadata(rawInfo: string): string {
+	const attributes = parseMarkerAttributes(rawInfo);
+	return Object.entries(attributes.values)
 		.map(([key, value]) => `<!-- ${key.startsWith('_') ? key : `_${key}`}: ${value} -->`)
 		.join('\n');
 }
@@ -97,7 +73,7 @@ function renderClassBlock(className: string, body: string): string {
 	return `<div class="${escapeHtml(className)}">\n\n${body.trim()}\n\n</div>`;
 }
 
-function splitKamiSegments(body: string): string[] {
+function splitKamiSegments(body: string, separatorPattern: RegExp): string[] {
 	const segments: string[] = [];
 	const currentSegment: string[] = [];
 	let nestedFence = false;
@@ -111,7 +87,7 @@ function splitKamiSegments(body: string): string[] {
 			continue;
 		}
 
-		if (/^===[ \t]*$/.test(line)) {
+		if (separatorPattern.test(line)) {
 			const segment = currentSegment.join('\n').trim();
 			if (segment) {
 				segments.push(segment);
@@ -135,12 +111,12 @@ function splitKamiSegments(body: string): string[] {
 }
 
 function renderColumns(body: string): string {
-	const columns = splitKamiSegments(body);
-	return `<div class="c2">\n\n${columns.map((column) => `<div>\n\n${compileKamiFencedBlocks(column)}\n\n</div>`).join('\n\n')}\n\n</div>`;
+	const columns = splitKamiSegments(body, /^%%marp-col%%$/);
+	return `<div class="c2">\n\n${columns.map((column) => `<div>\n\n${compileKamiCommentBlocks(column)}\n\n</div>`).join('\n\n')}\n\n</div>`;
 }
 
 function renderCards(body: string): string {
-	const cards = splitKamiSegments(body);
+	const cards = splitKamiSegments(body, /^%%marp-card%%$/);
 	const cells = cards.map(renderCardCell);
 	const rows: string[] = [];
 
@@ -155,11 +131,11 @@ function renderCardCell(card: string): string {
 	const lines = card.split(/\r?\n/);
 	const headingIndex = lines.findIndex((line) => /^#{1,6}\s+/.test(line.trim()));
 	if (headingIndex === -1) {
-		return `<td>\n\n${compileKamiFencedBlocks(card)}\n\n</td>`;
+		return `<td>\n\n${compileKamiCommentBlocks(card)}\n\n</td>`;
 	}
 
 	const heading = lines[headingIndex].trim().replace(/^#{1,6}\s+/, '');
-	const body = compileKamiFencedBlocks([
+	const body = compileKamiCommentBlocks([
 		...lines.slice(0, headingIndex),
 		...lines.slice(headingIndex + 1),
 	].join('\n').trim());
@@ -177,11 +153,7 @@ function renderMetricTitle(heading: string): string {
 	return `<div class="mt"><span class="ml">${escapeHtml(match[1])}</span>${escapeHtml(match[2])}</div>`;
 }
 
-function renderKamiFence(name: KamiBlockName, rawInfo: string, body: string): string {
-	if (name === 'slide') {
-		return renderSlideMetadata(rawInfo, body);
-	}
-
+function renderKamiBlock(name: KamiBlockName, rawInfo: string, body: string): string {
 	if (name === 'cols') {
 		return renderColumns(body);
 	}
@@ -191,27 +163,37 @@ function renderKamiFence(name: KamiBlockName, rawInfo: string, body: string): st
 	}
 
 	if (name === 'callout') {
-		const attributes = parseFenceAttributes(rawInfo);
+		const attributes = parseMarkerAttributes(rawInfo);
 		return renderClassBlock(attributes.positional[0] || attributes.values.type || 'co', body);
 	}
 
 	return renderClassBlock(KAMI_BLOCK_CLASS_BY_NAME[name] ?? name, body);
 }
 
-export function compileKamiFencedBlocks(markdown: string): string {
+export function compileKamiCommentBlocks(markdown: string): string {
 	const lines = markdown.split(/\r?\n/);
 	const output: string[] = [];
 	let index = 0;
 
 	while (index < lines.length) {
-		const startMatch = lines[index].match(/^```(slide|lead|sub|meta|cols|cards|callout|note|co|mc)(?=\[|\s|$)(.*)$/);
+		const slideMatch = lines[index].match(/^%%marp-slide(\[[^\]]*\])%%$/);
+		if (slideMatch) {
+			output.push(renderSlideMetadata(slideMatch[1]));
+			index += 1;
+			continue;
+		}
+
+		const startMatch = lines[index].match(/^%%marp-(lead|sub|meta|co|mc|note|callout|cols|cards)(\[[^\]]*\])?%%$/);
 		if (!startMatch) {
 			output.push(lines[index]);
 			index += 1;
 			continue;
 		}
 
+		const name = startMatch[1] as KamiBlockName;
+		const rawInfo = startMatch[2] ?? '';
 		const body: string[] = [];
+		const nestedBlockCounts: Partial<Record<KamiBlockName, number>> = {};
 		let cursor = index + 1;
 		let nestedFence = false;
 		let foundEnd = false;
@@ -227,8 +209,30 @@ export function compileKamiFencedBlocks(markdown: string): string {
 				continue;
 			}
 
-			if (/^```[ \t]*$/.test(line)) {
-				foundEnd = true;
+			const nestedStartMatch = line.match(/^%%marp-(lead|sub|meta|co|mc|note|callout|cols|cards)(\[[^\]]*\])?%%$/);
+			if (nestedStartMatch) {
+				const nestedName = nestedStartMatch[1] as KamiBlockName;
+				nestedBlockCounts[nestedName] = (nestedBlockCounts[nestedName] ?? 0) + 1;
+				body.push(line);
+				cursor += 1;
+				continue;
+			}
+
+			const closingMatch = line.match(/^%%\/marp-([a-z]+)%%$/);
+			if (closingMatch) {
+				if (closingMatch[1] === name && Object.values(nestedBlockCounts).every((count) => (count ?? 0) === 0)) {
+					foundEnd = true;
+					break;
+				}
+
+				const nestedName = closingMatch[1] as KamiBlockName;
+				if ((nestedBlockCounts[nestedName] ?? 0) > 0) {
+					nestedBlockCounts[nestedName] = (nestedBlockCounts[nestedName] ?? 0) - 1;
+					body.push(line);
+					cursor += 1;
+					continue;
+				}
+
 				break;
 			}
 
@@ -245,7 +249,7 @@ export function compileKamiFencedBlocks(markdown: string): string {
 			continue;
 		}
 
-		output.push(renderKamiFence(startMatch[1] as KamiBlockName, startMatch[2], body.join('\n')));
+		output.push(renderKamiBlock(name, rawInfo, body.join('\n')));
 		index = cursor + 1;
 	}
 

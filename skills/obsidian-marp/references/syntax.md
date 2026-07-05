@@ -87,17 +87,13 @@ HTML comment examples:
 <!-- color: "#eee" -->
 ```
 
-Marp Extended also accepts Obsidian-friendly `slide` fenced blocks before
-preview/export and compiles them into current-slide Marp spot directives:
+Marp Extended also accepts Obsidian-friendly `%%marp-slide[...]%%` comment
+markers before preview/export and compiles them into current-slide Marp spot
+directives:
 
-````markdown
-```slide[]
-class: cover
-paginate: false
-footer: ""
-header: 01 · Origin
+```markdown
+%%marp-slide[class=cover paginate=false footer="" header="01 · Origin"]%%
 ```
-````
 
 This is equivalent to:
 
@@ -108,48 +104,48 @@ This is equivalent to:
 <!-- _header: 01 · Origin -->
 ```
 
-Use quotes when YAML special characters are present:
+Use quoted `key=value` attributes when values contain spaces:
 
-```yaml
-footer: "**Draft** · v0.3"
+```markdown
+%%marp-slide[footer="**Draft** · v0.3"]%%
 ```
 
-## Kami fenced blocks for advanced Obsidian slide layouts
+## Kami comment markers for advanced Obsidian slide layouts
 
 Obsidian Markdown and Marp directives cover common slides, but many editorial
 layouts need theme-specific wrappers. Marp Extended accepts a small Kami DSL as
-fenced blocks and compiles it before preview/export, keeping source notes closer
-to Obsidian-native Markdown. The layout wrappers compile to HTML, so Obsidian
-preview requires the plugin's Enable HTML setting. Export already runs Marp CLI
-with HTML enabled.
+`%%marp-*%%` comment-marker blocks and compiles it before preview/export,
+keeping source notes close to Obsidian-native Markdown. The layout wrappers
+compile to HTML, so Obsidian preview requires the plugin's Enable HTML setting.
+Export already runs Marp CLI with HTML enabled.
 
-Supported blocks:
+Supported markers:
 
-| Fence | Compiles to |
+| Marker | Compiles to |
 | --- | --- |
-| `slide` | Marp local spot directives (`<!-- _key: value -->`). |
-| `lead` | `<div class="lead">...`. |
-| `sub` | `<div class="sub">...`. |
-| `meta` | `<div class="meta">...`. |
-| `co`, `note` | `<div class="co">...`. |
-| `mc` | `<div class="mc">...`. |
-| `callout[mc]` / `callout[type=mc]` | A custom class callout. Defaults to `co`. |
-| `cols` | `<div class="c2">...` columns, split by a line containing only `===`. |
-| `cards[2x2]` | `<table class="t2x2">...` metric cards, split by `===`. |
+| `%%marp-slide[...]%%` | Marp local spot directives (`<!-- _key: value -->`). |
+| `%%marp-lead%%` | `<div class="lead">...`. |
+| `%%marp-sub%%` | `<div class="sub">...`. |
+| `%%marp-meta%%` | `<div class="meta">...`. |
+| `%%marp-co%%`, `%%marp-note%%` | `<div class="co">...`. |
+| `%%marp-mc%%` | `<div class="mc">...`. |
+| `%%marp-callout[mc]%%` / `%%marp-callout[type=mc]%%` | A custom class callout. Defaults to `co`. |
+| `%%marp-cols%%` | `<div class="c2">...` columns, split by `%%marp-col%%`. |
+| `%%marp-cards[2x2]%%` | `<table class="t2x2">...` metric cards, split by `%%marp-card%%`. |
 
 Examples:
 
 ````markdown
-```lead[]
+%%marp-lead%%
 Same palette, fonts, layout tokens. Only the editing posture changes.
-```
+%%/marp-lead%%
 
-```cols[]
+%%marp-cols%%
 ### Left column
 
 - Markdown content
 
-===
+%%marp-col%%
 
 ### Right column
 
@@ -157,20 +153,20 @@ Same palette, fonts, layout tokens. Only the editing posture changes.
 flowchart LR
   A --> B
 ```
-```
+%%/marp-cols%%
 
-```cards[2x2]
+%%marp-cards[2x2]%%
 ### A · Palette
 One ink-blue accent.
 
-===
+%%marp-card%%
 
 ### B · Type
 One serif per page.
-```
+%%/marp-cards%%
 ````
 
-Hand-written HTML remains an escape hatch when the fenced blocks do not express
+Hand-written HTML remains an escape hatch when the comment markers do not express
 the layout you need:
 
 ```markdown

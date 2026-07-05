@@ -6,7 +6,7 @@ import type { MarpSlidesSettings } from '../utilities/settings'
 import { FilePath } from '../utilities/filePath'
 import { ThemeManager } from '../utilities/themeManager';
 import { mermaidFencePlugin } from '../utilities/mermaid';
-import { compileKamiFencedBlocks } from '../utilities/kamiDsl';
+import { compileKamiCommentBlocks } from '../utilities/kamiDsl';
 import { loadMermaidThemeCssForFile } from '../utilities/mermaidTheme';
 import { ThemeAssetCache } from '../utilities/themeAssetCache';
 import { MarpExport } from '../utilities/marpExport';
@@ -712,7 +712,7 @@ export class MarpPreviewView extends ItemView  {
             }
 
             const processedMarkdown = this.measurePreviewStep('convertImageWikiLinks', () => (
-                filePath.convertImageWikiLinks(compileKamiFencedBlocks(markdownText), sourceFile, this.app)
+                filePath.convertImageWikiLinks(compileKamiCommentBlocks(markdownText), sourceFile, this.app)
             ));
 
             this.previewSlideEls = [];

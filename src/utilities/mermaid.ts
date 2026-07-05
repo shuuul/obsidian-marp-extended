@@ -52,7 +52,7 @@ export const DEFAULT_MERMAID_RENDER_OPTIONS: RenderOptions = {
 	layerSpacing: 48,
 };
 
-function readLanguageAndAltText(info: string): { language: string; alt: string } {
+export function parseMermaidFenceInfo(info: string): { language: string; alt: string } {
 	if (!info) {
 		return { language: '', alt: '' };
 	}
@@ -190,7 +190,7 @@ export function renderMermaidFigure(source: string, alt: string, options: Mermai
 
 export function renderMermaidFences(markdown: string, options: MermaidPluginOptions = {}): string {
 	return markdown.replace(/^```mermaid([^\n]*)\n([\s\S]*?)^```[ \t]*$/gm, (match, rawInfo: string, source: string) => {
-		const { alt } = readLanguageAndAltText(`mermaid${rawInfo}`);
+		const { alt } = parseMermaidFenceInfo(`mermaid${rawInfo}`);
 
 		try {
 			return renderMermaidFigure(source, alt, options);
@@ -205,7 +205,7 @@ export function mermaidFencePlugin(md: MarpMarkdownRenderer, options: MermaidPlu
 
 	md.renderer.rules.fence = (tokens, idx, renderOptions, env, self) => {
 		const token = tokens[idx];
-		const { language, alt } = readLanguageAndAltText(md.utils.unescapeAll(token.info));
+		const { language, alt } = parseMermaidFenceInfo(md.utils.unescapeAll(token.info));
 
 		if (language !== 'mermaid') {
 			return defaultFence ? defaultFence(tokens, idx, renderOptions, env, self) : '';

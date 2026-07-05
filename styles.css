@@ -124,3 +124,16 @@ If your plugin does not need CSS, delete this file.
 	min-height: 18rem;
 	width: 100%;
 }
+
+.marp-extended-editor-mermaid {
+	margin: 0.75em 0;
+}
+
+.marp-extended-editor-mermaid section {
+	background: transparent;
+}
+
+.marp-extended-editor-mermaid .mermaid-render-error {
+	color: var(--text-error);
+	white-space: pre-wrap;
+}

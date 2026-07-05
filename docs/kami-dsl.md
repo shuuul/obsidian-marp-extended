@@ -1,16 +1,21 @@
 # Kami DSL
 
 Kami DSL is a small Marp Extended authoring layer for Kami-style decks. It lets
-you keep notes closer to Obsidian-friendly Markdown while the plugin compiles
-layout hints into Marp-compatible directives and HTML before preview/export.
+you keep notes close to Obsidian-friendly Markdown while the plugin compiles
+comment-marker layout hints into Marp-compatible directives and HTML before
+preview/export.
 
 The regular Marp pipeline is still used: Marp Core renders preview, and Marp CLI
-exports HTML/PDF/PPTX. Kami DSL only rewrites a few fenced blocks before that
-happens.
+exports HTML/PDF/PPTX. Kami DSL only rewrites namespaced `%%marp-*%%` marker
+lines before that happens.
 
 Kami DSL layout blocks compile to HTML wrappers. To see those wrappers styled in
 Obsidian preview, enable the plugin's **Enable HTML** setting. Export already
 passes HTML through Marp CLI so these wrappers are preserved in exported files.
+
+Marker lines are complete Obsidian comments and are hidden by Obsidian Reading
+view. Content between paired markers remains normal Markdown and still renders in
+Obsidian.
 
 ## Deck frontmatter stays Marp frontmatter
 
@@ -30,16 +35,12 @@ footer: "Kami · Marp Extended"
 
 ## Slide metadata
 
-Use a `slide` fenced block for local Marp directives instead of HTML comments:
+Use a single `%%marp-slide[...]%%` marker for local Marp directives instead of
+visible HTML comments:
 
-````md
-```slide[]
-class: cover
-paginate: false
-footer: ""
-header: 01 · Origin
+```md
+%%marp-slide[class=cover paginate=false footer="" header="01 · Origin"]%%
 ```
-````
 
 Marp Extended compiles it to current-slide spot directives:
 
@@ -50,101 +51,103 @@ Marp Extended compiles it to current-slide spot directives:
 <!-- _header: 01 · Origin -->
 ```
 
-Put the block near the top of the slide it controls.
+Put the marker near the top of the slide it controls. Values containing spaces
+must be quoted.
 
 ## Semantic text blocks
 
-These blocks compile to the existing Kami theme classes:
+These paired markers compile to the existing Kami theme classes:
 
-| DSL | Output class | Use |
+| DSL marker | Output class | Use |
 | --- | --- | --- |
-| ```` ```lead[] ```` | `lead` | Lead paragraph / large intro text |
-| ```` ```sub[] ```` | `sub` | Cover subtitle |
-| ```` ```meta[] ```` | `meta` | Cover metadata |
-| ```` ```co[] ```` | `co` | Conclusion / callout |
-| ```` ```note[] ```` | `co` | Alias for conclusion / callout |
-| ```` ```mc[] ```` | `mc` | Mini callout |
-| ```` ```callout[mc] ```` | custom | Custom callout class |
+| `%%marp-lead%%` | `lead` | Lead paragraph / large intro text |
+| `%%marp-sub%%` | `sub` | Cover subtitle |
+| `%%marp-meta%%` | `meta` | Cover metadata |
+| `%%marp-co%%` | `co` | Conclusion / callout |
+| `%%marp-note%%` | `co` | Alias for conclusion / callout |
+| `%%marp-mc%%` | `mc` | Mini callout |
+| `%%marp-callout[mc]%%` | custom | Custom callout class |
 
 Example:
 
-````md
-```lead[]
+```md
+%%marp-lead%%
 Same palette, fonts, layout tokens. Only the editing posture changes.
-```
+%%/marp-lead%%
 
-```co[]
+%%marp-co%%
 Title carries the claim. Body grounds it. The deck gains a spine.
+%%/marp-co%%
 ```
-````
 
 ## Columns
 
-Use `cols` for two-column Kami layouts. Split columns with a line containing
-only `===`:
+Use `%%marp-cols%%` for two-column Kami layouts. Split columns with the hidden
+`%%marp-col%%` marker line:
 
 ````md
-```cols[]
+%%marp-cols%%
 ### Shared with Kami slides
 
 - Warm parchment canvas
 - Ink-blue accent
 - Serif-led hierarchy
 
-===
+%%marp-col%%
 
 ### What Marp Extended adds
 
 - Obsidian preview
 - Mermaid inline SVG
 - PDF/PPTX/HTML export
-```
+%%/marp-cols%%
 ````
 
-Nested fenced blocks are allowed inside columns, including `mermaid`, `lead`,
-`mc`, and code fences:
+Nested Markdown is allowed inside columns, including Mermaid fences and other
+Kami comment-marker blocks:
 
 ````md
-```cols[]
-```lead[]
+%%marp-cols%%
+%%marp-lead%%
 Tools should match Agent goals, not underlying API shapes.
-```
+%%/marp-lead%%
 
-===
+%%marp-col%%
 
 ```mermaid[Agent loop]
 flowchart LR
   P[PLAN] --> A[ACT]
   A --> O[OBSERVE]
 ```
-```
+%%/marp-cols%%
 ````
 
 ## 2×2 cards
 
-Use `cards[2x2]` for metric-card layouts. Split cards with `===`:
+Use `%%marp-cards[2x2]%%` for metric-card layouts. Split cards with the hidden
+`%%marp-card%%` marker line:
 
-````md
-```cards[2x2]
+```md
+%%marp-cards[2x2]%%
 ### A · Palette
 One ink-blue accent, never above 5% of surface area.
 
-===
+%%marp-card%%
 
 ### B · Type
 One serif per page. Body 400, headings 500.
 
-===
+%%marp-card%%
 
 ### C · Layout
 Two-column content uses the Kami grid.
 
-===
+%%marp-card%%
 
 ### D · Rhythm
 Spacing follows theme rhythm tokens.
+%%/marp-cards%%
 ```
-````
 
 The heading pattern `Label · Title` becomes the existing Kami metric title:
 
@@ -154,7 +157,8 @@ The heading pattern `Label · Title` becomes the existing Kami metric title:
 
 ## Mermaid attributes
 
-Mermaid fences keep the existing title syntax:
+Mermaid is the only DSL-adjacent block that remains a standard fenced code block
+to preserve Obsidian's native code-block syntax:
 
 ````md
 ```mermaid[Kami Mermaid]
@@ -192,15 +196,15 @@ Markdown.
 
 ## Implementation notes
 
-Preview and export both run the same compiler before Marp rendering. Source
-notes are not modified by export; compiled content is written to temporary
-Markdown when needed.
+Preview and export both run the same comment-marker compiler before Marp
+rendering. Source notes are not modified by export; compiled content is written
+to temporary Markdown when needed.
 
 Because the compiler emits HTML for layout wrappers, Obsidian preview requires
 the plugin's **Enable HTML** setting for `lead`, `cols`, `cards`, and similar
-blocks to render as styled Kami layout. `slide` metadata compiles to Marp
-directives and does not depend on HTML rendering.
+blocks to render as styled Kami layout. `%%marp-slide[...]%%` metadata compiles
+to Marp directives and does not depend on HTML rendering.
 
 The compiler intentionally stays small. If a layout is not covered by the DSL,
-raw HTML remains an escape hatch, but prefer adding a focused fenced block when
-the pattern is reusable across Kami decks.
+raw HTML remains an escape hatch, but prefer adding a focused comment-marker
+block when the pattern is reusable across Kami decks.
