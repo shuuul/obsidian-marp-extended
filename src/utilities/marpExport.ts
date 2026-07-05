@@ -1,11 +1,11 @@
 import type * as NodeChildProcess from 'node:child_process';
 import type * as NodeFs from 'node:fs';
 import type * as NodePath from 'node:path';
-import { Platform, TFile, App } from 'obsidian';
-import { MarpSlidesSettings } from './settings';
+import { App, Notice, Platform, TFile } from 'obsidian';
+import { MarpExtendedSettings } from './settings';
 import { FilePath } from './filePath';
-import { renderMermaidFences } from './mermaid';
-import { compileKamiCommentBlocks } from './kamiDsl';
+import packageMetadata from '../../package.json';
+import { compileMarkdownForMarp } from './marpMarkdown';
 import { insertMarkdownAfterFrontmatter, loadMermaidThemeCssForFile, wrapMermaidThemeCss } from './mermaidTheme';
 
 export class MarpCLIError extends Error {}
@@ -66,7 +66,13 @@ type NodeFsModule = typeof NodeFs;
 type NodePathModule = typeof NodePath;
 
 const DEFAULT_MARP_CLI_COMMAND = 'marp';
-const DEFAULT_NPX_MARP_CLI_PACKAGE = '@marp-team/marp-cli@4.4.0';
+type MarpExtendedPackageMetadata = {
+    marpExtended: {
+        npxMarpCliPackage: string;
+    };
+};
+
+const NPX_MARP_CLI_PACKAGE = (packageMetadata as MarpExtendedPackageMetadata).marpExtended.npxMarpCliPackage;
 const MISSING_MARP_CLI_INSTALL_HINT = 'Install it with `npm install -g @marp-team/marp-cli`, set the Marp CLI path, or enable npx fallback in Marp Extended settings.';
 const MISSING_NPX_INSTALL_HINT = 'Install Node.js/npm so npx is available, or set the Marp CLI path in Marp Extended settings.';
 const MARP_CLI_MAX_BUFFER = 10 * 1024 * 1024;
@@ -239,7 +245,7 @@ function getNpxExecutable(): string {
     return detectExecutablePath(getNpxExecutableNames()) ?? (process.platform === 'win32' ? 'npx.cmd' : 'npx');
 }
 
-function getPrimaryMarpCliInvocation(settings: MarpSlidesSettings): MarpCliInvocation {
+function getPrimaryMarpCliInvocation(settings: MarpExtendedSettings): MarpCliInvocation {
     const configuredPath = settings.MARP_CLI_PATH.trim();
     const detectedPath = configuredPath ? null : detectMarpCliPath();
     const executable = configuredPath || detectedPath || DEFAULT_MARP_CLI_COMMAND;
@@ -253,19 +259,25 @@ function getPrimaryMarpCliInvocation(settings: MarpSlidesSettings): MarpCliInvoc
 function getNpxMarpCliInvocation(): MarpCliInvocation {
     return {
         executable: getNpxExecutable(),
-        argsPrefix: ['--yes', '--package', DEFAULT_NPX_MARP_CLI_PACKAGE, DEFAULT_MARP_CLI_COMMAND],
+        argsPrefix: ['--yes', '--package', NPX_MARP_CLI_PACKAGE, DEFAULT_MARP_CLI_COMMAND],
         isNpxFallback: true,
     };
 }
 
-function shouldUseNpxFallback(settings: MarpSlidesSettings, error: MarpCliProcessError): boolean {
-    return settings.MARP_CLI_USE_NPX
-        && settings.MARP_CLI_PATH.trim().length === 0
-        && !error.isNpxFallback
-        && isMissingExecutable(error);
+function shouldUseNpxFallback(settings: MarpExtendedSettings, args: string[], error: MarpCliProcessError): boolean {
+    if (!settings.MARP_CLI_USE_NPX || settings.MARP_CLI_PATH.trim().length > 0 || error.isNpxFallback) {
+        return false;
+    }
+
+    if (isMissingExecutable(error)) {
+        return true;
+    }
+
+    const isBrowserBackedExport = args.includes('--pdf') || args.includes('--pptx');
+    return isBrowserBackedExport && isMissingBrowserError(getMarpCliOutput(error));
 }
 
-function getMarpCliEnvironment(settings: MarpSlidesSettings): NodeJS.ProcessEnv {
+function getMarpCliEnvironment(settings: MarpExtendedSettings): NodeJS.ProcessEnv {
     const env: NodeJS.ProcessEnv = { ...process.env };
     if (settings.CHROME_PATH.trim()) {
         env.CHROME_PATH = settings.CHROME_PATH.trim();
@@ -287,7 +299,7 @@ function getExecErrorExitCode(error: MarpCliExecError): number | null {
 function execMarpCli(
     invocation: MarpCliInvocation,
     args: string[],
-    settings: MarpSlidesSettings,
+    settings: MarpExtendedSettings,
 ): Promise<MarpCliExecResult> {
     const { spawn } = getNodeChildProcess();
     const commandArgs = [...invocation.argsPrefix, ...args];
@@ -397,7 +409,7 @@ function toUserFacingCliError(error: MarpCliProcessError): MarpCLIError {
 }
 
 async function execMarpCliWithFallback(
-    settings: MarpSlidesSettings,
+    settings: MarpExtendedSettings,
     args: string[],
 ): Promise<MarpCliExecResult> {
     const primaryInvocation = getPrimaryMarpCliInvocation(settings);
@@ -408,7 +420,7 @@ async function execMarpCliWithFallback(
             throw error;
         }
 
-        if (!shouldUseNpxFallback(settings, error)) {
+        if (!shouldUseNpxFallback(settings, args, error)) {
             throw toUserFacingCliError(error);
         }
 
@@ -426,7 +438,7 @@ async function execMarpCliWithFallback(
 
 export class MarpExport {
 
-    private settings : MarpSlidesSettings;
+    private settings : MarpExtendedSettings;
     private app : App | null;
 
     static detectCliPath(): string | null {
@@ -437,12 +449,12 @@ export class MarpExport {
         return detectBrowserPath();
     }
 
-    static async getCliVersion(settings: MarpSlidesSettings): Promise<string> {
+    static async getCliVersion(settings: MarpExtendedSettings): Promise<string> {
         const result = await execMarpCliWithFallback(settings, ['--version']);
         return (result.stdout || result.stderr).trim();
     }
 
-    constructor(settings: MarpSlidesSettings, app: App | null = null) {
+    constructor(settings: MarpExtendedSettings, app: App | null = null) {
         this.settings = settings;
         this.app = app;
     }
@@ -456,7 +468,7 @@ export class MarpExport {
             return null;
         }
 
-        const sourceFilePath = filesTool.getCompleteFilePath(file);
+        const sourceFilePath = filesTool.getExportFileSystemPath(file);
         const themePaths = filesTool.getThemePaths(file).filter((themePath) => fs.existsSync(themePath));
         if (sourceFilePath != ''){
             const exportSource = await this.prepareExportSource(file, filesTool, sourceFilePath, fs, path);
@@ -529,8 +541,9 @@ export class MarpExport {
 
         const originalContent = await this.app.vault.cachedRead(file);
         const mermaidThemeCss = await loadMermaidThemeCssForFile(this.app, file, originalContent);
-        const compiledMarkdown = compileKamiCommentBlocks(originalContent);
-        const processedMarkdown = renderMermaidFences(filesTool.convertImageWikiLinks(compiledMarkdown, file, this.app));
+        const processedMarkdown = compileMarkdownForMarp(originalContent, file, this.app, filesTool, {
+            renderMermaidInline: true,
+        });
         const processedContent = insertMarkdownAfterFrontmatter(
             processedMarkdown,
             wrapMermaidThemeCss(mermaidThemeCss),
@@ -575,7 +588,7 @@ export class MarpExport {
             return null;
         }
 
-        const sourceFilePath = filesTool.getCompleteFilePath(file);
+        const sourceFilePath = filesTool.getExportFileSystemPath(file);
         const defaultPath = path.join(path.dirname(sourceFilePath), `${file.basename}.${extension}`);
 
         return this.chooseExportFile(defaultPath, extension);
@@ -660,5 +673,35 @@ export class MarpExport {
         }
 
         return null;
+    }
+}
+
+
+export async function exportWithNotice(
+    settings: MarpExtendedSettings,
+    app: App,
+    type: string,
+    file: TFile | null,
+): Promise<void> {
+    if (!file) {
+        new Notice('Open a Markdown file before exporting Marp slides.', 5000);
+        return;
+    }
+
+    let progressNotice: Notice | null = null;
+    try {
+        const marpCli = new MarpExport(settings, app);
+        progressNotice = new Notice(`Exporting Marp slides as ${type.toUpperCase()}…`, 0);
+        const outputPath = await marpCli.export(file, type);
+        progressNotice.hide();
+        progressNotice = null;
+        if (outputPath) {
+            new Notice(`Exported Marp slides to ${outputPath}`, 7000);
+        }
+    } catch (error) {
+        progressNotice?.hide();
+        const message = error instanceof Error ? error.message : String(error);
+        console.error('Marp export failed:', error);
+        new Notice(`Marp export failed: ${message}`, 8000);
     }
 }

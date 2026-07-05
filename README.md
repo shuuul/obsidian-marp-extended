@@ -113,7 +113,7 @@ Marp Extended does not bundle these font files. TsangerJinKai02 may require a se
 
 Preview and presentation work from the plugin bundle. Export runs an external Marp CLI command so Marp Extended does not bundle the full CLI/Puppeteer toolchain.
 
-Install Marp CLI globally, set an explicit executable path in **Settings → Marp Extended → Marp CLI path**, or enable **Use npx fallback** to let the plugin run a pinned Marp CLI package through `npx` when no executable is found:
+Install Marp CLI globally, set an explicit executable path in **Settings → Marp Extended → Marp CLI path**, or enable **Use npx fallback** to let the plugin run a pinned Marp CLI package through `npx` when no executable is found or when a browser-backed PDF/PPTX export fails without an explicit CLI path:
 
 ```bash
 npm install -g @marp-team/marp-cli
@@ -122,7 +122,7 @@ marp --version
 
 Use **Auto-detect** in settings to search `PATH` and common Homebrew locations such as `/opt/homebrew/bin/marp`. If `marp` is not found automatically, set **Marp CLI path** to the executable path, such as `/opt/homebrew/bin/marp` or `C:\Users\you\AppData\Roaming\npm\marp.cmd`.
 
-The npx fallback uses `@marp-team/marp-cli@4.4.0`. It requires Node.js/npm and may download the package on first use.
+The opt-in npx fallback uses `@marp-team/marp-cli@4.4.1`. It requires Node.js/npm and may download the package on first use.
 
 > ⚠️ PDF and PPTX export require Google Chrome, Chromium, or Microsoft Edge. You can set a custom browser path with the `CHROME_PATH` setting if Marp CLI cannot auto-detect your browser.
 

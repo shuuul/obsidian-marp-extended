@@ -1,15 +1,15 @@
-import { ItemView, setIcon, Notice, type WorkspaceLeaf, type MarkdownView, type TFile } from 'obsidian';
+import { ItemView, setIcon, type WorkspaceLeaf, type MarkdownView, type TFile } from 'obsidian';
 import { Marp } from '@marp-team/marp-core'
 import { browser, type MarpCoreBrowser } from '@marp-team/marp-core/browser'
 
-import type { MarpSlidesSettings } from '../utilities/settings'
+import type { MarpExtendedSettings } from '../utilities/settings'
 import { FilePath } from '../utilities/filePath'
 import { ThemeManager } from '../utilities/themeManager';
 import { mermaidFencePlugin } from '../utilities/mermaid';
-import { compileKamiCommentBlocks } from '../utilities/kamiDsl';
+import { compileMarkdownForMarp } from '../utilities/marpMarkdown';
 import { loadMermaidThemeCssForFile } from '../utilities/mermaidTheme';
 import { ThemeAssetCache } from '../utilities/themeAssetCache';
-import { MarpExport } from '../utilities/marpExport';
+import { exportWithNotice } from '../utilities/marpExport';
 import {
     PREVIEW_ZOOM_RESET,
     clampPreviewZoom,
@@ -104,11 +104,11 @@ export class MarpPreviewView extends ItemView  {
     private displaySlidesRevision = 0;
     private previewProfileMeasureCounter = 0;
     private themeAssetCache: ThemeAssetCache;
-    private settings : MarpSlidesSettings;
+    private settings : MarpExtendedSettings;
 
     private file : TFile | null = null;
 
-    constructor(settings: MarpSlidesSettings, leaf: WorkspaceLeaf) {
+    constructor(settings: MarpExtendedSettings, leaf: WorkspaceLeaf) {
         super(leaf);
 
         this.settings = settings;
@@ -664,27 +664,7 @@ export class MarpPreviewView extends ItemView  {
 
     private async exportFile(type: string) {
         const file = this.file ?? this.app.workspace.getActiveFile();
-        if (!file) {
-            new Notice('Open a Markdown file before exporting Marp slides.', 5000);
-            return;
-        }
-
-        let progressNotice: Notice | null = null;
-        try {
-            const marpCli = new MarpExport(this.settings, this.app);
-            progressNotice = new Notice(`Exporting Marp slides as ${type.toUpperCase()}…`, 0);
-            const outputPath = await marpCli.export(file, type);
-            progressNotice.hide();
-            progressNotice = null;
-            if (outputPath) {
-                new Notice(`Exported Marp slides to ${outputPath}`, 7000);
-            }
-        } catch (error) {
-            progressNotice?.hide();
-            const message = error instanceof Error ? error.message : String(error);
-            console.error('Marp export failed:', error);
-            new Notice(`Marp export failed: ${message}`, 8000);
-        }
+        await exportWithNotice(this.settings, this.app, type, file);
     }
     
     async displaySlides(view : MarkdownView, markdownOverride?: string) {
@@ -698,7 +678,7 @@ export class MarpPreviewView extends ItemView  {
         this.file = sourceFile;
         try {
             const filePath = new FilePath(this.settings);
-            const basePath = filePath.getCompleteFileBasePath(sourceFile);
+            const previewBaseUrl = filePath.getPreviewBaseUrl(sourceFile);
             const markdownText = markdownOverride ?? view.getViewData();
             await this.measurePreviewStepAsync('reloadThemesIfChanged', () => this.reloadThemesIfChanged());
             if (displayRevision !== this.displaySlidesRevision) {
@@ -711,8 +691,8 @@ export class MarpPreviewView extends ItemView  {
                 return;
             }
 
-            const processedMarkdown = this.measurePreviewStep('convertImageWikiLinks', () => (
-                filePath.convertImageWikiLinks(compileKamiCommentBlocks(markdownText), sourceFile, this.app)
+            const processedMarkdown = this.measurePreviewStep('compileMarkdownForMarp', () => (
+                compileMarkdownForMarp(markdownText, sourceFile, this.app, filePath)
             ));
 
             this.previewSlideEls = [];
@@ -731,13 +711,13 @@ export class MarpPreviewView extends ItemView  {
             }
 
             html = this.measurePreviewStep('rewriteBackgroundUrls', () => (
-                html.replace(/(?!background-image:url\(&quot;http)background-image:url\(&quot;/g, `background-image:url(&quot;${basePath}`)
+                html.replace(/(?!background-image:url\(&quot;http)background-image:url\(&quot;/g, `background-image:url(&quot;${previewBaseUrl}`)
             ));
 
             const htmlFile = `<!DOCTYPE html>
 <html>
 <head>
-<base href="${basePath}">
+<base href="${previewBaseUrl}">
 <style id="__marp-vscode-style">${css}\n${mermaidThemeCss}</style>
 <style id="__marp-extended-preview-style">${PREVIEW_IFRAME_STYLE}</style>
 </head>

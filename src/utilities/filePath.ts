@@ -1,16 +1,21 @@
 import { Vault, normalizePath, FileSystemAdapter, TFile, App } from 'obsidian';
-import { MarpSlidesSettings } from './settings';
+import { MarpExtendedSettings } from './settings';
 import { DEFAULT_THEME_DIRECTORY } from './defaultThemes';
 
 interface VaultWithLinkConfig {
 	getConfig(key: 'newLinkFormat'): string;
 }
 
+type DesktopFileSystemAdapter = FileSystemAdapter & {
+	getFullPath?: (normalizedPath: string) => string;
+	getFilePath?: (normalizedPath: string) => string;
+};
+
 export class FilePath  {
 
-    private settings : MarpSlidesSettings;
+    private settings : MarpExtendedSettings;
 
-    constructor(settings: MarpSlidesSettings) {
+    constructor(settings: MarpExtendedSettings) {
         this.settings = settings;
     }
 
@@ -27,17 +32,26 @@ export class FilePath  {
         }
     }
 
+    /**
+     * True only when absolute Obsidian wiki-link mode requires a temporary root export source.
+     */
     public shouldUseRootExportSource(file: TFile): boolean {
         return this.isAbsoluteLinkFormat(file) && file.path !== file.name;
     }
 
-    private getVaultPath(vault: Vault, normalizedPath: string): string {
-        const adapter = vault.adapter as FileSystemAdapter;
+    private getDesktopFileSystemAdapter(vault: Vault): DesktopFileSystemAdapter {
+        const adapter = vault.adapter as DesktopFileSystemAdapter;
+        if (typeof adapter.getBasePath !== 'function') {
+            throw new Error('Marp Extended requires Obsidian desktop file system access for export paths.');
+        }
+
+        return adapter;
+    }
+
+    private getVaultFileSystemPath(vault: Vault, normalizedPath: string): string {
+        const adapter = this.getDesktopFileSystemAdapter(vault);
         const path = normalizePath(normalizedPath);
 
-        // Obsidian's desktop adapter can provide the real filesystem path.
-        // Use it for Marp CLI because resource URLs like app://... are only
-        // valid inside Obsidian's WebView and are rejected by Node APIs.
         if (adapter.getFullPath) {
             return this.normalizeFileSystemPath(adapter.getFullPath(path));
         }
@@ -100,49 +114,64 @@ export class FilePath  {
         return joined;
     }
 
-	public getCompleteFileBasePath(file: TFile): string{
+    /**
+     * Returns an Obsidian app:// resource URL for iframe <base href>. Do not pass this to Node APIs or Marp CLI.
+     */
+	public getPreviewBaseUrl(file: TFile): string{
         let resourcePath = [""];
         if(this.isAbsoluteLinkFormat(file)){
-            resourcePath = (file.vault.adapter as FileSystemAdapter).getResourcePath(normalizePath("/")).split("?");
+            resourcePath = file.vault.adapter.getResourcePath(normalizePath("/")).split("?");
         }
         else
         {
             if (file.parent != null){
-                resourcePath = (file.vault.adapter as FileSystemAdapter).getResourcePath(normalizePath(file.parent.path)).split("?");
+                resourcePath = file.vault.adapter.getResourcePath(normalizePath(file.parent.path)).split("?");
             }
         }
-        //console.log(`Complete File Base Path: ${resourcePath}`);
         return `${resourcePath[0]}/`;
 	}
 
-    public getCompleteFilePath(file: TFile) : string{
+    /**
+     * Returns a normalized desktop filesystem path for Marp CLI.
+     */
+    public getExportFileSystemPath(file: TFile) : string{
 
-        let basePath = this.getVaultPath(file.vault, file.path);
+        let basePath = this.getVaultFileSystemPath(file.vault, file.path);
         if(this.isAbsoluteLinkFormat(file)){
-            basePath = this.getVaultPath(file.vault, file.name);
+            basePath = this.getVaultFileSystemPath(file.vault, file.name);
         }
-        //console.log(`Complete File Path: ${basePath}`);
         return basePath;
 	}
 
+    /**
+     * Copies the source file to the vault root only when absolute link mode requires the legacy root export source.
+     */
     public async copyFileToRoot(file: TFile) {
         if(this.isAbsoluteLinkFormat(file)){
-            await (file.vault.adapter as FileSystemAdapter).copy(file.path, file.name);
-            //console.log(`copied!`);
+            await file.vault.adapter.copy(file.path, file.name);
         }
     }
 
+    /**
+     * Removes the temporary root source only when absolute link mode requires the legacy root export source.
+     */
     public async removeFileFromRoot(file: TFile) {
-        const isFileExists = await (file.vault.adapter as FileSystemAdapter).exists(file.name);
+        const isFileExists = await file.vault.adapter.exists(file.name);
         if(this.isAbsoluteLinkFormat(file) && isFileExists){
-            await (file.vault.adapter as FileSystemAdapter).remove(file.name);
+            await file.vault.adapter.remove(file.name);
         }
     }
 
+    /**
+     * Returns the managed default theme desktop filesystem path for Marp CLI --theme-set.
+     */
     public getDefaultThemePath(file: TFile): string{
-        return this.getVaultPath(file.vault, DEFAULT_THEME_DIRECTORY);
+        return this.getVaultFileSystemPath(file.vault, DEFAULT_THEME_DIRECTORY);
     }
 
+    /**
+     * Returns desktop filesystem paths for Marp CLI --theme-set.
+     */
     public getThemePaths(file: TFile): string[]{
         return [this.getDefaultThemePath(file)];
     }

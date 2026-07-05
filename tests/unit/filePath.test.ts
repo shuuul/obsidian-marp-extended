@@ -33,7 +33,7 @@ test('file base path', () => {
       file.vault.adapter.write(`${element.base}\\${element.relative}`, '');
     }
 
-    const result = filePath.getCompleteFileBasePath(file);
+    const result = filePath.getPreviewBaseUrl(file);
 
     expect(result).toBe(element.expected);
   });
@@ -54,11 +54,31 @@ test('file path', () => {
     file.path = element.relative;
     file.vault.adapter.write(element.base, '');
 
-    const result = filePath.getCompleteFilePath(file);
+    const result = filePath.getExportFileSystemPath(file);
 
     expect(result).toBe(element.expected);
   });
 
+});
+
+test('preview base URL and export filesystem path diverge for the same file', () => {
+  const filePath = new FilePath(DEFAULT_SETTINGS);
+  const file = new TFile;
+  file.path = 'slides/deck.md';
+  if (file.parent != null) {
+    file.parent.path = 'slides';
+  }
+  file.vault.adapter.write('/vault/root', '');
+  // Test fixture adds Obsidian desktop adapter API not present on DataAdapter.
+  const desktopAdapter = file.vault.adapter as unknown as { getFullPath: (path: string) => string };
+  desktopAdapter.getFullPath = (path: string) => `/vault/root/${path}`;
+
+  const previewUrl = filePath.getPreviewBaseUrl(file);
+  const exportPath = filePath.getExportFileSystemPath(file);
+
+  expect(previewUrl).toMatch(/^app:\/\/local\//);
+  expect(exportPath).toBe('/vault/root/slides/deck.md');
+  expect(previewUrl).not.toBe(exportPath);
 });
 
 test('file path uses Obsidian adapter full paths for export', () => {
@@ -72,7 +92,7 @@ test('file path uses Obsidian adapter full paths for export', () => {
     `/Users/shuuul/Library/Mobile Documents/iCloud~md~obsidian/Documents/Base/${path}`
   );
 
-  const result = filePath.getCompleteFilePath(file);
+  const result = filePath.getExportFileSystemPath(file);
 
   expect(result).toBe('/Users/shuuul/Library/Mobile Documents/iCloud~md~obsidian/Documents/Base/inbox/deck.md');
 
@@ -89,7 +109,7 @@ test('file path decodes Obsidian app resource URLs when full paths are unavailab
     `app://1067c2dabfdf176f64ce90173984a4c77385/Users/shuuul/Library/Mobile%20Documents/iCloud%7Emd%7Eobsidian/Documents/Base/${path}`
   );
 
-  const result = filePath.getCompleteFilePath(file);
+  const result = filePath.getExportFileSystemPath(file);
 
   expect(result).toBe('/Users/shuuul/Library/Mobile Documents/iCloud~md~obsidian/Documents/Base/inbox/deck.md');
 

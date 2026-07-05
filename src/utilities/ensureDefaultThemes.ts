@@ -1,9 +1,9 @@
 import { Notice } from 'obsidian';
 
-import type MarpSlides from '../main';
+import type MarpExtended from '../main';
 import { ThemeManager } from './themeManager';
 
-export async function ensureDefaultThemes(plugin: MarpSlides): Promise<void> {
+export async function ensureDefaultThemes(plugin: MarpExtended): Promise<void> {
 	const manager = new ThemeManager(plugin.app);
 
 	try {

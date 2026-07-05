@@ -4,8 +4,12 @@
     "rootDir": ".",
     "ignoreDeprecations": "6.0",
     "paths": {
-      "@/*": ["*"],
-      "@test/*": ["../tests/*"]
+      "@/*": [
+        "*"
+      ],
+      "@test/*": [
+        "../tests/*"
+      ]
     },
     "inlineSourceMap": true,
     "inlineSources": true,
@@ -16,7 +20,7 @@
     "strictPropertyInitialization": false,
     "moduleResolution": "node",
     "isolatedModules": true,
-	  "strictNullChecks": true,
+    "strictNullChecks": true,
     "esModuleInterop": true,
     "types": [
       "node",
@@ -27,7 +31,8 @@
       "ES5",
       "ES6",
       "ES7"
-    ]
+    ],
+    "resolveJsonModule": true
   },
   "include": [
     "**/*.ts"

@@ -73,6 +73,42 @@ export const Modal = jest.fn().mockImplementation(() => ({
   close: jest.fn(),
 }));
 
+export function setIcon(element: HTMLElement, icon: string): void {
+	element.setAttribute('data-icon', icon);
+}
+
+type MockWorkspaceLeaf = {
+	app: Record<string, unknown>;
+};
+
+export class ItemView {
+	leaf: MockWorkspaceLeaf;
+	app: Record<string, unknown>;
+	contentEl: HTMLDivElement;
+
+	constructor(leaf: MockWorkspaceLeaf) {
+		this.leaf = leaf;
+		this.app = leaf.app;
+		this.contentEl = document.createElement('div');
+	}
+
+	addAction(icon: string, title: string, callback: () => void): void {
+		const button = document.createElement('button');
+		button.setAttribute('data-action-icon', icon);
+		button.setAttribute('aria-label', title);
+		button.addEventListener('click', callback);
+		this.contentEl.appendChild(button);
+	}
+
+	registerDomEvent<K extends keyof HTMLElementEventMap>(
+		el: HTMLElement,
+		type: K,
+		callback: (event: HTMLElementEventMap[K]) => void,
+	): void {
+		el.addEventListener(type, callback as EventListener);
+	}
+}
+
 
 export const normalizePath = jest.fn().mockImplementation((str: string) => { 
   return normalize(str)

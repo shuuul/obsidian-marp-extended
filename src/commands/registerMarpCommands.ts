@@ -1,0 +1,42 @@
+import type MarpExtended from '../main';
+import { KAMI_TEMPLATE_COMMANDS, insertKamiTemplate } from '../utilities/kamiTemplates';
+
+export function registerMarpCommands(plugin: MarpExtended): void {
+	plugin.addCommand({
+		id: 'preview',
+		name: 'Slide preview',
+		callback: () => { void plugin.showPreviewSlide(); },
+	});
+
+	plugin.addCommand({
+		id: 'export-pdf',
+		name: 'Export PDF',
+		callback: () => { void plugin.exportFile('pdf'); },
+	});
+
+	plugin.addCommand({
+		id: 'export-pdf-notes',
+		name: 'Export PDF with notes',
+		callback: () => { void plugin.exportFile('pdf-with-notes'); },
+	});
+
+	plugin.addCommand({
+		id: 'export-html',
+		name: 'Export HTML',
+		callback: () => { void plugin.exportFile('html'); },
+	});
+
+	plugin.addCommand({
+		id: 'export-pptx',
+		name: 'Export PPTX',
+		callback: () => { void plugin.exportFile('pptx'); },
+	});
+
+	for (const command of KAMI_TEMPLATE_COMMANDS) {
+		plugin.addCommand({
+			id: command.id,
+			name: command.name,
+			editorCallback: (editor) => insertKamiTemplate(editor, command),
+		});
+	}
+}

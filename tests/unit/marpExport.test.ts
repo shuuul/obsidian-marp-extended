@@ -1,13 +1,22 @@
 import { spawn } from 'node:child_process';
-import { App, TFile } from 'obsidian';
+import { App, Notice, TFile } from 'obsidian';
 import { expect, jest, test, beforeEach, afterEach } from '@jest/globals';
 import { EventEmitter } from 'node:events';
 import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { basename as pathBasename, dirname, join } from 'node:path';
 
-import { MarpCLIError, MarpExport } from '@/utilities/marpExport';
+import { MarpCLIError, MarpExport, exportWithNotice } from '@/utilities/marpExport';
+import packageMetadata from '../../package.json';
 import { DEFAULT_SETTINGS } from '@/utilities/settings';
+
+type MarpExtendedPackageMetadata = {
+	marpExtended: {
+		npxMarpCliPackage: string;
+	};
+};
+
+const NPX_MARP_CLI_PACKAGE = (packageMetadata as MarpExtendedPackageMetadata).marpExtended.npxMarpCliPackage;
 
 jest.mock('node:child_process', () => ({
 	spawn: jest.fn(),
@@ -253,7 +262,7 @@ test('export can fall back to npx when auto-detected Marp CLI is missing', async
 	expect(spawnMock.mock.calls[1][1]).toEqual(expect.arrayContaining([
 		'--yes',
 		'--package',
-		'@marp-team/marp-cli@4.4.0',
+		NPX_MARP_CLI_PACKAGE,
 		'marp',
 		'--html',
 		'-o',
@@ -291,7 +300,7 @@ test('Marp CLI version check can fall back to npx', async () => {
 	expect(version).toBe('4.4.0');
 	expect(spawnMock).toHaveBeenCalledTimes(2);
 	expectNpxExecutable(spawnMock.mock.calls[1][0]);
-	expect(spawnMock.mock.calls[1][1]).toEqual(['--yes', '--package', '@marp-team/marp-cli@4.4.0', 'marp', '--version']);
+	expect(spawnMock.mock.calls[1][1]).toEqual(['--yes', '--package', NPX_MARP_CLI_PACKAGE, 'marp', '--version']);
 });
 
 test('export cancellation does not run Marp CLI', async () => {
@@ -525,4 +534,87 @@ test('export explains missing browser errors from Marp CLI output', async () => 
 	const exporter = new MarpExport(DEFAULT_SETTINGS);
 
 	await expect(exporter.export(createFile(), 'pdf')).rejects.toThrow('could not find Chrome, Chromium, or Microsoft Edge');
+});
+
+
+test('exportWithNotice warns when no active markdown file', async () => {
+	const app = { workspace: { getActiveFile: () => null } } as unknown as App;
+
+	await exportWithNotice(DEFAULT_SETTINGS, app, 'pdf', null);
+
+	expect(Notice).toHaveBeenCalledWith('Open a Markdown file before exporting Marp slides.', 5000);
+});
+
+test('exportWithNotice shows progress then success notices when export returns a path', async () => {
+	const file = createFile();
+	const app = { workspace: { getActiveFile: () => file } } as unknown as App;
+	const exportSpy = jest.spyOn(MarpExport.prototype, 'export').mockResolvedValue('/tmp/export/deck.pdf');
+
+	await exportWithNotice(DEFAULT_SETTINGS, app, 'pdf', file);
+
+	expect(exportSpy).toHaveBeenCalledWith(file, 'pdf');
+	expect(Notice).toHaveBeenCalledWith('Exporting Marp slides as PDF…', 0);
+	expect(Notice).toHaveBeenCalledWith('Exported Marp slides to /tmp/export/deck.pdf', 7000);
+
+	exportSpy.mockRestore();
+});
+
+test('exportWithNotice hides progress and surfaces export errors', async () => {
+	const file = createFile();
+	const app = { workspace: { getActiveFile: () => file } } as unknown as App;
+	const hide = jest.fn();
+	(Notice as jest.Mock).mockImplementationOnce(() => ({ hide })).mockImplementation(() => ({ hide: jest.fn() }));
+	const exportSpy = jest.spyOn(MarpExport.prototype, 'export').mockRejectedValue(new Error('disk full'));
+	const consoleError = jest.spyOn(console, 'error').mockImplementation(() => {});
+
+	await exportWithNotice(DEFAULT_SETTINGS, app, 'html', file);
+
+	expect(hide).toHaveBeenCalled();
+	expect(Notice).toHaveBeenCalledWith('Marp export failed: disk full', 8000);
+	expect(consoleError).toHaveBeenCalled();
+
+	exportSpy.mockRestore();
+	consoleError.mockRestore();
+});
+
+test('PDF export retries through npx when browser is missing and npx fallback is enabled', async () => {
+	mockSaveDialog({ canceled: false, filePath: '/tmp/export/deck.pdf' });
+	spawnMock
+		.mockImplementationOnce(() => createMockChildProcess({
+			exitCode: 1,
+			stderr: 'could not find chrome',
+		}))
+		.mockImplementationOnce(() => createMockChildProcess());
+	const exporter = new MarpExport({
+		...DEFAULT_SETTINGS,
+		MARP_CLI_USE_NPX: true,
+	});
+
+	await exporter.export(createFile(), 'pdf');
+
+	expect(spawnMock).toHaveBeenCalledTimes(2);
+	expectNpxExecutable(spawnMock.mock.calls[1][0]);
+	expect(spawnMock.mock.calls[1][1]).toEqual(expect.arrayContaining([
+		'--yes',
+		'--package',
+		NPX_MARP_CLI_PACKAGE,
+		'marp',
+		'--pdf',
+	]));
+});
+
+test('missing-browser stderr does not retry through npx when Marp CLI path is configured', async () => {
+	mockSaveDialog({ canceled: false, filePath: '/tmp/export/deck.pdf' });
+	spawnMock.mockImplementationOnce(() => createMockChildProcess({
+		exitCode: 1,
+		stderr: 'could not find chrome',
+	}));
+	const exporter = new MarpExport({
+		...DEFAULT_SETTINGS,
+		MARP_CLI_PATH: '/usr/local/bin/marp',
+		MARP_CLI_USE_NPX: true,
+	});
+
+	await expect(exporter.export(createFile(), 'pdf')).rejects.toThrow('could not find Chrome');
+	expect(spawnMock).toHaveBeenCalledTimes(1);
 });
