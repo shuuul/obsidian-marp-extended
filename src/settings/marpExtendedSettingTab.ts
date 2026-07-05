@@ -117,8 +117,59 @@ export class MarpExtendedSettingTab extends PluginSettingTab {
 						button.setDisabled(false);
 					}
 				}));
+		this.displayMermaidEditorSection(containerEl);
 		this.displayThemesSection(containerEl);
 		this.displayMermaidThemesSection(containerEl);
+	}
+
+	private displayMermaidEditorSection(containerEl: HTMLElement): void {
+		new Setting(containerEl)
+			.setName('Mermaid in editor')
+			.setHeading();
+
+		new Setting(containerEl)
+			.setName('Render Mermaid diagrams in editor')
+			.setDesc('Replace Mermaid code fences in Live Preview with Marp Extended styled diagrams. Turn this off to keep the original code fences visible.')
+			.addToggle(toggle => toggle
+				.setValue(this.plugin.settings.MERMAID_EDITOR_RENDER)
+				.onChange(async (value) => {
+					this.plugin.settings.MERMAID_EDITOR_RENDER = value;
+					await this.plugin.saveSettings();
+					this.plugin.refreshEditorMermaidRendering();
+				}));
+
+		new Setting(containerEl)
+			.setName('Editor Mermaid theme')
+			.setDesc('Theme used for Mermaid diagrams rendered inside the Obsidian editor. Default: kami.')
+			.addDropdown(dropdown => {
+				const currentTheme = this.plugin.settings.MERMAID_EDITOR_THEME || 'kami';
+				const optionNames = new Set<string>();
+				const addOption = (name: string) => {
+					if (!optionNames.has(name)) {
+						dropdown.addOption(name, name);
+						optionNames.add(name);
+					}
+				};
+
+				addOption(currentTheme);
+				addOption('kami');
+				dropdown.setValue(currentTheme);
+				dropdown.onChange(async (value) => {
+					this.plugin.settings.MERMAID_EDITOR_THEME = value;
+					await this.plugin.saveSettings();
+					this.plugin.refreshEditorMermaidRendering();
+				});
+
+				void new MermaidThemeManager(this.app).listThemes()
+					.then((themes) => {
+						themes.forEach((theme) => addOption(theme.name));
+						dropdown.setValue(this.plugin.settings.MERMAID_EDITOR_THEME);
+					})
+					.catch((error: unknown) => {
+						const message = error instanceof Error ? error.message : String(error);
+						console.error('Marp Extended: Mermaid theme dropdown load failed', message);
+					});
+			});
 	}
 
 	private displayThemesSection(containerEl: HTMLElement): void {
@@ -237,7 +288,7 @@ export class MarpExtendedSettingTab extends PluginSettingTab {
 
 	private displayMermaidThemesSection(containerEl: HTMLElement): void {
 		new Setting(containerEl)
-			.setName('Mermaid themes')
+			.setName('Mermaid theme library')
 			.setHeading();
 
 		const mermaidThemeManager = new MermaidThemeManager(this.app);

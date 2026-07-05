@@ -10,7 +10,7 @@ import { ThemeManager } from './utilities/themeManager';
 import { ThemePropertyOptions } from './utilities/themePropertyOptions';
 import { getPreviewSlideIndexFromLineReader } from './utilities/previewSync';
 import { exportWithNotice } from './utilities/marpExport';
-import { createMermaidEditorExtension } from './editor/mermaidEditorExtension';
+import { createMermaidEditorExtension, refreshMermaidEditorDecorations } from './editor/mermaidEditorExtension';
 import { registerMarpCommands } from './commands/registerMarpCommands';
 import { MarpExtendedSettingTab } from './settings/marpExtendedSettingTab';
 
@@ -21,6 +21,7 @@ export default class MarpExtended extends Plugin {
 	private slidesView : MarpPreviewView;
 	private editorView : MarkdownView | null;
 	private themePropertyOptions: ThemePropertyOptions | null = null;
+	private codeMirrorEditorViews = new Set<EditorView>();
 
 	async onload() {
 		await this.loadSettings();
@@ -70,9 +71,10 @@ export default class MarpExtended extends Plugin {
 		this.addSettingTab(new MarpExtendedSettingTab(this.app, this));
 
 		this.registerEditorExtension(EditorView.updateListener.of((update: ViewUpdate) => {
+			this.codeMirrorEditorViews.add(update.view);
 			this.handleEditorUpdate(update);
 		}));
-		this.registerEditorExtension(createMermaidEditorExtension(this.app));
+		this.registerEditorExtension(createMermaidEditorExtension(this.app, this.settings));
 		this.registerEvent(this.app.workspace.on('active-leaf-change', (leaf) => {
 			if (leaf?.view instanceof MarkdownView) {
 				this.refreshPreviewForEditor(leaf.view);
@@ -91,6 +93,8 @@ export default class MarpExtended extends Plugin {
 			MARP_CLI_PATH: saved?.MARP_CLI_PATH ?? DEFAULT_SETTINGS.MARP_CLI_PATH,
 			MARP_CLI_USE_NPX: saved?.MARP_CLI_USE_NPX ?? DEFAULT_SETTINGS.MARP_CLI_USE_NPX,
 			CHROME_PATH: saved?.CHROME_PATH ?? DEFAULT_SETTINGS.CHROME_PATH,
+			MERMAID_EDITOR_RENDER: saved?.MERMAID_EDITOR_RENDER ?? DEFAULT_SETTINGS.MERMAID_EDITOR_RENDER,
+			MERMAID_EDITOR_THEME: saved?.MERMAID_EDITOR_THEME || DEFAULT_SETTINGS.MERMAID_EDITOR_THEME,
 		};
 	}
 
@@ -100,6 +104,16 @@ export default class MarpExtended extends Plugin {
 
 	async refreshThemePropertyOptions(): Promise<void> {
 		await this.themePropertyOptions?.refresh();
+	}
+
+	refreshEditorMermaidRendering(): void {
+		for (const view of this.codeMirrorEditorViews) {
+			try {
+				view.dispatch({ effects: refreshMermaidEditorDecorations.of() });
+			} catch {
+				this.codeMirrorEditorViews.delete(view);
+			}
+		}
 	}
 
 	onChange(file: TAbstractFile) {

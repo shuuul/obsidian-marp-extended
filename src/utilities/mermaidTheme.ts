@@ -73,9 +73,14 @@ function getMermaidFlatCss(enabled: boolean): string {
 	return enabled ? MERMAID_FLAT_CSS : '';
 }
 
+export async function loadMermaidThemeCssByName(app: App, themeName: string): Promise<string> {
+	const normalizedThemeName = themeName.trim();
+	return normalizedThemeName ? await new MermaidThemeManager(app).loadThemeCss(normalizedThemeName) ?? '' : '';
+}
+
 export async function loadMermaidThemeCssForMarkdown(app: App, markdown: string): Promise<string> {
 	const themeName = getMermaidThemeName(markdown);
-	const themeCss = themeName ? await new MermaidThemeManager(app).loadThemeCss(themeName) ?? '' : '';
+	const themeCss = themeName ? await loadMermaidThemeCssByName(app, themeName) : '';
 	const flatCss = getMermaidFlatCss(getMermaidFlat(markdown));
 
 	return [themeCss, flatCss].filter(Boolean).join('\n');
@@ -89,7 +94,7 @@ export async function loadMermaidThemeCssForFile(app: App, file: TFile, markdown
 		: getMermaidThemeName(markdown);
 	const cacheFlat = parseBooleanPropertyValue(frontmatter?.[MERMAID_FLAT_PROPERTY]);
 	const isFlat = cacheFlat ?? getMermaidFlat(markdown);
-	const themeCss = themeName ? await new MermaidThemeManager(app).loadThemeCss(themeName) ?? '' : '';
+	const themeCss = themeName ? await loadMermaidThemeCssByName(app, themeName) : '';
 	const flatCss = getMermaidFlatCss(isFlat);
 
 	return [themeCss, flatCss].filter(Boolean).join('\n');
