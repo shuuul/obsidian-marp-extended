@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+## [0.8.1](https://github.com/shuuul/obsidian-marp-extended/compare/0.8.0...0.8.1) (2026-07-08)
+
+
+### Bug Fixes
+
+* resolve security warnings and css compatibility issues ([8657d41](https://github.com/shuuul/obsidian-marp-extended/commit/8657d41f3e2702fd2eaaeaa3e918f204f07bc0f4))
+
 ## [0.8.0](https://github.com/shuuul/obsidian-marp-extended/compare/0.7.1...0.8.0) (2026-07-05)
 
 
