@@ -36,4 +36,5 @@ lib
 tmpclaude-*
 
 # superpowers
+.superpowers/
 docs/superpowers/
