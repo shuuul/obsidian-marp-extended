@@ -17,13 +17,13 @@ section .mermaid-diagram-container.mermaid-diagram {
 }
 
 section .mermaid-diagram-container.mermaid-diagram svg {
-  --bg: var(--dracula-current-line) !important;
-  --surface: var(--dracula-background) !important;
-  --fg: var(--dracula-foreground) !important;
-  --line: var(--dracula-purple) !important;
-  --accent: var(--dracula-pink) !important;
-  --muted: var(--dracula-comment) !important;
-  --border: rgba(255, 121, 198, 0.42) !important;
+  --bg: var(--dracula-current-line);
+  --surface: var(--dracula-background);
+  --fg: var(--dracula-foreground);
+  --line: var(--dracula-purple);
+  --accent: var(--dracula-pink);
+  --muted: var(--dracula-comment);
+  --border: rgba(255, 121, 198, 0.42);
   display: block;
   height: auto;
   max-height: 430px;

@@ -17,13 +17,13 @@ section .mermaid-diagram-container.mermaid-diagram {
 }
 
 section .mermaid-diagram-container.mermaid-diagram svg {
-  --bg: #f6f8fa !important;
-  --surface: #ffffff !important;
-  --fg: #24292f !important;
-  --line: #57606a !important;
-  --accent: #28a745 !important;
-  --muted: #6e7781 !important;
-  --border: #d0d7de !important;
+  --bg: #f6f8fa;
+  --surface: #ffffff;
+  --fg: #24292f;
+  --line: #57606a;
+  --accent: #28a745;
+  --muted: #6e7781;
+  --border: #d0d7de;
   display: block;
   height: auto;
   max-height: 430px;
