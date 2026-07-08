@@ -31,6 +31,41 @@ jobs:
       release_created: ${{ steps.release.outputs.release_created }}
       tag_name: ${{ steps.release.outputs.tag_name }}
       version: ${{ steps.release.outputs.version }}
+      prs_created: ${{ steps.release.outputs.prs_created }}
+      pr: ${{ steps.release.outputs.pr }}
+
+  sync-obsidian-version-metadata:
+    needs: release-please
+    if: ${{ needs.release-please.outputs.prs_created == 'true' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Checkout release PR branch
+        uses: actions/checkout@v4
+        with:
+          token: ${{ github.token }}
+          ref: ${{ fromJSON(needs.release-please.outputs.pr).headBranchName }}
+
+      - name: Sync versions.json for Obsidian metadata
+        run: |
+          node version-bump.mjs
+
+      - name: Commit synced metadata if needed
+        env:
+          HEAD_BRANCH: ${{ fromJSON(needs.release-please.outputs.pr).headBranchName }}
+        run: |
+          if git diff --quiet -- manifest.json versions.json; then
+            echo "Obsidian version metadata already synced."
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add manifest.json versions.json
+          git commit -m "chore(release): sync Obsidian version metadata"
+          git push origin "HEAD:${HEAD_BRANCH}"
 
   release-plugin:
     needs: release-please
@@ -60,12 +95,7 @@ jobs:
           fi
       - name: Sync versions.json
         run: |
-          npm run version
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add manifest.json versions.json
-          git commit -m "chore(release): sync versions.json for ${{ needs.release-please.outputs.tag_name }}" || true
-          git push origin main || true
+          node version-bump.mjs
       - name: Build
         run: |
           npm ci
