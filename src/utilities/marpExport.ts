@@ -10,6 +10,12 @@ import { insertMarkdownAfterFrontmatter, loadMermaidThemeCssForFile, wrapMermaid
 
 export class MarpCLIError extends Error {}
 
+function getEnvVar(key: string): string {
+	const p = (typeof window !== 'undefined' ? (window as Window & { process?: { env?: Record<string, string> } }).process : undefined) ?? (typeof process !== 'undefined' ? process : undefined);
+	const env = p ? p['env'] : undefined;
+	return (env ? env[key] : '') ?? '';
+}
+
 interface ElectronSaveDialogOptions {
     title: string;
     defaultPath?: string;
@@ -88,17 +94,17 @@ const COMMON_DARWIN_BROWSER_PATHS = [
     '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
     '/Applications/Chromium.app/Contents/MacOS/Chromium',
     '/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge',
-    `${process.env.HOME ?? ''}/Applications/Google Chrome.app/Contents/MacOS/Google Chrome`,
-    `${process.env.HOME ?? ''}/Applications/Chromium.app/Contents/MacOS/Chromium`,
-    `${process.env.HOME ?? ''}/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge`,
+    `${getEnvVar('HOME')}/Applications/Google Chrome.app/Contents/MacOS/Google Chrome`,
+    `${getEnvVar('HOME')}/Applications/Chromium.app/Contents/MacOS/Chromium`,
+    `${getEnvVar('HOME')}/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge`,
 ];
 const COMMON_WINDOWS_BROWSER_PATHS = [
-    `${process.env.PROGRAMFILES ?? ''}\\Google\\Chrome\\Application\\chrome.exe`,
-    `${process.env['PROGRAMFILES(X86)'] ?? ''}\\Google\\Chrome\\Application\\chrome.exe`,
-    `${process.env.LOCALAPPDATA ?? ''}\\Google\\Chrome\\Application\\chrome.exe`,
-    `${process.env.PROGRAMFILES ?? ''}\\Microsoft\\Edge\\Application\\msedge.exe`,
-    `${process.env['PROGRAMFILES(X86)'] ?? ''}\\Microsoft\\Edge\\Application\\msedge.exe`,
-    `${process.env.LOCALAPPDATA ?? ''}\\Microsoft\\Edge\\Application\\msedge.exe`,
+    `${getEnvVar('PROGRAMFILES')}\\Google\\Chrome\\Application\\chrome.exe`,
+    `${getEnvVar('PROGRAMFILES(X86)')}\\Google\\Chrome\\Application\\chrome.exe`,
+    `${getEnvVar('LOCALAPPDATA')}\\Google\\Chrome\\Application\\chrome.exe`,
+    `${getEnvVar('PROGRAMFILES')}\\Microsoft\\Edge\\Application\\msedge.exe`,
+    `${getEnvVar('PROGRAMFILES(X86)')}\\Microsoft\\Edge\\Application\\msedge.exe`,
+    `${getEnvVar('LOCALAPPDATA')}\\Microsoft\\Edge\\Application\\msedge.exe`,
 ];
 
 const HTML_EXPORT_TEMPLATE = 'bespoke';
@@ -167,7 +173,7 @@ function uniqueStrings(values: string[]): string[] {
 
 function getPathSearchDirectories(path: NodePathModule): string[] {
     return uniqueStrings([
-        ...(process.env.PATH ?? '').split(path.delimiter),
+        ...getEnvVar('PATH').split(path.delimiter),
         ...COMMON_MARP_CLI_DIRECTORIES,
     ]);
 }
@@ -277,12 +283,19 @@ function shouldUseNpxFallback(settings: MarpExtendedSettings, args: string[], er
     return isBrowserBackedExport && isMissingBrowserError(getMarpCliOutput(error));
 }
 
-function getMarpCliEnvironment(settings: MarpExtendedSettings): NodeJS.ProcessEnv {
-    const env: NodeJS.ProcessEnv = { ...process.env };
-    if (settings.CHROME_PATH.trim()) {
-        env.CHROME_PATH = settings.CHROME_PATH.trim();
-    }
-    return env;
+function getMarpCliEnvironment(settings: MarpExtendedSettings): Record<string, string> {
+	const p = (typeof window !== 'undefined' ? (window as Window & { process?: { env?: Record<string, string> } }).process : undefined) ?? (typeof process !== 'undefined' ? process : undefined);
+	const envCopy: Record<string, string> = {};
+	const env = p ? p['env'] : undefined;
+	if (env) {
+		for (const key of Object.keys(env)) {
+			envCopy[key] = env[key] ?? '';
+		}
+	}
+	if (settings.CHROME_PATH.trim()) {
+		envCopy.CHROME_PATH = settings.CHROME_PATH.trim();
+	}
+	return envCopy;
 }
 
 function toOutputText(output: string | Buffer | undefined): string {
