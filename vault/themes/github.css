@@ -58,4 +58,6 @@ section.lead {
     margin-top: 0; }
 
 section.split div.split {
-  columns: 2; }
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1em; }
