@@ -1,5 +1,5 @@
 # vscode
-.vscode 
+.vscode
 
 # Intellij
 *.iml
@@ -34,3 +34,6 @@ lib
 # claude
 .claude/*
 tmpclaude-*
+
+# superpowers
+docs/superpowers/
