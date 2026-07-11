@@ -3,7 +3,7 @@ import { EditorView, type ViewUpdate } from '@codemirror/view';
 
 import { MARP_PREVIEW_VIEW, MarpPreviewView } from './views/marpPreviewView';
 import { ICON_SLIDE_PREVIEW, ICON_EXPORT_PDF, ICON_EXPORT_PPTX, ICON_SLIDE_PRESENT, ICON_FIT_WIDTH } from './utilities/icons';
-import { type MarpExtendedSettings, DEFAULT_SETTINGS } from 'utilities/settings';
+import { type MarpExtendedSettings, DEFAULT_SETTINGS } from './utilities/settings';
 import { ensureDefaultThemes } from './utilities/ensureDefaultThemes';
 import { ensureDefaultMermaidThemes } from './utilities/ensureDefaultMermaidThemes';
 import { ThemeManager } from './utilities/themeManager';

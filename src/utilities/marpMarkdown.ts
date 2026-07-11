@@ -8,13 +8,13 @@ export type CompileMarkdownForMarpOptions = {
 	mermaidOptions?: MermaidPluginOptions;
 };
 
-export function compileMarkdownForMarp(
+export async function compileMarkdownForMarp(
 	markdown: string,
 	file: TFile,
 	app: App,
 	filePath: FilePath,
 	options: CompileMarkdownForMarpOptions = {},
-): string {
+): Promise<string> {
 	const compiled = compileKamiCommentBlocks(markdown);
 	const converted = filePath.convertImageWikiLinks(compiled, file, app);
 

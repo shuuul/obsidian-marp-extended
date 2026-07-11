@@ -554,7 +554,7 @@ export class MarpExport {
 
         const originalContent = await this.app.vault.cachedRead(file);
         const mermaidThemeCss = await loadMermaidThemeCssForFile(this.app, file, originalContent);
-        const processedMarkdown = compileMarkdownForMarp(originalContent, file, this.app, filesTool, {
+        const processedMarkdown = await compileMarkdownForMarp(originalContent, file, this.app, filesTool, {
             renderMermaidInline: true,
         });
         const processedContent = insertMarkdownAfterFrontmatter(

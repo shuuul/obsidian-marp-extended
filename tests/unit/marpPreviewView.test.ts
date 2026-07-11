@@ -103,7 +103,7 @@ test('displaySlides builds preview HTML with base URL, Kami, wiki image, and mer
 	expect(capturedHtml).toContain('class="cover"');
 	expect(capturedHtml).toContain('../assets/photo.png');
 	expect(capturedHtml).toContain('/* mermaid theme css */');
-	expect(capturedHtml).toMatch(/data-mermaid-renderer="beautiful-mermaid"|```mermaid/);
+	expect(capturedHtml).toContain('data-mermaid-renderer="beautiful-mermaid"');
 
 	renderSpy.mockRestore();
 });

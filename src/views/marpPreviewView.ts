@@ -49,28 +49,33 @@ body {
 }
 section .mermaid-diagram-container.mermaid-diagram {
 	align-items: center;
+	box-sizing: border-box;
 	display: flex;
 	flex-direction: column;
 	gap: 0.35em;
 	justify-content: center;
 	margin: 0.5rem auto 0;
-	max-width: calc(100% - 2em);
+	max-width: 100%;
 	width: fit-content;
+}
+section .mermaid-diagram-container.mermaid-diagram[data-mermaid-renderer="mermaid"] {
+	overflow: hidden;
+	width: 100%;
 }
 section .mermaid-diagram-container.mermaid-diagram img,
 section .mermaid-diagram-container.mermaid-diagram svg,
 section .mermaid-diagram-container.mermaid-diagram embed {
 	display: block;
 	height: auto;
-	max-height: 430px;
+	max-height: min(70vh, 640px);
 	max-width: 100%;
 	width: auto;
 }
-section .mermaid-diagram-container.mermaid-diagram svg path,
-section .mermaid-diagram-container.mermaid-diagram svg circle,
-section .mermaid-diagram-container.mermaid-diagram svg ellipse,
-section .mermaid-diagram-container.mermaid-diagram svg rect,
-section .mermaid-diagram-container.mermaid-diagram svg polygon {
+section .mermaid-diagram-container.mermaid-diagram[data-mermaid-renderer="beautiful-mermaid"] svg path,
+section .mermaid-diagram-container.mermaid-diagram[data-mermaid-renderer="beautiful-mermaid"] svg circle,
+section .mermaid-diagram-container.mermaid-diagram[data-mermaid-renderer="beautiful-mermaid"] svg ellipse,
+section .mermaid-diagram-container.mermaid-diagram[data-mermaid-renderer="beautiful-mermaid"] svg rect,
+section .mermaid-diagram-container.mermaid-diagram[data-mermaid-renderer="beautiful-mermaid"] svg polygon {
 	stroke-width: 2px;
 }
 section .mermaid-diagram-container.mermaid-diagram svg text {
@@ -691,9 +696,14 @@ export class MarpPreviewView extends ItemView  {
                 return;
             }
 
-            const processedMarkdown = this.measurePreviewStep('compileMarkdownForMarp', () => (
-                compileMarkdownForMarp(markdownText, sourceFile, this.app, filePath)
+            const processedMarkdown = await this.measurePreviewStepAsync('compileMarkdownForMarp', () => (
+                compileMarkdownForMarp(markdownText, sourceFile, this.app, filePath, {
+                    renderMermaidInline: true,
+                })
             ));
+            if (displayRevision !== this.displaySlidesRevision) {
+                return;
+            }
 
             this.previewSlideEls = [];
             this.previewMaxSlideWidth = 0;

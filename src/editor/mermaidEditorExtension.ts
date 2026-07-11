@@ -64,6 +64,8 @@ export function findMermaidFenceRanges(markdown: string): MermaidFenceRange[] {
 
 
 class MermaidWidget extends WidgetType {
+	private renderToken = 0;
+
 	constructor(
 		private readonly app: App,
 		private readonly source: string,
@@ -108,20 +110,37 @@ class MermaidWidget extends WidgetType {
 
 		const section = view.dom.ownerDocument.createElement('section');
 		section.className = 'marp-extended-editor-mermaid-scope';
-		try {
-			// eslint-disable-next-line no-unsanitized/method -- renderMermaidFigure returns locally generated beautiful-mermaid SVG markup.
-			const fragment = view.dom.ownerDocument.createRange().createContextualFragment(renderMermaidFigure(this.source, this.alt));
-			section.appendChild(fragment);
-		} catch (error) {
-			const message = error instanceof Error ? error.message : String(error);
-			const errorBlock = view.dom.ownerDocument.createElement('pre');
-			errorBlock.className = 'mermaid-render-error';
-			const code = view.dom.ownerDocument.createElement('code');
-			code.textContent = message;
-			errorBlock.appendChild(code);
-			section.appendChild(errorBlock);
-		}
+		const placeholder = view.dom.ownerDocument.createElement('div');
+		placeholder.className = 'marp-extended-editor-mermaid-loading';
+		placeholder.textContent = 'Rendering Mermaid…';
+		section.appendChild(placeholder);
 		root.appendChild(section);
+
+		const renderToken = ++this.renderToken;
+		void renderMermaidFigure(this.source, this.alt)
+			.then((figureHtml) => {
+				if (renderToken !== this.renderToken || !section.isConnected) {
+					return;
+				}
+
+				section.replaceChildren();
+				// eslint-disable-next-line no-unsanitized/method -- renderMermaidFigure returns locally generated Mermaid SVG markup.
+				const fragment = view.dom.ownerDocument.createRange().createContextualFragment(figureHtml);
+				section.appendChild(fragment);
+			})
+			.catch((error: unknown) => {
+				if (renderToken !== this.renderToken || !section.isConnected) {
+					return;
+				}
+
+				const message = error instanceof Error ? error.message : String(error);
+				const errorBlock = view.dom.ownerDocument.createElement('pre');
+				errorBlock.className = 'mermaid-render-error';
+				const code = view.dom.ownerDocument.createElement('code');
+				code.textContent = message;
+				errorBlock.appendChild(code);
+				section.replaceChildren(errorBlock);
+			});
 
 		void loadMermaidThemeCssByName(this.app, this.themeName)
 			.then((css) => {

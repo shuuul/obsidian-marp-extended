@@ -65,6 +65,14 @@ export const Notice = jest.fn().mockImplementation(() => ({
   hide: jest.fn(),
 }));
 
+export const loadMermaid = jest.fn(async () => ({
+	initialize: jest.fn(),
+	render: jest.fn(async (_id: string, text: string) => ({
+		// Match real Mermaid output: percent sizing + viewBox only.
+		svg: `<svg xmlns="http://www.w3.org/2000/svg" width="100%" id="${_id}" viewBox="0 0 640 320" style="max-width: 640px;" data-official-mermaid="1"><text>${text.slice(0, 40)}</text></svg>`,
+	})),
+}));
+
 export const Modal = jest.fn().mockImplementation(() => ({
   app: {},
   titleEl: document.createElement('div'),

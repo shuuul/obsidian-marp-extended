@@ -1,14 +1,13 @@
 {
   "compilerOptions": {
-    "baseUrl": "./src",
     "rootDir": ".",
     "ignoreDeprecations": "6.0",
     "paths": {
       "@/*": [
-        "*"
+        "./src/*"
       ],
       "@test/*": [
-        "../tests/*"
+        "./tests/*"
       ]
     },
     "inlineSourceMap": true,
@@ -18,7 +17,7 @@
     "allowJs": true,
     "noImplicitAny": true,
     "strictPropertyInitialization": false,
-    "moduleResolution": "node",
+    "moduleResolution": "bundler",
     "isolatedModules": true,
     "strictNullChecks": true,
     "esModuleInterop": true,

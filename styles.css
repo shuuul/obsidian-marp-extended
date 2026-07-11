@@ -130,8 +130,11 @@ If your plugin does not need CSS, delete this file.
 }
 
 .marp-extended-editor-mermaid {
+	box-sizing: border-box;
 	margin: 0.75em 0;
+	max-width: 100%;
 	position: relative;
+	width: auto;
 }
 
 .marp-extended-editor-mermaid-source-button {
@@ -169,17 +172,28 @@ If your plugin does not need CSS, delete this file.
 
 .marp-extended-editor-mermaid section {
 	background: transparent;
+	box-sizing: border-box;
+	max-width: 100%;
+	overflow: hidden;
+	width: auto;
 }
 
 .marp-extended-editor-mermaid section .mermaid-diagram-container.mermaid-diagram {
 	align-items: center;
+	box-sizing: border-box;
 	display: flex;
 	flex-direction: column;
 	gap: 0.35em;
 	justify-content: center;
 	margin: 0.5rem auto 0;
-	max-width: calc(100% - 2em);
+	max-width: 100%;
+	/* Keep BM natural size; allow official wide diagrams to shrink. */
 	width: fit-content;
+}
+
+.marp-extended-editor-mermaid section .mermaid-diagram-container.mermaid-diagram[data-mermaid-renderer="mermaid"] {
+	overflow: hidden;
+	width: 100%;
 }
 
 .marp-extended-editor-mermaid section .mermaid-diagram-container.mermaid-diagram img,
@@ -187,16 +201,17 @@ If your plugin does not need CSS, delete this file.
 .marp-extended-editor-mermaid section .mermaid-diagram-container.mermaid-diagram embed {
 	display: block;
 	height: auto;
-	max-height: 430px;
+	max-height: min(70vh, 640px);
 	max-width: 100%;
 	width: auto;
 }
 
-.marp-extended-editor-mermaid section .mermaid-diagram-container.mermaid-diagram svg path,
-.marp-extended-editor-mermaid section .mermaid-diagram-container.mermaid-diagram svg circle,
-.marp-extended-editor-mermaid section .mermaid-diagram-container.mermaid-diagram svg ellipse,
-.marp-extended-editor-mermaid section .mermaid-diagram-container.mermaid-diagram svg rect,
-.marp-extended-editor-mermaid section .mermaid-diagram-container.mermaid-diagram svg polygon {
+/* Beautiful-mermaid stroke emphasis only; official Mermaid uses its own stroke widths. */
+.marp-extended-editor-mermaid section .mermaid-diagram-container.mermaid-diagram[data-mermaid-renderer="beautiful-mermaid"] svg path,
+.marp-extended-editor-mermaid section .mermaid-diagram-container.mermaid-diagram[data-mermaid-renderer="beautiful-mermaid"] svg circle,
+.marp-extended-editor-mermaid section .mermaid-diagram-container.mermaid-diagram[data-mermaid-renderer="beautiful-mermaid"] svg ellipse,
+.marp-extended-editor-mermaid section .mermaid-diagram-container.mermaid-diagram[data-mermaid-renderer="beautiful-mermaid"] svg rect,
+.marp-extended-editor-mermaid section .mermaid-diagram-container.mermaid-diagram[data-mermaid-renderer="beautiful-mermaid"] svg polygon {
 	stroke-width: 2px;
 }
 
@@ -215,4 +230,10 @@ If your plugin does not need CSS, delete this file.
 .marp-extended-editor-mermaid .mermaid-render-error {
 	color: var(--text-error);
 	white-space: pre-wrap;
+}
+
+.marp-extended-editor-mermaid-loading {
+	color: var(--text-muted);
+	font-size: 0.85em;
+	padding: 0.5em 0;
 }
