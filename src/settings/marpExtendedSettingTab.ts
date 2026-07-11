@@ -128,8 +128,8 @@ export class MarpExtendedSettingTab extends PluginSettingTab {
 			.setHeading();
 
 		new Setting(containerEl)
-			.setName('Render Mermaid diagrams in editor')
-			.setDesc('Replace Mermaid code fences in Live Preview with Marp Extended styled diagrams. Turn this off to keep the original code fences visible.')
+			.setName('Modify editor tab Mermaid rendering')
+			.setDesc('Replace Mermaid code blocks in Live Preview with Marp Extended styled, zoomable diagrams. Turn this off to use Obsidian\'s native rendering.')
 			.addToggle(toggle => toggle
 				.setValue(this.plugin.settings.MERMAID_EDITOR_RENDER)
 				.onChange(async (value) => {
