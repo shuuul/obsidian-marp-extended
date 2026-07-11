@@ -17,7 +17,7 @@ Marp Extended is an Obsidian plugin for creating, previewing, presenting, and ex
 - Use bundled Marp theme CSS installed into `.marp-extended/themes/` on first load, plus custom theme CSS from your vault.
 - Add custom Marp themes by pasting CSS in plugin settings.
 - Convert Obsidian image wiki-links to standard Markdown image links for preview/export.
-- Built-in Mermaid diagrams rendered with `beautiful-mermaid`.
+- Built-in Mermaid diagrams rendered with `beautiful-mermaid` and official Mermaid, featuring an interactive zooming and panning frame in the editor Live Preview (can be toggled in settings).
 - Kami DSL fenced blocks for Obsidian-friendly slide metadata, lead text, callouts, columns, and 2×2 cards.
 
 ## Markdown compatibility
