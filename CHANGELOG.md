@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+## [0.9.0](https://github.com/shuuul/obsidian-marp-extended/compare/0.8.1...0.9.0) (2026-07-11)
+
+
+### Features
+
+* **editor:** add zoom and pan controls for editor tab Mermaid diagrams ([2071a9d](https://github.com/shuuul/obsidian-marp-extended/commit/2071a9d6971b7d5e8dc7b9eba05b06564166ccfa))
+* **mermaid:** async rendering with official Mermaid fallback for unsupported diagram types ([9c5195b](https://github.com/shuuul/obsidian-marp-extended/commit/9c5195b6bfde8d5119d3c78a888e0c58feb913f7))
+
 ## [0.8.1](https://github.com/shuuul/obsidian-marp-extended/compare/0.8.0...0.8.1) (2026-07-08)
 
 
