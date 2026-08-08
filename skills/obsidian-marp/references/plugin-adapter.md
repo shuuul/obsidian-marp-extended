@@ -135,7 +135,7 @@ Preview (`src/views/marpPreviewView.ts`) and export (`src/utilities/marpExport.t
 
 ## Themes in this repo
 
-The sample vault has theme CSS under `vault/themes/` and theme notes under `vault/Themes.md`.
+Packaged theme CSS lives under `assets/themes/` (and Mermaid themes under `assets/mermaid-themes/`); see `assets/Themes.md` for credits.
 
 When adding or advising custom themes:
 

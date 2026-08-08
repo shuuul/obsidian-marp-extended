@@ -21,6 +21,7 @@ jest.mock('@/utilities/themeAssetCache', () => ({
 
 jest.mock('@/utilities/mermaidTheme', () => ({
 	loadMermaidThemeCssForFile: jest.fn(async () => '/* mermaid theme css */'),
+	parseMermaidRenderOptionsFromCss: jest.fn(() => ({})),
 }));
 
 jest.mock('@/utilities/marpExport', () => ({

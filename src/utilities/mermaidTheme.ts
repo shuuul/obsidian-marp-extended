@@ -1,8 +1,10 @@
 import type { App, TFile } from 'obsidian';
+import type { RenderOptions } from 'beautiful-mermaid';
 import { MermaidThemeManager } from './mermaidThemeManager';
 
 const MERMAID_THEME_PROPERTY = 'mermaidTheme';
 const MERMAID_FLAT_PROPERTY = 'mermaidFlat';
+const MERMAID_RENDER_OPTION_KEYS = ['bg', 'surface', 'fg', 'line', 'accent', 'muted', 'border'] as const;
 
 const MERMAID_FLAT_CSS = `section .mermaid-diagram-container.mermaid-diagram {
   background: transparent !important;
@@ -102,6 +104,36 @@ export async function loadMermaidThemeCssForFile(app: App, file: TFile, markdown
 
 export function wrapMermaidThemeCss(css: string): string {
 	return css.trim() ? `<style class="marp-extended-mermaid-theme">\n${css.trim()}\n</style>\n` : '';
+}
+
+/**
+ * Read beautiful-mermaid render colors from a theme CSS blob.
+ * Themes declare vars on `section ... svg { --bg: ...; --fg: ...; }`.
+ */
+export function parseMermaidRenderOptionsFromCss(css: string): RenderOptions {
+	if (!css.trim()) {
+		return {};
+	}
+
+	const options: RenderOptions = {};
+	for (const key of MERMAID_RENDER_OPTION_KEYS) {
+		const match = css.match(new RegExp(`--${key}\\s*:\\s*([^;]+);`));
+		const value = match?.[1]?.trim();
+		if (value) {
+			options[key] = value;
+		}
+	}
+
+	return options;
+}
+
+export async function loadMermaidRenderOptionsForFile(
+	app: App,
+	file: TFile,
+	markdown: string,
+): Promise<RenderOptions> {
+	const css = await loadMermaidThemeCssForFile(app, file, markdown);
+	return parseMermaidRenderOptionsFromCss(css);
 }
 
 export function insertMarkdownAfterFrontmatter(markdown: string, content: string): string {

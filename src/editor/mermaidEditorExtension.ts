@@ -9,7 +9,11 @@ import {
 
 import type { MarpExtendedSettings } from '../utilities/settings';
 import { parseMermaidFenceInfo, renderMermaidFigure } from '../utilities/mermaid';
-import { getMermaidThemeName, loadMermaidThemeCssByName } from '../utilities/mermaidTheme';
+import {
+	getMermaidThemeName,
+	loadMermaidThemeCssByName,
+	parseMermaidRenderOptionsFromCss,
+} from '../utilities/mermaidTheme';
 
 declare global {
 	interface Window {
@@ -269,8 +273,15 @@ class MermaidWidget extends WidgetType {
 		root.appendChild(section);
 
 		const renderToken = ++this.renderToken;
-		void renderMermaidFigure(this.source, this.alt)
-			.then((figureHtml) => {
+		void loadMermaidThemeCssByName(this.app, this.themeName)
+			.then(async (css) => {
+				if (renderToken !== this.renderToken || !section.isConnected) {
+					return;
+				}
+
+				style.textContent = css;
+				const renderOptions = parseMermaidRenderOptionsFromCss(css);
+				const figureHtml = await renderMermaidFigure(this.source, this.alt, { renderOptions });
 				if (renderToken !== this.renderToken || !section.isConnected) {
 					return;
 				}
@@ -290,19 +301,12 @@ class MermaidWidget extends WidgetType {
 					return;
 				}
 
+				console.error('Marp Extended: Mermaid editor theme load failed', error);
 				const message = error instanceof Error ? error.message : String(error);
 				const errorBlock = win.createEl('pre', { cls: 'mermaid-render-error' });
 				const code = win.createEl('code', { text: message });
 				errorBlock.appendChild(code);
 				section.replaceChildren(errorBlock);
-			});
-
-		void loadMermaidThemeCssByName(this.app, this.themeName)
-			.then((css) => {
-				style.textContent = css;
-			})
-			.catch((error: unknown) => {
-				console.error('Marp Extended: Mermaid editor theme load failed', error);
 			});
 
 		return root;

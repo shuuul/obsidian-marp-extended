@@ -4,12 +4,17 @@
 
 ### Features
 
-* **preview:** migrate slide rendering to Marp Core 5.0.0 RC with curated Shiki, MathJax, and KaTeX plugins while keeping the custom Mermaid theme stack
+* **preview:** migrate slide rendering to Marp Core 5.0.0 RC with curated Shiki and MathJax plugins while keeping the custom Mermaid theme stack
 * **export:** pin npx Marp CLI fallback to `@marp-team/marp-cli@4.5.0`
+* **mermaid:** apply theme CSS variables (`--bg/--fg/...`) to beautiful-mermaid render options
+* **themes:** move packaged theme sources to `assets/` and add `npm run sync:themes`
 
 ### BREAKING CHANGES
 
 * Theme CSS that only styles highlight.js `.hljs-*` classes no longer affects preview code colors under Core 5. Use `--marp-shiki-*` variables (bundled sample themes were migrated). Export via CLI 4.5.0 may still use Core 4 highlighting until Marp CLI tracks Core 5.
+* Sample `vault/` tree removed from the repository; theme CSS sources live under `assets/themes` and `assets/mermaid-themes`.
+* KaTeX is not bundled; preview math is MathJax-only.
+
 
 ## [0.9.0](https://github.com/shuuul/obsidian-marp-extended/compare/0.8.1...0.9.0) (2026-07-11)
 

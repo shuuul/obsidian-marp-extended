@@ -4,7 +4,7 @@ import { expect, test } from '@jest/globals';
 import { Marp } from '@marp-team/marp-core';
 
 function renderThemeCss(themeFile: string, themeName: string): string {
-	const themeCss = readFileSync(join(process.cwd(), 'vault/themes', themeFile), 'utf8');
+	const themeCss = readFileSync(join(process.cwd(), 'assets/themes', themeFile), 'utf8');
 	const marp = new Marp({ minifyCSS: true });
 
 	marp.themeSet.add(themeCss);
@@ -20,7 +20,7 @@ theme: ${themeName}
 }
 
 function renderThemeHtml(themeFile: string, themeName: string, size: string): string {
-	const themeCss = readFileSync(join(process.cwd(), 'vault/themes', themeFile), 'utf8');
+	const themeCss = readFileSync(join(process.cwd(), 'assets/themes', themeFile), 'utf8');
 	const marp = new Marp({ minifyCSS: true });
 
 	marp.themeSet.add(themeCss);

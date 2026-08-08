@@ -21,7 +21,8 @@ src/utilities/icons.ts         # SVG icons registered with Obsidian
 specs/                         # Tracked execution specs (Draft/Active) + archive/
 scripts/check-specs.mjs        # Spec tree validator
 tests/                         # Jest tests and Obsidian mocks
-vault/                         # Sample vault notes and theme references
+assets/themes/                 # Packaged slide theme CSS sources
+assets/mermaid-themes/         # Packaged Mermaid theme CSS sources
 docs/                          # Optional user-facing notes (not a full docs site)
 manifest.json                  # Obsidian plugin metadata
 styles.css                     # Plugin CSS
@@ -57,6 +58,7 @@ Useful commands:
 | Lint | `npm run lint` |
 | Auto-fix lint | `npm run lint:fix` |
 | Tracked specs validator | `npm run check:specs` |
+| Sync packaged theme CSS | `npm run sync:themes` |
 | Test | `npm test` |
 | Test coverage | `npm run test:coverage` |
 | Single test file | `npm run test -- --runInBand tests/unit/filePath.test.ts` |
@@ -143,6 +145,11 @@ Do not create tags or GitHub releases manually; let Release Please own them. `ve
 Preview flow: active `MarkdownView` → `MarpPreviewView.displaySlides()` → `FilePath` base path/wiki-link conversion → Marp Core render → preview pane update.
 
 Export flow: command/action → `MarpExport.export()` → `FilePath` source/theme/lib paths → optional wiki-link conversion → Marp CLI output.
+
+## Runtime requirements
+
+- Node.js **≥ 20.19** for local typecheck/build (Marp Core 5).
+- Desktop Obsidian for export (Marp CLI + browser).
 
 ## Coding conventions
 

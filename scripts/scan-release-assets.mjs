@@ -79,8 +79,8 @@ function* walk(directory) {
 
 function assertNoRemoteCss() {
 	const paths = [
-		...walk('vault/themes'),
-		...walk('vault/mermaid-themes'),
+		...walk('assets/themes'),
+		...walk('assets/mermaid-themes'),
 		'src/utilities/packagedDefaultThemeCss.ts',
 	];
 

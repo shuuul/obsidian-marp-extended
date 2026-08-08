@@ -39,7 +39,7 @@ Verified baseline (2026-08-08):
 | Mermaid | custom + `beautiful-mermaid@^1.1.3` |
 | Math | `new Marp({ math: 'mathjax' })` in `MarpPreviewView.createMarp()` |
 | Browser helper | `@marp-team/marp-core/browser`, `script: false` |
-| Sample hljs themes | e.g. `vault/themes/olive.css`, `dracula.css` |
+| Sample hljs themes | e.g. `assets/themes/olive.css`, `dracula.css` |
 
 Preview path:
 
@@ -282,6 +282,15 @@ None yet.
 - Blockers: None.
 - Next action: Consider archive after any remaining export check.
 
+### 2026-08-09 — amp — follow-up optimizations
+
+- Changed: Removed KaTeX; deleted repo `vault/` (themes → `assets/`); mermaid render options from theme CSS vars; shared `loadEnvLocal`; `sync:themes`; Node engines; CLI 4.5.0 HTML+PDF smoke OK.
+- Evidence: tests 129 pass; build; npx marp-cli@4.5.0 html+pdf; bundle ~12MB dominated by shiki langs + elkjs + mathjax fonts.
+- Remaining: Optional shiki language subset / lazy load to cut bundle.
+- Blockers: None.
+- Next action: User review of optimization commit.
+
 ## Completion summary
+
 
 (Incomplete — fill before archive.)

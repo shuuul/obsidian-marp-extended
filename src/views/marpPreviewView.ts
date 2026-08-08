@@ -3,14 +3,13 @@ import { Marp } from '@marp-team/marp-core'
 import { browser, type MarpCoreBrowser } from '@marp-team/marp-core/browser'
 import shikiPlugin from '@marp-team/marp-core/plugins/shiki'
 import mathjaxPlugin from '@marp-team/marp-core/plugins/mathjax'
-import katexPlugin from '@marp-team/marp-core/plugins/katex'
 
 import type { MarpExtendedSettings } from '../utilities/settings'
 import { FilePath } from '../utilities/filePath'
 import { ThemeManager } from '../utilities/themeManager';
 import { mermaidFencePlugin } from '../utilities/mermaid';
 import { compileMarkdownForMarp } from '../utilities/marpMarkdown';
-import { loadMermaidThemeCssForFile } from '../utilities/mermaidTheme';
+import { loadMermaidThemeCssForFile, parseMermaidRenderOptionsFromCss } from '../utilities/mermaidTheme';
 import { ThemeAssetCache } from '../utilities/themeAssetCache';
 import { exportWithNotice } from '../utilities/marpExport';
 import {
@@ -140,8 +139,8 @@ export class MarpPreviewView extends ItemView  {
           })
             .use(shikiPlugin())
             .use(mathjaxPlugin())
-            .use(katexPlugin())
             // Keep custom Mermaid stack; do not register Core mermaid plugin.
+            // KaTeX is intentionally not bundled — MathJax only.
             .use(mermaidFencePlugin);
     }
 
@@ -703,9 +702,11 @@ export class MarpPreviewView extends ItemView  {
                 return;
             }
 
+            const mermaidRenderOptions = parseMermaidRenderOptionsFromCss(mermaidThemeCss);
             const processedMarkdown = await this.measurePreviewStepAsync('compileMarkdownForMarp', () => (
                 compileMarkdownForMarp(markdownText, sourceFile, this.app, filePath, {
                     renderMermaidInline: true,
+                    mermaidOptions: { renderOptions: mermaidRenderOptions },
                 })
             ));
             if (displayRevision !== this.displaySlidesRevision) {

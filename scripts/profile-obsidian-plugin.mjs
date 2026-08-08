@@ -4,6 +4,9 @@ import { spawnSync } from 'node:child_process';
 import { writeFileSync, mkdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, resolve, join } from 'node:path';
+import { loadEnvLocal } from './load-env-local.mjs';
+
+loadEnvLocal();
 
 const OBSIDIAN_CLI = process.env.OBSIDIAN_CLI ?? 'obsidian';
 const DEFAULT_COMMAND = 'marp-extended:preview';

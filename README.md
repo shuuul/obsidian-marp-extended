@@ -130,6 +130,8 @@ The opt-in npx fallback uses `@marp-team/marp-cli@4.5.0`. It requires Node.js/np
 
 ## Development
 
+Requires Node.js **≥ 20.19**.
+
 ```bash
 npm install
 npm run typecheck
@@ -153,6 +155,7 @@ Useful scripts:
 | `npm run typecheck` | Run TypeScript checks only |
 | `npm run lint` | Run ESLint over `src` and `tests` |
 | `npm run check:specs` | Validate tracked specs under `specs/` |
+| `npm run sync:themes` | Regenerate `packagedDefaultThemeCss.ts` from `assets/` |
 | `npm test` | Run Jest unit tests |
 | `npm run test:coverage` | Run Jest unit tests with coverage |
 | `npm run analyze:bundle` | Build and emit `metafile.json` for esbuild bundle analysis |
@@ -163,7 +166,7 @@ Useful scripts:
 
 Developer guidance lives in [`AGENTS.md`](AGENTS.md). Release notes live in [`CHANGELOG.md`](CHANGELOG.md).
 
-Current Marp-related runtime dependencies center on `@marp-team/marp-core` `5.0.0` (npm `next` / RC) with curated plugins (Shiki, MathJax, KaTeX) plus `beautiful-mermaid` for the custom Mermaid stack. In-Obsidian preview uses Core 5; export still uses an external `@marp-team/marp-cli` executable or optional npx fallback pinned at `4.5.0` (CLI embeds Core 4.x until a Core-5-tracking CLI ships). Marp Extended does not bundle Marp CLI into `main.js`.
+Current Marp-related runtime dependencies center on `@marp-team/marp-core` `5.0.0` (npm `next` / RC) with curated plugins (Shiki, MathJax) plus `beautiful-mermaid` for the custom Mermaid stack. In-Obsidian preview uses Core 5; export still uses an external `@marp-team/marp-cli` executable or optional npx fallback pinned at `4.5.0` (CLI embeds Core 4.x until a Core-5-tracking CLI ships). Marp Extended does not bundle Marp CLI into `main.js`.
 
 Theme authors: Core 5 highlights code with Shiki. Prefer `--marp-shiki-*` CSS variables on `section` instead of `.hljs-*` classes.
 

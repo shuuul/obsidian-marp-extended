@@ -32,7 +32,7 @@ export npx pin is `@marp-team/marp-cli@4.5.0`.
 - `src/utilities/filePath.ts` — filesystem path resolution and Obsidian image wiki-link conversion.
 - `src/utilities/marpExport.ts` — Marp CLI argv construction and export behavior.
 - `src/config/marp.config.js` — optional markdown-it plugin engine config.
-- `vault/Themes.md` and `vault/themes/*.css` — sample vault theme references.
+- `assets/Themes.md` and `assets/themes/*.css` — sample vault theme references.
 
 ## Refresh procedure
 

@@ -6,7 +6,12 @@ import { MarpExtendedSettings } from './settings';
 import { FilePath } from './filePath';
 import packageMetadata from '../../package.json';
 import { compileMarkdownForMarp } from './marpMarkdown';
-import { insertMarkdownAfterFrontmatter, loadMermaidThemeCssForFile, wrapMermaidThemeCss } from './mermaidTheme';
+import {
+	insertMarkdownAfterFrontmatter,
+	loadMermaidThemeCssForFile,
+	parseMermaidRenderOptionsFromCss,
+	wrapMermaidThemeCss,
+} from './mermaidTheme';
 
 export class MarpCLIError extends Error {}
 
@@ -554,8 +559,10 @@ export class MarpExport {
 
         const originalContent = await this.app.vault.cachedRead(file);
         const mermaidThemeCss = await loadMermaidThemeCssForFile(this.app, file, originalContent);
+        const mermaidRenderOptions = parseMermaidRenderOptionsFromCss(mermaidThemeCss);
         const processedMarkdown = await compileMarkdownForMarp(originalContent, file, this.app, filesTool, {
             renderMermaidInline: true,
+            mermaidOptions: { renderOptions: mermaidRenderOptions },
         });
         const processedContent = insertMarkdownAfterFrontmatter(
             processedMarkdown,

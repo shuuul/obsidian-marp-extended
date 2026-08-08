@@ -2,8 +2,8 @@
 
 Marp Extended has two CSS layers:
 
-- Marp slide themes live in `vault/themes/` and install to `.marp-extended/themes/`.
-- Mermaid themes live in `vault/mermaid-themes/` and install to `.marp-extended/mermaid-themes/`.
+- Marp slide themes live in `assets/themes/` and install to `.marp-extended/themes/`.
+- Mermaid themes live in `assets/mermaid-themes/` and install to `.marp-extended/mermaid-themes/`.
 
 Choose a slide theme with the Marp `theme` property, and choose a Mermaid theme
 with the `mermaidTheme` property.

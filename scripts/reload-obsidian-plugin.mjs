@@ -1,6 +1,9 @@
 #!/usr/bin/env node
 
 import { spawnSync } from 'node:child_process';
+import { loadEnvLocal } from './load-env-local.mjs';
+
+loadEnvLocal();
 
 const OBSIDIAN_CLI = process.env.OBSIDIAN_CLI ?? 'obsidian';
 const PLUGIN_ID = 'marp-extended';
