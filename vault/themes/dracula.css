@@ -8,6 +8,23 @@
  * @size 4:3 960px 720px
  * @size 16:9 1280px 720px
  */
+
+/* Marp Core v5 Shiki color definitions (migrated from highlight.js / Dracula). */
+section {
+  --marp-shiki-foreground: var(--dracula-foreground);
+  --marp-shiki-background: var(--dracula-background);
+  --marp-shiki-line-highlight: rgba(68, 71, 90, 0.65);
+  --marp-shiki-token-constant: var(--dracula-purple);
+  --marp-shiki-token-string: var(--dracula-yellow);
+  --marp-shiki-token-comment: var(--dracula-comment);
+  --marp-shiki-token-keyword: var(--dracula-pink);
+  --marp-shiki-token-parameter: var(--dracula-orange);
+  --marp-shiki-token-function: var(--dracula-green);
+  --marp-shiki-token-string-expression: var(--dracula-yellow);
+  --marp-shiki-token-punctuation: var(--dracula-foreground);
+  --marp-shiki-token-link: var(--dracula-cyan);
+}
+
  
  
 :root {
@@ -24,94 +41,23 @@
   --dracula-yellow: #f1fa8c;
 }
 
-.hljs {
-  display: block;
-  overflow-x: auto;
-  padding: 0.5em;
-  background: var(--dracula-background);
-}
-
 /* Dracula Foreground */
-.hljs,
-.hljs-subst,
-.hljs-typing,
-.hljs-variable,
-.hljs-template-variable {
-    color: var(--dracula-foreground);
-}
 
 /* Dracula Comment */
-.hljs-comment,
-.hljs-quote,
-.hljs-deletion {
-    color: var(--dracula-comment);
-}
 
 /* Dracula Cyan */
-.hljs-meta .hljs-doctag,
-.hljs-built_in,
-.hljs-selector-tag,
-.hljs-section,
-.hljs-link,
-.hljs-class {
-    color: var(--dracula-cyan);
-}
-
 
 /* Dracula Green */
-.hljs-title {
-    color: var(--dracula-green);
-}
 
 /* Dracula Orange */
-.hljs-params {
-    color: var(--dracula-orange);
-}
 
 /* Dracula Pink */
-.hljs-keyword {
-    color: var(--dracula-pink);
-}
 
 /* Dracula Purple */
-.hljs-literal,
-.hljs-number {
-    color: var(--dracula-purple);
-}
 
 /* Dracula Red */
-.hljs-regexp {
-    color: var(--dracula-red);
-}
 
 /* Dracula Yellow */
-.hljs-string,
-.hljs-name,
-.hljs-type,
-.hljs-attr,
-.hljs-symbol,
-.hljs-bullet,
-.hljs-addition,
-.hljs-template-tag {
-    color: var(--dracula-yellow);
-}
-
-.hljs-keyword,
-.hljs-selector-tag,
-.hljs-literal,
-.hljs-title,
-.hljs-section,
-.hljs-doctag,
-.hljs-type,
-.hljs-name,
-.hljs-strong {
-  font-weight: bold;
-}
-
-.hljs-params,
-.hljs-emphasis {
- font-style: italic;
-}
 
 svg[data-marp-fitting=svg] {
   max-height: 580px;

@@ -43,6 +43,22 @@
   --rhythm-section: 18pt;
 }
 
+/* Marp Core v5 Shiki color definitions (Kami palette). */
+section {
+  --marp-shiki-foreground: var(--near-black, #141413);
+  --marp-shiki-background: var(--ivory, #faf9f5);
+  --marp-shiki-line-highlight: rgba(27, 54, 93, 0.12);
+  --marp-shiki-token-constant: var(--brand, #1B365D);
+  --marp-shiki-token-string: #2f6f4e;
+  --marp-shiki-token-comment: var(--stone, #6b6a64);
+  --marp-shiki-token-keyword: var(--brand, #1B365D);
+  --marp-shiki-token-parameter: var(--olive, #504e49);
+  --marp-shiki-token-function: var(--charcoal, #4d4c48);
+  --marp-shiki-token-string-expression: #2f6f4e;
+  --marp-shiki-token-punctuation: var(--near-black, #141413);
+  --marp-shiki-token-link: var(--brand, #1B365D);
+}
+
 section {
   width: 1058px;
   height: 597px;

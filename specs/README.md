@@ -14,7 +14,7 @@ Copy [000-template.md](000-template.md) to start a spec.
 
 | Spec | Status | Outcome |
 | --- | --- | --- |
-| [002-marp-core-v5-migration.md](002-marp-core-v5-migration.md) | Draft | Migrate preview to Marp Core 5.0.0 RC, pin CLI 4.5.0, refresh direct deps, keep custom Mermaid theming. |
+| [002-marp-core-v5-migration.md](002-marp-core-v5-migration.md) | Active | Migrate preview to Marp Core 5.0.0 RC, pin CLI 4.5.0, refresh direct deps, keep custom Mermaid theming. |
 
 ## Archived specs
 

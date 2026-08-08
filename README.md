@@ -124,7 +124,7 @@ marp --version
 
 Use **Auto-detect** in settings to search `PATH` and common Homebrew locations such as `/opt/homebrew/bin/marp`. If `marp` is not found automatically, set **Marp CLI path** to the executable path, such as `/opt/homebrew/bin/marp` or `C:\Users\you\AppData\Roaming\npm\marp.cmd`.
 
-The opt-in npx fallback uses `@marp-team/marp-cli@4.4.1`. It requires Node.js/npm and may download the package on first use.
+The opt-in npx fallback uses `@marp-team/marp-cli@4.5.0`. It requires Node.js/npm and may download the package on first use. Recommend a global Marp CLI ≥ 4.5.0 when not using npx.
 
 > ⚠️ PDF and PPTX export require Google Chrome, Chromium, or Microsoft Edge. You can set a custom browser path with the `CHROME_PATH` setting if Marp CLI cannot auto-detect your browser.
 
@@ -152,6 +152,7 @@ Useful scripts:
 | `npm run build` | Typecheck and produce production `main.js` |
 | `npm run typecheck` | Run TypeScript checks only |
 | `npm run lint` | Run ESLint over `src` and `tests` |
+| `npm run check:specs` | Validate tracked specs under `specs/` |
 | `npm test` | Run Jest unit tests |
 | `npm run test:coverage` | Run Jest unit tests with coverage |
 | `npm run analyze:bundle` | Build and emit `metafile.json` for esbuild bundle analysis |
@@ -162,7 +163,9 @@ Useful scripts:
 
 Developer guidance lives in [`AGENTS.md`](AGENTS.md). Release notes live in [`CHANGELOG.md`](CHANGELOG.md).
 
-Current Marp-related runtime dependencies are `@marp-team/marp-core` `^4.3.0` and `beautiful-mermaid` `^1.1.3`. Export uses an external `@marp-team/marp-cli` executable or optional npx fallback instead of bundling Marp CLI into `main.js`.
+Current Marp-related runtime dependencies center on `@marp-team/marp-core` `5.0.0` (npm `next` / RC) with curated plugins (Shiki, MathJax, KaTeX) plus `beautiful-mermaid` for the custom Mermaid stack. In-Obsidian preview uses Core 5; export still uses an external `@marp-team/marp-cli` executable or optional npx fallback pinned at `4.5.0` (CLI embeds Core 4.x until a Core-5-tracking CLI ships). Marp Extended does not bundle Marp CLI into `main.js`.
+
+Theme authors: Core 5 highlights code with Shiki. Prefer `--marp-shiki-*` CSS variables on `section` instead of `.hljs-*` classes.
 
 ## Security note
 

@@ -74,7 +74,7 @@ export class MarpExtendedSettingTab extends PluginSettingTab {
 
 		new Setting(containerEl)
 			.setName('Use npx fallback')
-			.setDesc('If Marp CLI is not found and no path is set, run a pinned @marp-team/marp-cli@4.4.1 through npx when Marp CLI is not found or when a browser-backed export fails without an explicit CLI path. This requires Node.js/npm and may download the package on first use.')
+			.setDesc('If Marp CLI is not found and no path is set, run a pinned @marp-team/marp-cli@4.5.0 through npx when Marp CLI is not found or when a browser-backed export fails without an explicit CLI path. This requires Node.js/npm and may download the package on first use.')
 			.addToggle(toggle => toggle
 				.setValue(this.plugin.settings.MARP_CLI_USE_NPX)
 				.onChange(async (value) => {

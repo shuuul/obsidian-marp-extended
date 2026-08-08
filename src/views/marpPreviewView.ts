@@ -1,6 +1,9 @@
 import { ItemView, setIcon, type WorkspaceLeaf, type MarkdownView, type TFile } from 'obsidian';
 import { Marp } from '@marp-team/marp-core'
 import { browser, type MarpCoreBrowser } from '@marp-team/marp-core/browser'
+import shikiPlugin from '@marp-team/marp-core/plugins/shiki'
+import mathjaxPlugin from '@marp-team/marp-core/plugins/mathjax'
+import katexPlugin from '@marp-team/marp-core/plugins/katex'
 
 import type { MarpExtendedSettings } from '../utilities/settings'
 import { FilePath } from '../utilities/filePath'
@@ -135,6 +138,10 @@ export class MarpPreviewView extends ItemView  {
             minifyCSS: true,
             script: false
           })
+            .use(shikiPlugin())
+            .use(mathjaxPlugin())
+            .use(katexPlugin())
+            // Keep custom Mermaid stack; do not register Core mermaid plugin.
             .use(mermaidFencePlugin);
     }
 

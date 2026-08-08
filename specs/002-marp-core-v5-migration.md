@@ -1,9 +1,9 @@
 ---
 id: "002"
 title: "Marp Core v5 migration and dependency refresh"
-status: Draft
+status: Active
 created: 2026-08-08
-updated: 2026-08-08
+updated: 2026-08-09
 coordinator: "amp"
 ---
 
@@ -63,20 +63,20 @@ Outcome: preview runs on Marp Core **5.0.0**; export npx pin is CLI **4.5.0**; a
 direct runtime/dev dependency floors are current stable; custom Mermaid theming is
 unchanged for users.
 
-- [ ] `package.json` pins `@marp-team/marp-core` to exact `5.0.0` and adds Core peer
+- [x] `package.json` pins `@marp-team/marp-core` to exact `5.0.0` and adds Core peer
   deps (`shiki`, `katex`, `@mathjax/src`, four mathjax font extensions); `beautiful-mermaid`
   remains a direct dependency.
-- [ ] `marpExtended.npxMarpCliPackage` is `@marp-team/marp-cli@4.5.0`; README and
+- [x] `marpExtended.npxMarpCliPackage` is `@marp-team/marp-cli@4.5.0`; README and
   settings copy no longer mention `4.4.1`.
-- [ ] Direct devDependency caret floors match latest stable per Decisions table
+- [x] Direct devDependency caret floors match latest stable per Decisions table
   (dual TypeScript aliases preserved).
-- [ ] `MarpPreviewView.createMarp()` uses lightweight core + `.use(shiki)`,
+- [x] `MarpPreviewView.createMarp()` uses lightweight core + `.use(shiki)`,
   `.use(mathjax)`, `.use(katex)`, then custom `mermaidFencePlugin` — **no** Core
   mermaid plugin.
-- [ ] Bundled/sample slide themes that embedded `.hljs-*` use `--marp-shiki-*` variables.
-- [ ] Mermaid user API unchanged: `mermaidTheme`, `mermaidFlat`, theme files under
+- [x] Bundled/sample slide themes that embedded `.hljs-*` use `--marp-shiki-*` variables.
+- [x] Mermaid user API unchanged: `mermaidTheme`, `mermaidFlat`, theme files under
   `.marp-extended/mermaid-themes/`, editor mermaid render.
-- [ ] `npm run typecheck && npm run lint && npm test -- --runInBand && npm run build`
+- [x] `npm run typecheck && npm run lint && npm test -- --runInBand && npm run build`
   pass; `npm run check:specs` passes; `npm audit --omit=dev` clean or documented.
 - [ ] Manual Obsidian smoke: Kami mermaid themes, math, code fences, export HTML/PDF
   with npx 4.5.0 when fallback enabled.
@@ -198,12 +198,12 @@ install path.
 | ID | Deliverable | Owner | Status | Dependencies | Verification |
 | --- | --- | --- | --- | --- | --- |
 | WS-00 | Tracked specs system + superpowers removal | amp | Done | None | `npm run check:specs`; no `docs/superpowers` |
-| WS-01 | package.json/lock: Core 5 + peers + CLI 4.5.0 + dev floors | Unassigned | Pending | WS-00 | `npm install`; `npm outdated` policy; lock committed |
-| WS-02 | `createMarp` curated plugins + browser helper | Unassigned | Pending | WS-01 | typecheck; preview boots |
-| WS-03 | esbuild/bundle resolve for new entrypoints | Unassigned | Pending | WS-01 | `npm run build`; optional `analyze:bundle` |
-| WS-04 | Slide theme CSS hljs → shiki vars | Unassigned | Pending | WS-02 | sample themes render code colors |
-| WS-05 | README/settings/CHANGELOG copy for CLI 4.5.0 + Core 5 + skew | Unassigned | Pending | WS-01 | grep no stale `4.4.1` pin strings |
-| WS-06 | Unit/manual verification + skills upstream refresh | Unassigned | Pending | WS-02–WS-05 | commands in Verification |
+| WS-01 | package.json/lock: Core 5 + peers + CLI 4.5.0 + dev floors | amp | Done | WS-00 | `npm install`; `npm outdated` policy; lock committed |
+| WS-02 | `createMarp` curated plugins + browser helper | amp | Done | WS-01 | typecheck; preview boots |
+| WS-03 | esbuild/bundle resolve for new entrypoints | amp | Done | WS-01 | `npm run build`; optional `analyze:bundle` |
+| WS-04 | Slide theme CSS hljs → shiki vars | amp | Done | WS-02 | sample themes render code colors |
+| WS-05 | README/settings/CHANGELOG copy for CLI 4.5.0 + Core 5 + skew | amp | Done | WS-01 | grep no stale `4.4.1` pin strings |
+| WS-06 | Unit/manual verification + skills upstream refresh | amp | Done | WS-02–WS-05 | commands in Verification |
 
 ## Verification
 
@@ -262,6 +262,15 @@ None yet.
 - Remaining: WS-01 through WS-06 implementation of Core 5 migration.
 - Blockers: None.
 - Next action: Claim WS-01 and land dependency refresh + CLI pin.
+
+
+### 2026-08-09 — amp — WS-01–WS-06
+
+- Changed: Installed Core 5.0.0 + peers; pinned CLI 4.5.0; bumped direct dev floors; wired curated plugins in `createMarp`; migrated sample themes to `--marp-shiki-*`; synced packaged theme CSS; updated README/settings/CHANGELOG; refreshed skills upstream refs; typecheck/lint/check:specs/tests/build green; Node smoke render OK.
+- Evidence: `npm run typecheck && npm run lint && npm run check:specs && npm test -- --runInBand && npm run build`; `npm audit --omit=dev` 0 vulns; smoke script render code+math.
+- Remaining: Human Obsidian visual review (preview Kami/math/code/mermaid + export HTML/PDF with npx 4.5.0). Optional archive after review.
+- Blockers: None for automated gates.
+- Next action: User review / manual Obsidian smoke; then closeout archive if accepted.
 
 ## Completion summary
 

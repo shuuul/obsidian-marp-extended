@@ -23,10 +23,12 @@ The `SKILL.md` file must contain YAML frontmatter followed by Markdown content.
 | `description` | Yes | Max 1024 characters. Non-empty. Describes what the skill does and when to use it. |
 | `license` | No | License name or reference to a bundled license file. |
 | `compatibility` | No | Max 500 characters. Indicates environment requirements (intended product, system packages, network access, etc.). |
-| `metadata` | No | Arbitrary key-value mapping for additional metadata. |
+| `metadata` | No | Arbitrary key-value mapping for additional metadata (a map from string keys to string values). |
 | `allowed-tools` | No | Space-separated string of pre-approved tools the skill may use. (Experimental) |
 
 **Minimal example:**
+
+SKILL.md
 
 ```markdown
 ---
@@ -36,6 +38,8 @@ description: A description of what this skill does and when to use it.
 ```
 
 **Example with optional fields:**
+
+SKILL.md
 
 ```markdown
 ---
@@ -185,6 +189,8 @@ Note that the agent will load this entire file once it’s decided to activate a
 
 ## Optional directories
 
+A skill directory may contain any files and directories beyond the required `SKILL.md`. The conventions below are recommendations for organizing common types of content.
+
 ### scripts/
 
 Contains executable code that agents can run. Scripts should:
@@ -226,6 +232,8 @@ Keep your main `SKILL.md` under 500 lines. Move detailed reference material to s
 ## File references
 
 When referencing other files in your skill, use relative paths from the skill root:
+
+SKILL.md
 
 ```markdown
 See [the reference guide](references/REFERENCE.md) for details.
