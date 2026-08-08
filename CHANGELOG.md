@@ -9,6 +9,7 @@
 * **mermaid:** apply theme CSS variables (`--bg/--fg/...`) to beautiful-mermaid render options
 * **themes:** move packaged theme sources to `assets/` and add `npm run sync:themes`
 * **bundle:** ship a curated Shiki language subset for slide decks (esbuild `#marp-shiki` shim)
+* **theme:** align Kami/Kami-en code blocks with upstream Kami code-card + Pygments token palette
 
 ### BREAKING CHANGES
 
