@@ -170,6 +170,8 @@ Current Marp-related runtime dependencies center on `@marp-team/marp-core` `5.0.
 
 Theme authors: Core 5 highlights code with Shiki. Prefer `--marp-shiki-*` CSS variables on `section` instead of `.hljs-*` classes.
 
+Preview ships a **curated Shiki language subset** (common web/systems/data languages used in slides) instead of Marp Core’s full 200+ grammar pack, to keep `main.js` smaller. Unsupported fence languages fall back to plain text. Edit `src/shims/marp-shiki.cjs` to add languages.
+
 ## Security note
 
 Runtime and development dependencies audit clean with `npm audit` and `npm audit --omit=dev`.

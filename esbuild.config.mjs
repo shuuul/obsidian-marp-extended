@@ -78,6 +78,21 @@ const sourceMapQuickSortShim = {
 	},
 };
 
+/**
+ * Replace Marp Core's full Shiki language registry (#marp-shiki) with a curated
+ * subset suitable for slide decks. Cuts multi‑MB of unused grammar packs.
+ */
+const marpShikiLangSubsetShim = {
+	name: "marp-shiki-lang-subset",
+	setup(build) {
+		const shimPath = path.resolve("src/shims/marp-shiki.cjs");
+		build.onResolve({ filter: /^#marp-shiki$/ }, () => ({ path: shimPath }));
+		build.onResolve({ filter: /@marp-team\/marp-core\/lib\/internals\/shiki(\.node)?(\.cjs|\.mjs)?$/ }, () => ({
+			path: shimPath,
+		}));
+	},
+};
+
 
 const context = await esbuild.context({
 	banner: {
@@ -85,7 +100,7 @@ const context = await esbuild.context({
 	},
 	entryPoints: ["src/main.ts"],
 	bundle: true,
-	plugins: [sourceMapQuickSortShim, copyToObsidian],
+	plugins: [sourceMapQuickSortShim, marpShikiLangSubsetShim, copyToObsidian],
 	platform: "node",
 	external: [
 		"obsidian",

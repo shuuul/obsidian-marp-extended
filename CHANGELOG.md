@@ -8,6 +8,7 @@
 * **export:** pin npx Marp CLI fallback to `@marp-team/marp-cli@4.5.0`
 * **mermaid:** apply theme CSS variables (`--bg/--fg/...`) to beautiful-mermaid render options
 * **themes:** move packaged theme sources to `assets/` and add `npm run sync:themes`
+* **bundle:** ship a curated Shiki language subset for slide decks (esbuild `#marp-shiki` shim)
 
 ### BREAKING CHANGES
 
