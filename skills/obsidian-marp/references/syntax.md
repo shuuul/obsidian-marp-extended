@@ -41,7 +41,7 @@ Global directives affect the entire deck. If repeated, Marpit uses the last valu
 | `headingDivider` | Auto-split slides before headings. Use number `1`-`6` or an array such as `[1, 2]`. |
 | `lang` | Set the HTML `lang` attribute. |
 | `size` | Marp Core extension for slide size. Built-in themes support `16:9` and `4:3`. |
-| `math` | Marp Core math engine: `mathjax` or `katex`. |
+| `math` | Marp Core math engine. **Marp Extended preview supports `mathjax` only** (KaTeX is not bundled). |
 | `title`, `author`, `keywords`, `url`, `image` | Marp CLI metadata for exported HTML/PDF/PPTX where supported. |
 
 Example:
@@ -54,7 +54,7 @@ mermaidTheme: github
 mermaidFlat: false
 size: 16:9
 headingDivider: 2
-math: katex
+math: mathjax
 style: |
   section {
     letter-spacing: 0.01em;
@@ -306,11 +306,9 @@ Declare the engine when using math:
 
 ```yaml
 math: mathjax
-# or
-math: katex
 ```
 
-MathJax is the default in Marp Core and in this plugin's default settings. KaTeX can be faster but supports a smaller syntax surface.
+MathJax is the default in Marp Core and the **only** math engine bundled in Marp Extended preview. Do not use `math: katex` with this plugin.
 
 ## Marp Core extras
 

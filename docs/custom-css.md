@@ -41,6 +41,31 @@ h3 {
 Use CSS variables for the palette when possible. That makes it easy to reuse the
 same colors for headings, tables, code blocks, callouts, and diagram containers.
 
+## Code highlighting (Marp Core 5 / Shiki)
+
+Preview uses Shiki, not highlight.js. Define colors on `section`:
+
+```css
+section {
+  --marp-shiki-foreground: #141413;
+  --marp-shiki-background: #faf9f5;
+  --marp-shiki-line-highlight: #eef2f7;
+  --marp-shiki-token-constant: #3d3d3a;
+  --marp-shiki-token-string: #504e49;
+  --marp-shiki-token-comment: #6b6a64;
+  --marp-shiki-token-keyword: #1b365d;
+  --marp-shiki-token-parameter: #504e49;
+  --marp-shiki-token-function: #141413;
+  --marp-shiki-token-string-expression: #504e49;
+  --marp-shiki-token-punctuation: #141413;
+  --marp-shiki-token-link: #1b365d;
+}
+```
+
+`.hljs-*` rules no longer affect preview. Kami themes also size `pre` with
+`width: fit-content; max-width: 100%`, ivory fill, soft border, and mono ~10pt
+(see `assets/themes/kami.css`).
+
 ## Mermaid theme files
 
 A Mermaid theme file is not a Marp theme. It should use Mermaid metadata:

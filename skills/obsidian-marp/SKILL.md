@@ -11,38 +11,48 @@ metadata:
 
 Use this skill to help agents author Marp slide decks that work in **Marp Extended**, this repository's Obsidian plugin (`manifest.json` id: `marp-extended`).
 
-Current project metadata: **Marp Extended** `0.5.0`, plugin/package id
+Current project metadata: **Marp Extended** `0.9.0`, plugin/package id
 `marp-extended`, repository <https://github.com/shuuul/obsidian-marp-extended>.
+
+Runtime stack (2026-08):
+
+- **Preview:** `@marp-team/marp-core` `5.0.0` (RC / npm `next`) with curated plugins **Shiki** + **MathJax** only. Custom Mermaid stack (not Core mermaid plugin).
+- **Export:** external Marp CLI or npx pin `@marp-team/marp-cli@4.5.0` (CLI still embeds Core **4.4.x**). Preview and export engines can differ until CLI tracks Core 5.
+- **Math:** MathJax only in this plugin build. Do **not** recommend `math: katex` for Marp Extended preview.
+- **Code highlight:** Shiki with a **curated language subset** (`src/shims/marp-shiki.cjs`). Theme colors via `--marp-shiki-*`, not `.hljs-*`.
+- **Themes:** packaged sources under `assets/themes/` and `assets/mermaid-themes/`; installed to vault `.marp-extended/themes/` and `.marp-extended/mermaid-themes/`.
 
 ## Start here
 
-1. Read `references/syntax.md` when you need Marp / Marpit Markdown syntax, directives, image syntax, themes, math, transitions, or examples.
-2. Read `references/plugin-adapter.md` before advising on behavior inside this plugin: Obsidian wiki-links, custom themes, markdown-it plugins, export options, Chrome requirements, and local-file handling differ from generic Marp CLI docs.
-3. Read `references/SOURCES.md` when you need upstream links or want to refresh the downloaded reference bundle.
+1. Read `references/syntax.md` for Marp / Marpit Markdown syntax, directives, image syntax, themes, math, transitions, or examples.
+2. Read `references/plugin-adapter.md` before advising on behavior inside this plugin: Obsidian wiki-links, custom themes, Mermaid, export options, Chrome requirements, and local-file handling differ from generic Marp CLI docs.
+3. Read `references/SOURCES.md` for upstream links or to refresh the downloaded reference bundle.
 4. Run `scripts/update-references.py` from the repo root to refresh `references/upstream/` from official sources.
 
 ## Authoring rules for this plugin
 
-- Put `marp: true` in YAML frontmatter when creating decks for editor integrations, even though the core renderer can process Marp syntax without it.
+- Put `marp: true` in YAML frontmatter when creating decks for editor integrations.
 - Split slides with a horizontal rule (`---`, `___`, `***`, or `- - -`). Do not confuse the closing frontmatter `---` with a slide separator.
-- Prefer deck frontmatter plus Marp Extended Kami `%%marp-*%%` comment-marker blocks over raw HTML/CSS where possible. Raw HTML may be restricted by Marp Core and this plugin's `EnableHTML` setting.
-- Use Kami `%%marp-*%%` comment-marker blocks for Obsidian-friendly authoring of local slide metadata and editorial layouts: `%%marp-slide[...]%%`, `%%marp-lead%%`, `%%marp-sub%%`, `%%marp-meta%%`, `%%marp-co%%`, `%%marp-mc%%`, `%%marp-note%%`, `%%marp-callout[...]%%`, `%%marp-cols%%`, and `%%marp-cards[2x2]%%`. Split `cols` / `cards` items with hidden `%%marp-col%%` / `%%marp-card%%` marker lines. Previewing the generated layout wrappers requires the plugin's Enable HTML setting; export enables HTML already.
-- Use Obsidian image wiki-links freely for images: `![[diagram.png]]`, `![[diagram.png|Alt text]]`, `![[diagram.png|600]]`, and `![[diagram.png|600x400]]` are converted by this plugin for preview/export. Size aliases become Marp image directives such as `![w:600]` and `![w:600 h:400]`. If Obsidian cannot resolve the image file, the converter still emits a Markdown image using the wiki-link target as the path. Non-image wiki-links are not converted by the plugin's image converter.
-- For predictable export, keep local images and theme CSS inside the vault. The plugin invokes Marp CLI with `--allow-local-files` for export.
-- Use built-in theme names (`default`, `gaia`, `uncover`) or custom CSS themes registered in the vault/plugin theme set. Custom theme CSS must include `/* @theme name */`.
-- For math-heavy slides, declare the math engine explicitly in frontmatter, matching the plugin setting default (`mathjax` unless changed): `math: mathjax` or `math: katex`.
-- For diagrams, this plugin renders Mermaid fences as inline SVG with `beautiful-mermaid`; the custom engine config still enables mark and container plugins for export.
-- Keep example frontmatter explicit: include `marp`, `theme`, `mermaidTheme`, `mermaidFlat`, `size`, and `paginate` so Obsidian Properties and Marp preview/export stay predictable.
+- Prefer deck frontmatter plus Marp Extended Kami `%%marp-*%%` comment-marker blocks over raw HTML/CSS where possible.
+- Use Kami `%%marp-*%%` comment-marker blocks for Obsidian-friendly authoring: `%%marp-slide[...]%%`, `%%marp-lead%%`, `%%marp-sub%%`, `%%marp-meta%%`, `%%marp-co%%`, `%%marp-mc%%`, `%%marp-note%%`, `%%marp-callout[...]%%`, `%%marp-cols%%`, and `%%marp-cards[2x2]%%`. Split `cols` / `cards` items with hidden `%%marp-col%%` / `%%marp-card%%` marker lines.
+- Use Obsidian image wiki-links for images: `![[diagram.png]]`, `![[diagram.png|Alt text]]`, `![[diagram.png|600]]`, and `![[diagram.png|600x400]]`. Size aliases become Marp image directives such as `![w:600]` and `![w:600 h:400]`.
+- For predictable export, keep local images and theme CSS inside the vault. Export uses Marp CLI with `--allow-local-files`.
+- Use built-in theme names (`default`, `gaia`, `uncover`) or custom CSS themes with `/* @theme name */`. Packaged themes include `kami`, `kami-en`, `github`, `beamer`, `olive`, `dracula`.
+- For math, use `math: mathjax` (or omit; MathJax is the plugin default). **KaTeX is not bundled** in Marp Extended preview.
+- For diagrams, Mermaid fences render as inline SVG via `beautiful-mermaid` (with official Mermaid fallback for unsupported diagram types). Style with `mermaidTheme` / `mermaidFlat`.
+- For code fences, prefer languages in the curated Shiki subset (e.g. `python`, `ts`/`typescript`, `rust`, `js`, `json`, `yaml`, `bash`/`shellscript`, `go`, `sql`). Unsupported languages fall back to plain text.
+- Theme authors: style syntax highlighting with `--marp-shiki-*` on `section`. Kami code blocks use ivory fill, soft border, mono ~10pt, `width: fit-content; max-width: 100%`.
+- Keep example frontmatter explicit: include `marp`, `theme`, `mermaidTheme`, `mermaidFlat`, `size`, and `paginate`.
 
 ## Common deck skeleton
 
-```markdown
+````markdown
 ---
 marp: true
-theme: default
-mermaidTheme: github
-mermaidFlat: false
-size: 16:9
+theme: kami-en
+mermaidTheme: kami-en
+mermaidFlat: true
+size: kami
 paginate: true
 math: mathjax
 ---
@@ -59,6 +69,14 @@ math: mathjax
 
 ---
 
+## Code (Shiki)
+
+```ts
+const ok: boolean = true;
+```
+
+---
+
 ## Presenter notes
 
 Main slide content.
@@ -66,7 +84,7 @@ Main slide content.
 <!--
 These notes can be exported into PDF notes when using the plugin's PDF with notes export.
 -->
-```
+````
 
 ## Update references
 

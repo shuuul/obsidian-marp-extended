@@ -1,7 +1,7 @@
 ---
 id: "002"
 title: "Marp Core v5 migration and dependency refresh"
-status: Active
+status: Completed
 created: 2026-08-08
 updated: 2026-08-09
 coordinator: "amp"
@@ -292,5 +292,19 @@ None yet.
 
 ## Completion summary
 
+Delivered Marp Extended preview on Core **5.0.0** RC with curated Shiki + MathJax
+plugins, custom Mermaid retained, CLI npx pin **4.5.0**, full direct-dep refresh,
+Shiki language subset (~7.5MB main.js), Kami code-block styling from upstream Kami,
+vault tree removed in favor of `assets/` themes, and durable docs/skills sync.
 
-(Incomplete — fill before archive.)
+Deviations from the original Draft:
+
+- KaTeX was later **removed** (not only optional) to cut bundle and simplify product.
+- Shiki language allowlist added after full-plugin migration for size.
+- Sample `vault/` tree deleted; theme sources live under `assets/`.
+
+Verification: typecheck, lint, check:specs, unit tests, production build, Obsidian
+reload, user preview sign-off on Kami Agent Slides, CLI 4.5.0 HTML+PDF smoke.
+
+Documentation synced: `README.md`, `CHANGELOG.md`, `AGENTS.md`, `docs/custom-css.md`,
+`skills/obsidian-marp/*`. Spec archived 2026-08-09.

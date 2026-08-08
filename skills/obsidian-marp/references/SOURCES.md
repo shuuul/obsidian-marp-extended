@@ -4,8 +4,11 @@ Generated/updatable upstream snapshots are stored in `upstream/` by `../scripts/
 
 Current project metadata source: **Marp Extended** `0.9.0`, plugin/package id
 `marp-extended`, repository <https://github.com/shuuul/obsidian-marp-extended>.
-Preview uses `@marp-team/marp-core` `5.0.0` (RC/`next`) with curated plugins;
-export npx pin is `@marp-team/marp-cli@4.5.0`.
+
+Preview: `@marp-team/marp-core` `5.0.0` (RC/`next`) with curated **Shiki** + **MathJax**
+plugins and a custom Mermaid stack. Export npx pin: `@marp-team/marp-cli@4.5.0`
+(CLI embeds Core 4.x). Packaged themes: `assets/themes/`, `assets/mermaid-themes/`.
+Shiki language allowlist: `src/shims/marp-shiki.cjs`.
 
 ## Agent Skill specification
 
@@ -28,11 +31,12 @@ export npx pin is `@marp-team/marp-cli@4.5.0`.
 - `manifest.json` — plugin id/name/version.
 - `package.json` — Marp dependency versions and scripts.
 - `README.md` — user-facing behavior and theme credits.
-- `src/utilities/settings.ts` — defaults for math, HTML export mode, browser path, markdown-it plugins.
+- `src/utilities/settings.ts` — CLI path, npx fallback, Chrome path, editor Mermaid settings.
 - `src/utilities/filePath.ts` — filesystem path resolution and Obsidian image wiki-link conversion.
 - `src/utilities/marpExport.ts` — Marp CLI argv construction and export behavior.
-- `src/config/marp.config.js` — optional markdown-it plugin engine config.
-- `assets/Themes.md` and `assets/themes/*.css` — sample vault theme references.
+- `src/views/marpPreviewView.ts` — Core 5 `createMarp()` plugin wiring and preview render.
+- `src/shims/marp-shiki.cjs` — curated Shiki language subset for the bundle.
+- `assets/Themes.md`, `assets/themes/*.css`, `assets/mermaid-themes/*.css` — packaged theme sources.
 
 ## Refresh procedure
 

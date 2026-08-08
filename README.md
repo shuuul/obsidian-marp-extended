@@ -172,6 +172,8 @@ Theme authors: Core 5 highlights code with Shiki. Prefer `--marp-shiki-*` CSS va
 
 Preview ships a **curated Shiki language subset** (common web/systems/data languages used in slides) instead of Marp Core’s full 200+ grammar pack, to keep `main.js` smaller. Unsupported fence languages fall back to plain text. Edit `src/shims/marp-shiki.cjs` to add languages.
 
+Kami themes style code blocks after upstream Kami code-card language: ivory fill, soft border, mono ~10pt, `width: fit-content; max-width: 100%`.
+
 ## Security note
 
 Runtime and development dependencies audit clean with `npm audit` and `npm audit --omit=dev`.
