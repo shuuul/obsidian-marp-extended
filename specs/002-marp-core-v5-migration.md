@@ -78,8 +78,8 @@ unchanged for users.
   `.marp-extended/mermaid-themes/`, editor mermaid render.
 - [x] `npm run typecheck && npm run lint && npm test -- --runInBand && npm run build`
   pass; `npm run check:specs` passes; `npm audit --omit=dev` clean or documented.
-- [ ] Manual Obsidian smoke: Kami mermaid themes, math, code fences, export HTML/PDF
-  with npx 4.5.0 when fallback enabled.
+- [x] Manual Obsidian smoke: Kami Agent Slides + related decks OK in Obsidian preview
+  (user confirmed 2026-08-09). Export HTML/PDF with npx 4.5.0 still optional follow-up if not exercised.
 
 ## Scope and non-goals
 
@@ -272,6 +272,15 @@ None yet.
 - Remaining: Human Obsidian visual review (preview Kami/math/code/mermaid + export HTML/PDF with npx 4.5.0). Optional archive after review.
 - Blockers: None for automated gates.
 - Next action: User review / manual Obsidian smoke; then closeout archive if accepted.
+
+
+### 2026-08-09 — amp — manual review
+
+- Changed: Recorded user confirmation that Obsidian preview of `slides/examples/Kami Agent Slides.md` looks good after Core 5 migration.
+- Evidence: User visual review; `obsidian:reload` reported no errors.
+- Remaining: Optional export smoke (HTML/PDF via CLI 4.5.0); archive 002 when ready.
+- Blockers: None.
+- Next action: Consider archive after any remaining export check.
 
 ## Completion summary
 
