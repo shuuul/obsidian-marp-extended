@@ -220,15 +220,16 @@ npm audit --omit=dev
 npm run analyze:bundle   # delete metafile.json after
 ```
 
-Manual (desktop Obsidian, `OBSIDIAN_VAULT` set):
+Manual (desktop Obsidian, `OBSIDIAN_VAULT` set to the Base vault; primary note
+`slides/examples/Kami Agent Slides.md`):
 
-1. `vault/samples/Kami.md` / `Kami.en.md` — `mermaidTheme` + `mermaidFlat` apply.
-2. MathJax deck renders in preview.
-3. Fenced code shows Shiki colors (no empty/broken chrome).
-4. Mermaid types beyond BM still fall back to official Mermaid.
-5. Export HTML + PDF succeed; mermaid figures present.
-6. npx fallback without `MARP_CLI_PATH` uses `@marp-team/marp-cli@4.5.0`.
-7. Settings copy mentions 4.5.0; Test CLI works.
+1. Open `slides/examples/Kami Agent Slides.md` (also `Kami.md` / `Kami.en.md`) — `mermaidTheme` + `mermaidFlat` apply.  
+2. MathJax deck renders in preview.  
+3. Fenced code shows Shiki colors (no empty/broken chrome).  
+4. Mermaid types beyond BM still fall back to official Mermaid.  
+5. Export HTML + PDF succeed; mermaid figures present.  
+6. npx fallback without `MARP_CLI_PATH` uses `@marp-team/marp-cli@4.5.0`.  
+7. Settings copy mentions 4.5.0; Test CLI works.  
 8. Editor mermaid live render respects theme settings/frontmatter.
 
 Success = all Goal checkboxes true; no Core mermaid plugin registration in `src/`.

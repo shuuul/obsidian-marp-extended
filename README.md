@@ -157,7 +157,7 @@ Useful scripts:
 | `npm run test:coverage` | Run Jest unit tests with coverage |
 | `npm run analyze:bundle` | Build and emit `metafile.json` for esbuild bundle analysis |
 | `npm run obsidian:reload` | Reload the local Obsidian dev plugin and check dev errors |
-| `npm run obsidian:profile -- path="samples/Kami Agent Slides.md"` | Capture preview Chrome metrics and Marp Extended timing marks for a vault-relative note path; pass `cpu=true` for a `.cpuprofile` |
+| `npm run obsidian:profile -- path="slides/examples/Kami Agent Slides.md"` | Capture preview Chrome metrics and Marp Extended timing marks for a vault-relative note path; pass `cpu=true` for a `.cpuprofile` |
 
 `main.js` is generated. Edit files under `src/`, then rebuild.
 
