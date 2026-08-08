@@ -18,8 +18,11 @@ src/utilities/filePath.ts      # Vault/resource path resolution and image wiki-l
 src/utilities/marpExport.ts    # Marp CLI export orchestration
 src/utilities/mermaid.ts       # Mermaid fence rendering for preview/export
 src/utilities/icons.ts         # SVG icons registered with Obsidian
+specs/                         # Tracked execution specs (Draft/Active) + archive/
+scripts/check-specs.mjs        # Spec tree validator
 tests/                         # Jest tests and Obsidian mocks
 vault/                         # Sample vault notes and theme references
+docs/                          # Optional user-facing notes (not a full docs site)
 manifest.json                  # Obsidian plugin metadata
 styles.css                     # Plugin CSS
 esbuild.config.mjs             # Build/watch configuration
@@ -33,6 +36,7 @@ Run focused checks before reporting completion:
 ```bash
 npm run typecheck
 npm run lint
+npm run check:specs
 npm test -- --runInBand
 ```
 
@@ -52,9 +56,11 @@ Useful commands:
 | Typecheck | `npm run typecheck` |
 | Lint | `npm run lint` |
 | Auto-fix lint | `npm run lint:fix` |
+| Tracked specs validator | `npm run check:specs` |
 | Test | `npm test` |
 | Test coverage | `npm run test:coverage` |
 | Single test file | `npm run test -- --runInBand tests/unit/filePath.test.ts` |
+| Spec validator tests | `npm test -- --runInBand tests/unit/scripts/checkSpecs.test.ts` |
 | Bundle analysis | `npm run analyze:bundle` |
 | Reload local Obsidian dev plugin | `npm run obsidian:reload` |
 | Profile local Obsidian preview | `npm run obsidian:profile -- path="slides/examples/Kami Agent Slides.md"` |
@@ -147,11 +153,33 @@ Export flow: command/action → `MarpExport.export()` → `FilePath` source/them
 - Preserve user settings compatibility unless a task explicitly covers migration.
 - When changing the fork name, keep `package.json`, `package-lock.json`, `manifest.json`, `versions.json`, README, release workflow artifact names, and hardcoded plugin paths consistent.
 
+## Tracked specs
+
+Long-running or multi-workstream work uses the tracked spec system under `specs/`
+(init-repo contract). Specs are execution records; durable behavior still lands in
+code, tests, `README.md`, `CHANGELOG.md`, optional `docs/*` notes, and this file.
+
+| Status | Location | Meaning |
+| --- | --- | --- |
+| `Draft` | `specs/` | Scope/decisions not complete |
+| `Active` | `specs/` | Execution contract ready |
+| `Completed` | `specs/archive/` | Acceptance + doc sync done |
+
+Rules:
+
+- Copy `specs/000-template.md` → `specs/NNN-kebab-case.md`. IDs are permanent and continuous from `001` across active + archive.
+- Coordinator owns frontmatter, index row in `specs/README.md`, cross-workstream decisions, and closeout.
+- Claim a workstream before editing; append Progress and handoff entries.
+- Before archive: satisfy success criteria, sync durable docs/AGENTS, set `status: Completed`, move file + index row together, run `npm run check:specs`.
+- Do not store execution specs under `docs/superpowers` or any superpowers layout. That path is retired.
+
+See `specs/README.md` for the full lifecycle.
+
 ## Testing guidance
 
 - Tests live under `tests/unit/` and use `tests/__mocks__/obsidian.ts`.
 - Use `npm run test*` scripts so tests go through `scripts/run-jest.js`.
-- Current coverage is focused on `FilePath`; add tests when changing path handling, wiki-link conversion, export argv construction, or frontmatter/preview sync.
+- Current coverage is focused on `FilePath` and the specs validator; add tests when changing path handling, wiki-link conversion, export argv construction, frontmatter/preview sync, or `scripts/check-specs.mjs`.
 - For path-related changes, consider relative and absolute Obsidian link formats plus Windows-style paths.
 
 ## Gotchas
@@ -160,5 +188,6 @@ Export flow: command/action → `MarpExport.export()` → `FilePath` source/them
 - `MarpExport.export()` writes processed Markdown to the resolved export source before invoking Marp CLI. Be careful with source-file mutation semantics.
 - Preview sync uses an `EditorSuggest` subclass as a cursor listener and counts `---` separators, with a lightweight frontmatter delimiter adjustment.
 - Runtime dependencies should audit clean with `npm audit --omit=dev`. Full `npm audit` may still report a dev-only `js-yaml` advisory through Jest/coverage tooling.
-- `docs/` was removed. Do not re-add a user documentation site unless asked.
+- Keep `docs/` limited to short user-facing notes (`custom-css.md`, `kami-dsl.md`). Do not re-add a full documentation site or a `docs/superpowers` tree unless explicitly requested.
 - Release notes live at root `CHANGELOG.md`.
+- Tracked specs live only under `specs/` (and `specs/archive/`).

@@ -96,10 +96,12 @@ jobs:
       - name: Sync versions.json
         run: |
           node version-bump.mjs
+      - name: Install
+        run: npm ci
+      - name: Check tracked specs
+        run: npm run check:specs
       - name: Build
-        run: |
-          npm ci
-          npm run build
+        run: npm run build
       - name: Verify release assets
         run: npm run scan:release
       - name: Attest release assets
@@ -148,10 +150,12 @@ jobs:
             echo "Release '$TAG' already exists." >&2
             exit 1
           fi
+      - name: Install
+        run: npm ci
+      - name: Check tracked specs
+        run: npm run check:specs
       - name: Build
-        run: |
-          npm ci
-          npm run build
+        run: npm run build
       - name: Verify release assets
         run: npm run scan:release
       - name: Attest release assets
