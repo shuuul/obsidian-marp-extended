@@ -112,10 +112,6 @@ export class MarpPreviewView extends ItemView  {
     private fragmentTotals: number[] = [];
     private presenterComments: string[][] = [];
     private presenterNotesVisible = false;
-    private fragmentPreviousButtonEl: HTMLButtonElement | undefined;
-    private fragmentNextButtonEl: HTMLButtonElement | undefined;
-    private fragmentResetButtonEl: HTMLButtonElement | undefined;
-    private fragmentStatusEl: HTMLElement | undefined;
     private notesToggleButtonEl: HTMLButtonElement | undefined;
     private presenterNotesEl: HTMLElement | undefined;
     private previewScrollDetach: (() => void) | undefined;
@@ -221,8 +217,27 @@ export class MarpPreviewView extends ItemView  {
 
         this.activeSlideIndex = targetSlideIndex;
         this.applyPreviewState();
-        slide.scrollIntoView({ block: 'start', inline: 'nearest' });
-	}
+        this.revealPreviewSlide(slide);
+    }
+
+    private revealPreviewSlide(slide: HTMLElement): void {
+        const container = this.previewContainerEl;
+        const iframe = this.previewIframeEl;
+        if (!container || !iframe || container.clientHeight <= 0) return;
+
+        const containerTop = container.getBoundingClientRect().top;
+        const containerBottom = containerTop + container.clientHeight;
+        const iframeTop = iframe.getBoundingClientRect().top;
+        const slideRect = slide.getBoundingClientRect();
+        const slideTop = iframeTop + slideRect.top;
+        const slideBottom = iframeTop + slideRect.bottom;
+
+        if (slideBottom > containerTop && slideTop < containerBottom) return;
+
+        const targetScrollTop = container.scrollTop + slideTop - containerTop;
+        const maxScrollTop = Math.max(0, container.scrollHeight - container.clientHeight);
+        container.scrollTop = Math.min(Math.max(0, targetScrollTop), maxScrollTop);
+    }
 
     nextFragment(): void {
         const total = this.fragmentTotals[this.activeSlideIndex] ?? 0;
@@ -261,30 +276,12 @@ export class MarpPreviewView extends ItemView  {
     addPreviewToolbar(container: HTMLElement) {
         const toolbar = container.createDiv({ cls: 'marp-extended-preview-toolbar' });
         this.addSyncPreviewToolbarButton(toolbar);
-        this.addFragmentToolbarControls(toolbar);
         this.addZoomToolbarControls(toolbar);
+        this.addPresenterNotesToolbarButton(toolbar);
         this.addPreviewToolbarButton(toolbar, 'code-glyph', 'Export as HTML', 'html');
         this.addPreviewToolbarButton(toolbar, 'slides-marp-export-pdf', 'Export as PDF', 'pdf');
         this.addPreviewToolbarButton(toolbar, 'slides-marp-export-pptx', 'Export as PPTX', 'pptx');
         this.addPreviewToolbarButton(toolbar, 'slides-marp-slide-present', 'Preview slides', 'preview');
-    }
-
-    private addFragmentToolbarControls(toolbar: HTMLElement): void {
-        const controls = toolbar.createDiv({ cls: 'marp-extended-preview-fragment-controls' });
-        const addButton = (label: string, text: string, action: () => void) => {
-            const element = controls.createEl('button', { cls: 'marp-extended-preview-toolbar-button', text,
-                attr: { type: 'button', title: label, 'aria-label': label } });
-            this.registerDomEvent(element, 'click', action);
-            return element;
-        };
-        this.fragmentPreviousButtonEl = addButton('Previous fragment', '‹', () => this.previousFragment());
-        this.fragmentNextButtonEl = addButton('Next fragment', '›', () => this.nextFragment());
-        this.fragmentResetButtonEl = addButton('Reset fragments', '↺', () => this.resetActiveSlideFragments());
-        this.fragmentStatusEl = controls.createSpan({ cls: 'marp-extended-preview-fragment-status' });
-        this.fragmentStatusEl.setAttribute('aria-live', 'polite');
-        this.notesToggleButtonEl = addButton('Toggle presenter notes', 'Notes', () => this.togglePresenterNotes());
-        this.notesToggleButtonEl.setAttribute('aria-controls', 'marp-extended-presenter-notes');
-        this.applyPreviewState();
     }
 
     private addSyncPreviewToolbarButton(toolbar: HTMLElement) {
@@ -351,6 +348,21 @@ export class MarpPreviewView extends ItemView  {
         this.applyPreviewZoom();
     }
 
+    private addPresenterNotesToolbarButton(toolbar: HTMLElement): void {
+        this.notesToggleButtonEl = toolbar.createEl('button', {
+            cls: 'marp-extended-preview-toolbar-button',
+            attr: {
+                'aria-controls': 'marp-extended-presenter-notes',
+                'aria-label': 'Toggle presenter notes',
+                title: 'Toggle presenter notes',
+                type: 'button',
+            },
+        });
+        setIcon(this.notesToggleButtonEl, 'notebook-text');
+        this.registerDomEvent(this.notesToggleButtonEl, 'click', () => this.togglePresenterNotes());
+        this.applyPreviewState();
+    }
+
     private updateSyncPreviewToolbarButton() {
         if (!this.syncPreviewButtonEl) {
             return;
@@ -363,10 +375,6 @@ export class MarpPreviewView extends ItemView  {
         this.syncPreviewButtonEl.setAttribute('aria-pressed', String(this.syncPreviewEnabled));
         this.syncPreviewButtonEl.setAttribute('title', title);
         setIcon(this.syncPreviewButtonEl, this.syncPreviewEnabled ? 'link' : 'unlink');
-        this.syncPreviewButtonEl.createSpan({
-            cls: 'marp-extended-preview-toolbar-button-label',
-            text: this.syncPreviewEnabled ? 'Sync on' : 'Sync off',
-        });
     }
 
     private addPreviewToolbarButton(toolbar: HTMLElement, icon: string, title: string, type: string) {
@@ -585,12 +593,6 @@ export class MarpPreviewView extends ItemView  {
                 fragment.setAttribute('aria-hidden', String(!revealed));
             });
         });
-        const total = this.fragmentTotals[this.activeSlideIndex] ?? 0;
-        const count = this.fragmentRevealCounts[this.activeSlideIndex] ?? 0;
-        if (this.fragmentStatusEl) this.fragmentStatusEl.textContent = `Fragment ${count} of ${total}`;
-        if (this.fragmentPreviousButtonEl) this.fragmentPreviousButtonEl.disabled = count === 0;
-        if (this.fragmentResetButtonEl) this.fragmentResetButtonEl.disabled = count === 0;
-        if (this.fragmentNextButtonEl) this.fragmentNextButtonEl.disabled = count >= total;
         this.notesToggleButtonEl?.setAttribute('aria-expanded', String(this.presenterNotesVisible));
         this.notesToggleButtonEl?.setAttribute('aria-pressed', String(this.presenterNotesVisible));
         if (this.presenterNotesEl) {

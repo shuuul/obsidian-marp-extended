@@ -13,7 +13,6 @@ export type MarpPreviewViewTestAccess = {
 	displaySlidesRevision: number;
 	fragmentRevealCounts: number[];
 	fragmentTotals: number[];
-	fragmentStatusEl: HTMLElement | undefined;
 	presenterComments: string[][];
 	presenterNotesEl: HTMLElement | undefined;
 	previewSlideEls: HTMLElement[];

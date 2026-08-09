@@ -184,9 +184,7 @@ test('fragment actions follow numeric order, stop at boundaries, and cursor sync
 	const access = marpPreviewViewTestAccess(view);
 	const wrapper = document.createElement('div');
 	wrapper.innerHTML = '<section><i data-marpit-fragment="2"></i><b data-marpit-fragment="1"></b></section>';
-	(wrapper as unknown as { scrollIntoView: () => void }).scrollIntoView = jest.fn();
 	access.previewSlideEls = [wrapper];
-	access.fragmentStatusEl = document.createElement('span');
 	access.initializePreviewState([[]]);
 
 	view.nextFragment();
@@ -200,6 +198,31 @@ test('fragment actions follow numeric order, stop at boundaries, and cursor sync
 	view.previousFragment();
 	view.resetActiveSlideFragments();
 	expect(access.fragmentRevealCounts).toEqual([0]);
+});
+
+test('cursor sync keeps a visible slide in place and clamps scrolling for a hidden slide', () => {
+	const view = createPreviewView();
+	const access = marpPreviewViewTestAccess(view);
+	const container = access.previewContainerEl;
+	const iframe = access.previewIframeEl;
+	const visibleSlide = document.createElement('div');
+	const hiddenSlide = document.createElement('div');
+
+	if (!container || !iframe) throw new Error('Preview harness missing container or iframe');
+	Object.defineProperty(container, 'clientHeight', { configurable: true, value: 400 });
+	Object.defineProperty(container, 'scrollHeight', { configurable: true, value: 1000 });
+	container.scrollTop = 250;
+	container.getBoundingClientRect = () => ({ top: 100 } as DOMRect);
+	iframe.getBoundingClientRect = () => ({ top: -300 } as DOMRect);
+	visibleSlide.getBoundingClientRect = () => ({ top: 450, bottom: 750 } as DOMRect);
+	hiddenSlide.getBoundingClientRect = () => ({ top: 900, bottom: 1200 } as DOMRect);
+	access.previewSlideEls = [visibleSlide, hiddenSlide];
+
+	view.onLineChanged(0);
+	expect(container.scrollTop).toBe(250);
+
+	view.onLineChanged(1);
+	expect(container.scrollTop).toBe(600);
 });
 
 test('comments map by logical wrapper and presenter notes use literal text with an empty state', () => {

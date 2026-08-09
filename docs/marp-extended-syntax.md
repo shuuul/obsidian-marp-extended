@@ -185,7 +185,7 @@ fragments:
 ```
 
 The Marp Extended preview adds the runtime behavior that Marpit intentionally
-leaves to its host application. Use the toolbar or bind these commands:
+leaves to its host application. Use the command palette or bind these commands:
 
 - **Next preview fragment**
 - **Previous preview fragment**

@@ -53,18 +53,6 @@ If your plugin does not need CSS, delete this file.
 	margin-inline: auto;
 }
 
-.marp-extended-preview-fragment-controls {
-	align-items: center;
-	display: inline-flex;
-	gap: var(--size-2-1);
-}
-
-.marp-extended-preview-fragment-status {
-	color: var(--text-muted);
-	font-size: var(--font-ui-smaller);
-	min-width: 7.5em;
-}
-
 .marp-extended-presenter-notes {
 	background: var(--background-secondary);
 	border-top: 1px solid var(--background-modifier-border);
@@ -100,12 +88,6 @@ If your plugin does not need CSS, delete this file.
 	color: var(--interactive-accent);
 }
 
-.marp-extended-preview-sync-button {
-	gap: var(--size-2-1);
-	padding-inline: var(--size-2-2);
-	width: auto;
-}
-
 .marp-extended-preview-zoom-controls {
 	align-items: center;
 	display: inline-flex;
@@ -118,12 +100,6 @@ If your plugin does not need CSS, delete this file.
 	font-size: var(--font-ui-smaller);
 	min-width: 3.5em;
 	text-align: center;
-	white-space: nowrap;
-}
-
-
-.marp-extended-preview-toolbar-button-label {
-	font-size: var(--font-ui-smaller);
 	white-space: nowrap;
 }
 
