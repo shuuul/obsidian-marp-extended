@@ -1,0 +1,24 @@
+name: Quality gates
+description: Shared typecheck, lint, specs, tests, and build gates
+runs:
+  using: composite
+  steps:
+    - name: Typecheck
+      shell: bash
+      run: npm run typecheck
+
+    - name: Lint
+      shell: bash
+      run: npm run lint
+
+    - name: Check tracked specs
+      shell: bash
+      run: npm run check:specs
+
+    - name: Test
+      shell: bash
+      run: npm test -- --runInBand
+
+    - name: Build
+      shell: bash
+      run: npm run build

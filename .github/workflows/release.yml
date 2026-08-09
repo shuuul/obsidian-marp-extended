@@ -1,0 +1,203 @@
+name: Release Obsidian plugin
+
+on:
+  push:
+    tags:
+      - "*"
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Use Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: "24"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Resolve release metadata
+        run: |
+          tag="${GITHUB_REF_NAME}"
+          expected_ref="refs/tags/${tag}"
+          package_version="$(node -p "require('./package.json').version")"
+
+          if [ "${GITHUB_REF}" != "$expected_ref" ]; then
+            echo "Release workflow must run from $expected_ref, not ${GITHUB_REF}." >&2
+            exit 1
+          fi
+          if [[ "$tag" == v* ]]; then
+            echo "Obsidian plugin releases must not use a leading v. Use '$package_version', not '$tag'." >&2
+            exit 1
+          fi
+          if [ "$package_version" != "$tag" ]; then
+            echo "package.json version ($package_version) does not match tag ($tag)." >&2
+            exit 1
+          fi
+          if [ "$(git cat-file -t "refs/tags/${tag}")" != "tag" ]; then
+            echo "Release tag $tag must be an annotated tag." >&2
+            exit 1
+          fi
+
+          if node -e "process.exit(require('semver').prerelease('$package_version') ? 0 : 1)"; then
+            echo "IS_PRERELEASE=true" >> "$GITHUB_ENV"
+
+            stable_version="$(node -p "require('./.release-please-manifest.json')['.']")"
+            manifest_version="$(node -p "require('./manifest.json').version")"
+            if [ "$manifest_version" != "$stable_version" ]; then
+              echo "Root manifest.json must remain on stable $stable_version, not $manifest_version." >&2
+              exit 1
+            fi
+            if node -e "process.exit(require('./versions.json')['$package_version'] ? 0 : 1)"; then
+              echo "versions.json must not contain prerelease $package_version." >&2
+              exit 1
+            fi
+
+            beta_source_found=false
+            for branch in next beta; do
+              if git fetch origin "refs/heads/${branch}:refs/remotes/origin/${branch}" 2>/dev/null \
+                && git merge-base --is-ancestor "$GITHUB_SHA" "refs/remotes/origin/${branch}"; then
+                beta_source_found=true
+                break
+              fi
+            done
+            if [ "$beta_source_found" != "true" ]; then
+              echo "Prerelease tag $tag must point to a commit pushed to next or beta." >&2
+              exit 1
+            fi
+          else
+            echo "IS_PRERELEASE=false" >> "$GITHUB_ENV"
+          fi
+
+          echo "RELEASE_TAG_RESOLVED=${tag}" >> "$GITHUB_ENV"
+
+      # Publication depends on the same mandatory gates as CI for this tag.
+      - name: Quality gates
+        uses: ./.github/actions/quality-gates
+
+      - name: Prepare release manifest and archive
+        run: |
+          if [ "$IS_PRERELEASE" = "true" ]; then
+            node scripts/write-release-manifest.cjs
+          else
+            manifest_version="$(node -p "require('./manifest.json').version")"
+            if [ "$manifest_version" != "$RELEASE_TAG_RESOLVED" ]; then
+              echo "manifest.json version ($manifest_version) does not match tag ($RELEASE_TAG_RESOLVED)." >&2
+              exit 1
+            fi
+          fi
+
+          release_manifest_version="$(node -p "require('./manifest.json').version")"
+          if [ "$release_manifest_version" != "$RELEASE_TAG_RESOLVED" ]; then
+            echo "Release manifest version ($release_manifest_version) does not match tag ($RELEASE_TAG_RESOLVED)." >&2
+            exit 1
+          fi
+
+          for file in main.js manifest.json styles.css marp-engine.cjs; do
+            if [ ! -f "$file" ]; then
+              echo "Missing release artifact: $file" >&2
+              exit 1
+            fi
+          done
+
+          zip -j "marp-extended-${RELEASE_TAG_RESOLVED}.zip" \
+            main.js manifest.json styles.css marp-engine.cjs
+
+      - name: Verify release assets
+        run: npm run scan:release
+
+      - name: Prepare release notes
+        run: |
+          notes_file="${RUNNER_TEMP}/release-notes.md"
+          awk -v version="$RELEASE_TAG_RESOLVED" '
+            index($0, "## [" version "]") == 1 { found = 1; next }
+            found && index($0, "## [") == 1 { exit }
+            found { print }
+          ' CHANGELOG.md > "$notes_file"
+
+          if ! grep -q '[^[:space:]]' "$notes_file"; then
+            if [ "$IS_PRERELEASE" = "true" ]; then
+              previous_tag="$(git describe --tags --abbrev=0 "${RELEASE_TAG_RESOLVED}^")"
+              node scripts/generate-beta-release-notes.cjs \
+                "$previous_tag" \
+                "$RELEASE_TAG_RESOLVED" \
+                "$GITHUB_REPOSITORY" > "$notes_file"
+            else
+              echo "CHANGELOG.md has no non-empty section for $RELEASE_TAG_RESOLVED." >&2
+              exit 1
+            fi
+          fi
+
+          if ! grep -q '[^[:space:]]' "$notes_file"; then
+            echo "Release notes are empty for $RELEASE_TAG_RESOLVED." >&2
+            exit 1
+          fi
+
+          echo "RELEASE_NOTES_FILE=${notes_file}" >> "$GITHUB_ENV"
+
+      - name: Create or update GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          archive="marp-extended-${RELEASE_TAG_RESOLVED}.zip"
+          prerelease_flag=""
+          if [ "$IS_PRERELEASE" = "true" ]; then
+            prerelease_flag="--prerelease"
+          fi
+
+          if gh release view "$RELEASE_TAG_RESOLVED" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release edit "$RELEASE_TAG_RESOLVED" \
+              --repo "$GITHUB_REPOSITORY" \
+              --title "$RELEASE_TAG_RESOLVED" \
+              --notes-file "$RELEASE_NOTES_FILE" \
+              $prerelease_flag
+            gh release upload "$RELEASE_TAG_RESOLVED" \
+              main.js manifest.json styles.css marp-engine.cjs "$archive" \
+              --repo "$GITHUB_REPOSITORY" \
+              --clobber
+          else
+            gh release create "$RELEASE_TAG_RESOLVED" \
+              main.js manifest.json styles.css marp-engine.cjs "$archive" \
+              --repo "$GITHUB_REPOSITORY" \
+              --title "$RELEASE_TAG_RESOLVED" \
+              --notes-file "$RELEASE_NOTES_FILE" \
+              $prerelease_flag
+          fi
+
+      - name: Verify published release assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          download_dir="${RUNNER_TEMP}/published-release-assets"
+          archive="marp-extended-${RELEASE_TAG_RESOLVED}.zip"
+          mkdir -p "$download_dir"
+          gh release download "$RELEASE_TAG_RESOLVED" \
+            --repo "$GITHUB_REPOSITORY" \
+            --dir "$download_dir" \
+            --pattern main.js \
+            --pattern manifest.json \
+            --pattern styles.css \
+            --pattern marp-engine.cjs \
+            --pattern "$archive"
+
+          for file in main.js manifest.json styles.css marp-engine.cjs "$archive"; do
+            if ! cmp --silent "$file" "$download_dir/$file"; then
+              echo "Published asset differs from the tag build: $file" >&2
+              exit 1
+            fi
+          done
+
+          sha256sum "$download_dir/main.js" \
+            "$download_dir/manifest.json" \
+            "$download_dir/styles.css" \
+            "$download_dir/marp-engine.cjs" \
+            "$download_dir/$archive"

@@ -103,12 +103,14 @@ archives and direct assets must still include the standalone `marp-engine.cjs`.
 
 `npm run obsidian:profile` uses the Obsidian CLI and Chrome DevTools Protocol to capture Chrome Performance metrics and Marp Extended user-timing measures for the preview command. It temporarily enables preview profiling through `localStorage.marp-extended-profile` and accepts `path=`, `command=`, `settle=`, `delay=`, `timeout=`, `cpu=true`, and `out=` arguments. CPU profile capture is optional because CDP profiler stop can be flaky in Obsidian/Electron; when `cpu=true` succeeds, it writes a `.cpuprofile` file to the system temp directory by default. Do not commit generated `.cpuprofile` files.
 
-## Release flow
+## Stable release flow
 
-Releases are fully automated by [Release Please](https://github.com/google-github-actions/release-please-action) on pushes to `main`. The fork no longer tracks `upstream` and maintains its own release history (tags `0.1.x` onward); stale inherited upstream tags were removed so Release Please computes versions from the fork's own latest release.
+Stable release preparation is automated by [Release Please](https://github.com/google-github-actions/release-please-action) on pushes to `main`; publication starts only from a maintainer-pushed annotated tag. This follows the Pivi release boundary so the tag commit is tested and published by the same workflow. The fork no longer tracks `upstream` and maintains its own release history (tags `0.1.x` onward).
 
 - Config: `release-please-config.json`
-- Workflow: `.github/workflows/release-please.yml`
+- Preparation workflow: `.github/workflows/release-please.yml`
+- Tag publication workflow: `.github/workflows/release.yml`
+- Shared CI/release gates: `.github/actions/quality-gates/action.yml`
 - Changelog: `CHANGELOG.md`
 - Release artifact folder/name: `marp-extended`
 
@@ -121,17 +123,31 @@ Release Please expects [Conventional Commit](https://www.conventionalcommits.org
 Flow:
 
 1. Push `feat:`/`fix:`/`chore:` commits to `main`. The `release-please` job runs on every push to `main` and opens (or updates) a single release PR collecting unreleased Conventional Commits. `chore:` commits do not trigger a release.
-2. Merge the release PR. Release Please tags the merge commit (no `v` prefix), creates the GitHub release, and bumps `package.json`, `manifest.json` (`$.version` via `extra-files`), and `CHANGELOG.md`.
-3. The `release-plugin` job then runs (`release_created == 'true'`): it syncs `versions.json` via `npm run version`, commits that to `main`, builds with `npm run build`, and uploads the release assets.
+2. Release Please updates `package.json`, `package-lock.json`, `manifest.json`, and `CHANGELOG.md`; the metadata sync job adds the matching `versions.json` entry to that PR.
+3. Merge the release PR, then create an annotated tag with no `v` prefix at the merge commit: `git tag -a x.y.z -m "x.y.z"`.
+4. Push the tag. `.github/workflows/release.yml` validates version metadata, runs the same quality gates as CI, builds the exact tag, creates or updates the GitHub release, and byte-compares downloaded assets.
 
 Uploaded release assets:
 
 - `main.js`
 - `manifest.json`
 - `styles.css`
+- `marp-engine.cjs`
 - `marp-extended-<version>.zip`
 
-Do not create tags or GitHub releases manually; let Release Please own them. `versions.json` is synced by the `release-plugin` job right after the release is created, so it lands on `main` moments after the tag.
+Tags must be annotated and exactly match `package.json` without a `v` prefix. Do not create GitHub releases manually; the tag workflow owns release creation and reruns update assets with `--clobber`.
+
+## Beta release flow
+
+Beta builds use a separate `next` (or `beta`) branch and the same `.github/workflows/release.yml` tag publisher as stable releases, following `shuuul/obsidian-pivi`:
+
+1. Create or update `next` from the intended beta candidate commit.
+2. Run `npm run version:beta`. It bumps only `package.json` to the next `x.y.z-beta.N`; root `manifest.json`, `versions.json`, and `.release-please-manifest.json` stay on the stable channel.
+3. Commit `package.json` as `chore(release): prepare x.y.z-beta.N`.
+4. Push `next`, then create an annotated tag with no `v` prefix: `git tag -a x.y.z-beta.N -m "x.y.z-beta.N"`.
+5. Push that one tag. The workflow verifies the tagged commit is present on remote `next` or `beta`, runs all checks, generates a beta `manifest.json`, builds the runtime assets and zip, creates a GitHub Prerelease, and byte-compares downloaded assets.
+
+Beta release assets are `main.js`, beta-versioned `manifest.json`, `styles.css`, `marp-engine.cjs`, and `marp-extended-<version>.zip`. Testers install and update prereleases through BRAT. Never add beta versions to root `versions.json` or move the stable root manifest off the latest Community Plugins version.
 
 ## Architecture
 

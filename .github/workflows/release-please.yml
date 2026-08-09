@@ -1,38 +1,33 @@
-name: release
+name: Release Please
 
 on:
-  workflow_dispatch:
-    inputs:
-      release_version:
-        description: Version to publish from main, e.g. 0.7.1. Leave empty to run release-please only.
-        required: false
-        type: string
   push:
     branches:
       - main
+  workflow_dispatch:
 
 permissions:
   contents: write
   pull-requests: write
 
-env:
-  PLUGIN_NAME: marp-extended
-
 jobs:
   release-please:
+    # Manual release commits already contain an explicit version bump. A
+    # maintainer-pushed tag triggers release.yml after the commit is ready.
+    if: ${{ !startsWith(github.event.head_commit.message, 'chore(release):') }}
     runs-on: ubuntu-latest
-    steps:
-      - uses: googleapis/release-please-action@v4
-        id: release
-        with:
-          token: ${{ github.token }}
-          config-file: release-please-config.json
     outputs:
-      release_created: ${{ steps.release.outputs.release_created }}
-      tag_name: ${{ steps.release.outputs.tag_name }}
-      version: ${{ steps.release.outputs.version }}
       prs_created: ${{ steps.release.outputs.prs_created }}
       pr: ${{ steps.release.outputs.pr }}
+    steps:
+      - id: release
+        uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5.0.0
+        with:
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
+          # Publishing is intentionally separate so release provenance records
+          # the maintainer's tag push rather than a workflow-created release.
+          skip-github-release: true
 
   sync-obsidian-version-metadata:
     needs: release-please
@@ -43,14 +38,21 @@ jobs:
       pull-requests: write
     steps:
       - name: Checkout release PR branch
-        uses: actions/checkout@v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          token: ${{ github.token }}
           ref: ${{ fromJSON(needs.release-please.outputs.pr).headBranchName }}
 
-      - name: Sync versions.json for Obsidian metadata
-        run: |
-          node version-bump.mjs
+      - name: Use Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: "24"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Sync Obsidian version metadata
+        run: node version-bump.mjs
 
       - name: Commit synced metadata if needed
         env:
@@ -66,120 +68,3 @@ jobs:
           git add manifest.json versions.json
           git commit -m "chore(release): sync Obsidian version metadata"
           git push origin "HEAD:${HEAD_BRANCH}"
-
-  release-plugin:
-    needs: release-please
-    if: ${{ needs.release-please.outputs.release_created == 'true' }}
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-      attestations: write
-      id-token: write
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-          token: ${{ github.token }}
-          ref: main
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-      - name: Validate release tag
-        run: |
-          TAG="${{ needs.release-please.outputs.tag_name }}"
-          VERSION="${{ needs.release-please.outputs.version }}"
-          if [ "$TAG" != "$VERSION" ]; then
-            echo "Release tag '$TAG' must match manifest version '$VERSION' exactly." >&2
-            exit 1
-          fi
-      - name: Sync versions.json
-        run: |
-          node version-bump.mjs
-      - name: Install
-        run: npm ci
-      - name: Check tracked specs
-        run: npm run check:specs
-      - name: Build
-        run: npm run build
-      - name: Create release archive
-        run: zip -j "marp-extended-${{ needs.release-please.outputs.version }}.zip" main.js manifest.json styles.css marp-engine.cjs
-      - name: Verify release assets
-        run: npm run scan:release
-      - name: Attest release assets
-        uses: actions/attest-build-provenance@v2
-        with:
-          subject-path: |
-            main.js
-            manifest.json
-            styles.css
-            marp-engine.cjs
-            marp-extended-${{ needs.release-please.outputs.version }}.zip
-      - name: Upload release assets
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          TAG="${{ needs.release-please.outputs.tag_name }}"
-          gh release upload "$TAG" \
-            main.js manifest.json styles.css marp-engine.cjs "marp-extended-${{ needs.release-please.outputs.version }}.zip" \
-            --repo "${{ github.repository }}" --clobber
-
-  manual-release-plugin:
-    if: ${{ github.event_name == 'workflow_dispatch' && inputs.release_version != '' }}
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-      attestations: write
-      id-token: write
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-          token: ${{ github.token }}
-          ref: main
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-      - name: Validate manual release version
-        run: |
-          TAG="${{ inputs.release_version }}"
-          PACKAGE_VERSION="$(node -p "require('./package.json').version")"
-          MANIFEST_VERSION="$(node -p "require('./manifest.json').version")"
-          if [ "$TAG" != "$PACKAGE_VERSION" ] || [ "$TAG" != "$MANIFEST_VERSION" ]; then
-            echo "Manual release '$TAG' must match package.json '$PACKAGE_VERSION' and manifest.json '$MANIFEST_VERSION'." >&2
-            exit 1
-          fi
-          if gh release view "$TAG" --repo "${{ github.repository }}" >/dev/null 2>&1; then
-            echo "Release '$TAG' already exists." >&2
-            exit 1
-          fi
-      - name: Install
-        run: npm ci
-      - name: Check tracked specs
-        run: npm run check:specs
-      - name: Build
-        run: npm run build
-      - name: Create release archive
-        run: zip -j "marp-extended-${{ inputs.release_version }}.zip" main.js manifest.json styles.css marp-engine.cjs
-      - name: Verify release assets
-        run: npm run scan:release
-      - name: Attest release assets
-        uses: actions/attest-build-provenance@v2
-        with:
-          subject-path: |
-            main.js
-            manifest.json
-            styles.css
-            marp-engine.cjs
-            marp-extended-${{ inputs.release_version }}.zip
-      - name: Create release
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          TAG="${{ inputs.release_version }}"
-          gh release create "$TAG" \
-            main.js manifest.json styles.css marp-engine.cjs "marp-extended-${{ inputs.release_version }}.zip" \
-            --repo "${{ github.repository }}" \
-            --title "$TAG" \
-            --generate-notes

@@ -117,12 +117,14 @@ Open the plugin page in Obsidian or search for **Marp Extended** in **Settings â
 
 ### Install with BRAT
 
-Marp Extended can also be installed from this repository with [BRAT](https://github.com/TfTHacker/obsidian42-brat):
+Beta builds are published as GitHub **Pre-releases** and can be installed with [BRAT](https://github.com/TfTHacker/obsidian42-brat). Beta builds may be unstable:
 
 1. Install and enable the **BRAT** plugin in Obsidian.
 2. Open **BRAT** settings and choose **Add Beta plugin**.
 3. Paste this repository URL: `https://github.com/shuuul/obsidian-marp-extended`.
 4. Enable **Marp Extended** in Obsidian community plugin settings.
+
+Run **BRAT: Check for updates to beta plugins and UPDATE** to install a newer beta. Remove Marp Extended from BRAT tracking before returning to the Community Plugins stable channel.
 
 ### First use
 
@@ -213,6 +215,7 @@ Useful scripts:
 | `npm run analyze:bundle` | Build and emit `metafile.json` for esbuild bundle analysis |
 | `npm run obsidian:reload` | Reload the local Obsidian dev plugin and check dev errors |
 | `npm run obsidian:profile -- path="slides/examples/kami.md"` | Capture preview Chrome metrics and Marp Extended timing marks for a vault-relative note path; pass `cpu=true` for a `.cpuprofile` |
+| `npm run version:beta` | On `next`/`beta`, prepare the next `x.y.z-beta.N` package version without changing stable Obsidian metadata |
 
 `main.js` is generated. Edit files under `src/`, then rebuild.
 
