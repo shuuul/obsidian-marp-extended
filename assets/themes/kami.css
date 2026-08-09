@@ -2,8 +2,8 @@
 /* @size kami 1058px 597px */
 /* @size portfolio 794px 1123px */
 /* Kami Marp theme (bilingual).
- * Default / lang=zh* = original CN typography (Tsanger + 0.3pt tracking).
- * lang=en = original kami-en typography (Charter, tighter tracking, cover meta mono).
+ * Default / lang=zh* = Chinese typography (Tsanger + 0.3pt tracking).
+ * lang=en = English typography (Charter, tighter tracking, cover metadata mono).
  * Set frontmatter: lang: en   or   lang: zh-CN
  */
 
@@ -90,15 +90,6 @@ section p, section ul, section ol, section table {
   padding: 0;
 }
 
-.eyebrow {
-  font-family: var(--mono);
-  font-size: 9.5pt;
-  letter-spacing: 2pt;
-  text-transform: uppercase;
-  color: var(--stone);
-}
-
-.eyebrow,
 section > header {
   display: block;
   box-sizing: border-box;
@@ -135,7 +126,6 @@ section h3 {
   margin-bottom: 8pt;
 }
 
-.lead,
 .marp-extended-lead {
   font-family: var(--sans);
   font-size: 12pt;
@@ -146,7 +136,6 @@ section h3 {
   margin-bottom: 8pt;
 }
 
-.mt,
 .marp-extended-card-title {
   font-family: var(--serif);
   font-size: 16pt;
@@ -157,7 +146,6 @@ section h3 {
   margin-bottom: 8pt;
 }
 
-.ml,
 .marp-extended-card-label {
   font-family: var(--serif);
   font-size: 24pt;
@@ -166,18 +154,6 @@ section h3 {
   margin-right: 6pt;
 }
 
-.ms {
-  font-family: var(--mono);
-  font-size: 7.5pt;
-  letter-spacing: 1.5pt;
-  text-transform: uppercase;
-  color: var(--stone);
-  border-bottom: 0.3pt solid var(--border);
-  padding-bottom: 4pt;
-  margin-bottom: var(--rhythm-module);
-}
-
-.mb,
 section p {
   font-family: var(--sans);
   font-size: 11pt;
@@ -197,16 +173,6 @@ section blockquote > :last-child {
   margin-bottom: 0;
 }
 
-.mi {
-  font-family: var(--sans);
-  font-size: 11pt;
-  line-height: 1.55;
-  letter-spacing: 0.3pt;
-  color: var(--dark-warm);
-  padding: 8pt 0;
-}
-
-.mc,
 .marp-extended-callout-mc {
   font-family: var(--sans);
   font-size: 9.5pt;
@@ -218,8 +184,8 @@ section blockquote > :last-child {
   margin-top: var(--rhythm-section);
 }
 
-.co,
-.marp-extended-callout-co {
+.marp-extended-callout-co,
+.marp-extended-callout-note {
   font-family: var(--sans);
   font-size: 11pt;
   font-weight: 500;
@@ -232,40 +198,21 @@ section blockquote > :last-child {
   right: 20mm;
 }
 
-.c2,
 .marp-extended-columns {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 22pt;
 }
 
-table.t2x2,
 table.marp-extended-cards {
   width: 100%;
   border-collapse: separate;
   border-spacing: 22pt 18pt;
   margin: -18pt -22pt;
 }
-table.t2x2 td,
 table.marp-extended-cards td {
   vertical-align: top;
   width: 50%;
-}
-
-table.data {
-  width: 100%;
-  border-collapse: collapse;
-}
-table.data td {
-  padding: 8pt;
-  border-bottom: 0.3pt solid var(--border);
-  font-size: 11pt;
-  line-height: 1.55;
-  letter-spacing: 0.3pt;
-}
-table.data td:first-child {
-  font-weight: 500;
-  color: var(--brand);
 }
 
 section ul, section ol {
@@ -356,7 +303,6 @@ section.cover h1 {
   color: var(--near-black);
   margin-bottom: 12pt;
 }
-section.cover .sub,
 section.cover .marp-extended-subtitle {
   font-family: var(--sans);
   font-size: 14pt;
@@ -366,8 +312,7 @@ section.cover .marp-extended-subtitle {
   max-width: 50ch;
   margin-bottom: 32pt;
 }
-section.cover .meta,
-section.cover .marp-extended-meta {
+section.cover .marp-extended-metadata {
   font-family: var(--sans);
   font-size: 10pt;
   color: var(--stone);
@@ -398,7 +343,7 @@ footer {
 
 
 /* --------------------------------------------------------------------------
- * English locale — preserves former `kami-en` rendering.
+ * English locale.
  * Activated when Marpit `lang` directive is `en` (section lang="en").
  * -------------------------------------------------------------------------- */
 
@@ -419,38 +364,29 @@ section:lang(en) h3 {
   letter-spacing: normal;
 }
 
-section:lang(en) .lead {
+section:lang(en) .marp-extended-lead {
   font-family: var(--serif);
   line-height: 1.5;
   letter-spacing: normal;
 }
 
-section:lang(en) .mt {
+section:lang(en) .marp-extended-card-title {
   letter-spacing: normal;
 }
 
-section:lang(en) .mb,
 section:lang(en) p {
   font-family: var(--serif);
   letter-spacing: normal;
 }
 
-section:lang(en) .mi {
+section:lang(en) .marp-extended-callout-mc {
   font-family: var(--serif);
   letter-spacing: normal;
 }
 
-section:lang(en) .mc {
+section:lang(en) .marp-extended-callout-co,
+section:lang(en) .marp-extended-callout-note {
   font-family: var(--serif);
-  letter-spacing: normal;
-}
-
-section:lang(en) .co {
-  font-family: var(--serif);
-  letter-spacing: normal;
-}
-
-section:lang(en) table.data td {
   letter-spacing: normal;
 }
 
@@ -464,13 +400,13 @@ section:lang(en).cover h1 {
   letter-spacing: -0.5pt;
 }
 
-section:lang(en).cover .sub {
+section:lang(en).cover .marp-extended-subtitle {
   font-family: var(--serif);
   line-height: 1.45;
   letter-spacing: normal;
 }
 
-section:lang(en).cover .meta {
+section:lang(en).cover .marp-extended-metadata {
   font-family: var(--mono);
   font-size: 9.5pt;
   letter-spacing: 1.5pt;

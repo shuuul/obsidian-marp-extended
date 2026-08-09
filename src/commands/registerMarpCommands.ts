@@ -1,5 +1,5 @@
 import type MarpExtended from '../main';
-import { KAMI_TEMPLATE_COMMANDS, insertKamiTemplate } from '../utilities/kamiTemplates';
+import { MARP_EXTENDED_TEMPLATE_COMMANDS, insertMarpExtendedTemplate } from '../utilities/marpExtendedTemplates';
 
 export function registerMarpCommands(plugin: MarpExtended): void {
 	plugin.addCommand({ id: 'next-fragment', name: 'Next preview fragment', callback: () => plugin.getViewInstance(false)?.nextFragment() });
@@ -37,11 +37,11 @@ export function registerMarpCommands(plugin: MarpExtended): void {
 		callback: () => { void plugin.exportFile('pptx'); },
 	});
 
-	for (const command of KAMI_TEMPLATE_COMMANDS) {
+	for (const command of MARP_EXTENDED_TEMPLATE_COMMANDS) {
 		plugin.addCommand({
 			id: command.id,
 			name: command.name,
-			editorCallback: (editor) => insertKamiTemplate(editor, command),
+			editorCallback: (editor) => insertMarpExtendedTemplate(editor, command),
 		});
 	}
 }

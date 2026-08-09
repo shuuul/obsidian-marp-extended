@@ -471,8 +471,8 @@ test('export injects selected Mermaid theme CSS and flat mode into the temporary
 	expect(readFileSync(join(root, 'slides/deck.md'), 'utf-8')).toBe(originalContent);
 });
 
-test('export compiles Kami comment markers in the temporary markdown file', async () => {
-	const root = mkdtempSync(join(tmpdir(), 'marp-export-kami-dsl-'));
+test('export compiles Marp Extended comment markers in the temporary markdown file', async () => {
+	const root = mkdtempSync(join(tmpdir(), 'marp-export-extended-syntax-'));
 	tempDirectories.push(root);
 	const originalContent = [
 		'---',
@@ -481,11 +481,11 @@ test('export compiles Kami comment markers in the temporary markdown file', asyn
 		'',
 		'%%marp-slide[class=cover paginate=false]%%',
 		'',
-		'%%marp-cols%%',
+		'%%marp-columns%%',
 		'### Left',
-		'%%marp-col%%',
+		'%%marp-column%%',
 		'### Right',
-		'%%/marp-cols%%',
+		'%%/marp-columns%%',
 	].join('\n');
 	const file = createDiskBackedFile(root, 'slides/deck.md', originalContent);
 	const exportDirectory = join(root, 'exports');
@@ -499,10 +499,10 @@ test('export compiles Kami comment markers in the temporary markdown file', asyn
 		const processed = readFileSync(temporarySourcePath, 'utf-8');
 		expect(processed).toContain('<!-- _class: cover -->');
 		expect(processed).toContain('<!-- _paginate: false -->');
-		expect(processed).toContain('<div class="c2 marp-extended-columns marp-extended-columns-2">');
+		expect(processed).toContain('<div class="marp-extended-columns marp-extended-columns-2">');
 		expect(processed).not.toContain('%%marp-slide');
-		expect(processed).not.toContain('%%marp-cols');
-		expect(processed).not.toContain('%%marp-col');
+		expect(processed).not.toContain('%%marp-columns');
+		expect(processed).not.toContain('%%marp-column');
 
 		return createMockChildProcess();
 	});

@@ -5,10 +5,6 @@ and [Marp Core Markdown](https://github.com/marp-team/marp-core/blob/main/docs/m
 as its base language. The plugin adds a small `%%marp-*%%` authoring layer for
 layout and semantic wrappers that are awkward to write as raw HTML in Obsidian.
 
-The authoring layer was originally called **Kami DSL**. Existing Kami source,
-classes, and `insert-kami-*` command IDs remain supported, but the generated
-markup now also has stable `marp-extended-*` classes that custom themes can use.
-
 ## What is standard and what is Extended
 
 Use standard Marp/Marpit syntax wherever it already exists:
@@ -76,13 +72,14 @@ All blocks use paired Obsidian comment markers. Their contents remain normal
 Markdown and can contain headings, lists, code fences, Mermaid fences, or nested
 Extended blocks.
 
-| Canonical marker | Legacy aliases | Stable output class | Kami compatibility class |
-| --- | --- | --- | --- |
-| `marp-lead` | — | `marp-extended-lead` | `lead` |
-| `marp-subtitle` | `marp-sub` | `marp-extended-subtitle` | `sub` |
-| `marp-metadata` | `marp-meta` | `marp-extended-meta` | `meta` |
-| `marp-callout[variant=co]` | `marp-co`, `marp-note` | `marp-extended-callout marp-extended-callout-co` | `co` |
-| `marp-callout[variant=mc]` | `marp-mc` | `marp-extended-callout marp-extended-callout-mc` | `mc` |
+| Marker | Stable output class |
+| --- | --- |
+| `marp-lead` | `marp-extended-lead` |
+| `marp-subtitle` | `marp-extended-subtitle` |
+| `marp-metadata` | `marp-extended-metadata` |
+| `marp-callout[variant=co]` | `marp-extended-callout marp-extended-callout-co` |
+| `marp-callout[variant=mc]` | `marp-extended-callout marp-extended-callout-mc` |
+| `marp-callout[variant=note]` | `marp-extended-callout marp-extended-callout-note` |
 
 Example:
 
@@ -96,12 +93,13 @@ The variant becomes `marp-extended-callout-warning`.
 %%/marp-callout%%
 ```
 
-Callout variants are normalized to lowercase CSS-safe tokens. Positional and
-legacy `type=` forms still work, for example `%%marp-callout[mc]%%` and
-`%%marp-callout[type=mc]%%`.
+Callout variants are normalized to lowercase CSS-safe tokens. The only callout
+attribute is `variant`; omitting it selects `co`. Variants are theme hooks:
+the Kami theme styles `mc` as a secondary note and `co` / `note` as conclusion
+callouts.
 
-`%%marp-note%%` is intentionally a **visible callout**, not a presenter note.
-Use a standard Marpit HTML comment for presenter notes.
+A callout with `variant=note` is visible slide content, not a presenter note. Use
+a standard Marpit HTML comment for presenter notes.
 
 ## Columns
 
@@ -126,9 +124,8 @@ flowchart LR
 ````
 
 One through six columns receive
-`marp-extended-columns-1` … `marp-extended-columns-6`. The legacy
-`marp-cols` / `marp-col` spellings remain valid. Generated markup also retains
-the Kami `c2` class.
+`marp-extended-columns-1` … `marp-extended-columns-6`. Each child receives
+`marp-extended-column`.
 
 ## Cards
 
@@ -157,10 +154,22 @@ Shared Core 5 semantics.
 %%/marp-cards%%
 ```
 
-The first heading in each card becomes a card title. `A · Palette`, `A: Palette`,
-and `A：Palette` split into label and title spans. The legacy positional form
-`%%marp-cards[2x2]%%` remains valid. Generated markup retains the Kami `t2x2`,
-`mt`, and `ml` classes alongside `marp-extended-*` classes.
+The first heading in each card becomes `marp-extended-card-title`. `A · Palette`,
+`A: Palette`, and `A：Palette` split the leading label into
+`marp-extended-card-label`. `columns` is the only cards attribute; values from 1
+through 6 are supported.
+
+## Editor commands
+
+The command palette exposes one insertion command for each canonical form:
+
+- **Insert Marp Extended slide metadata**
+- **Insert Marp Extended lead block**
+- **Insert Marp Extended subtitle block**
+- **Insert Marp Extended metadata block**
+- **Insert Marp Extended callout block**
+- **Insert Marp Extended columns block**
+- **Insert Marp Extended 2x2 cards block**
 
 ## Fragments and presenter notes in preview
 
@@ -237,7 +246,7 @@ SVG require it. There is no separate “Enable HTML” setting.
 Treat decks and themes as trusted author content:
 
 - the Obsidian preview runs in a sandboxed iframe without script permission;
-- raw HTML is preserved for compatibility;
+- raw HTML follows standard Marpit HTML handling;
 - exported HTML follows Marp CLI's `--html` behavior and may execute
   author-supplied HTML scripts when opened in a browser.
 

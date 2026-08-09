@@ -4,7 +4,7 @@
 
 ### Features
 
-* **language:** generalize the Kami comment-marker compiler into a theme-independent Marp Extended authoring layer with namespaced classes, generic aliases, configurable columns/cards/callouts, CommonMark fence handling, and full legacy source compatibility
+* **language:** add a theme-independent Marp Extended authoring layer with namespaced classes, configurable columns/cards/callouts, and CommonMark fence handling
 * **preview:** add Marpit fragment stepping, reset/status controls, keyboard-bindable commands, active-slide tracking, and a safe presenter-notes panel
 * **runtime:** share one isolated Marp Core 5 engine contract across preview and managed CLI export, including Shiki, MathJax, Mermaid fallback, inline SVG, and Extended structural CSS
 * **export:** ship and embed a standalone `marp-engine.cjs`, verify it by SHA-256 before materialization, and pass it to supported Marp CLI 4.5.0 exports
@@ -13,10 +13,11 @@
 * **mermaid:** apply theme CSS variables (`--bg/--fg/...`) to beautiful-mermaid render options
 * **themes:** move packaged theme sources to `assets/` and add `npm run sync:themes`
 * **bundle:** ship a curated Shiki language subset for slide decks (esbuild `#marp-shiki` shim)
-* **theme:** align Kami/Kami-en code blocks with upstream Kami code-card + Pygments token palette
+* **theme:** align bilingual Kami code blocks with upstream Kami code-card + Pygments token palette
 
 ### BREAKING CHANGES
 
+* The marker compiler, template command IDs, generated CSS classes, and utility module exports now use only the canonical Marp Extended names.
 * Theme CSS that only styles highlight.js `.hljs-*` classes no longer affects preview or managed-export code colors under Core 5. Use `--marp-shiki-*` variables (bundled sample themes were migrated).
 * Managed export accepts exactly Marp CLI 4.5.0. Auto-detected incompatible versions may use the pinned npx fallback; an explicitly configured incompatible executable is rejected instead of silently rendering with a different contract.
 * Sample `vault/` tree removed from the repository; theme CSS sources live under `assets/themes` and `assets/mermaid-themes`.

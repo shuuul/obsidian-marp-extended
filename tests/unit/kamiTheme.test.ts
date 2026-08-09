@@ -55,6 +55,18 @@ test('kami.css supports bilingual font stacks and the A4 portrait portfolio size
 	expect(html).toContain('viewBox="0 0 794 1123"');
 });
 
+test('kami.css exposes only namespaced Extended component classes', () => {
+	const themeCss = readFileSync(join(process.cwd(), 'assets/themes', 'kami.css'), 'utf8');
+
+	expect(themeCss).not.toMatch(/(^|\n)\.(?:eyebrow|lead|sub|meta|mt|ml|ms|mb|mi|mc|co|c2|t2x2|note)\b/m);
+	expect(themeCss).not.toMatch(/table\.(?:data|t2x2)\b/);
+	expect(themeCss).toContain('.marp-extended-lead');
+	expect(themeCss).toContain('.marp-extended-metadata');
+	expect(themeCss).toContain('.marp-extended-callout-note');
+	expect(themeCss).toContain('.marp-extended-columns');
+	expect(themeCss).toContain('table.marp-extended-cards');
+});
+
 test('kami.css applies EN typography when lang is en', () => {
 	const themeCss = readFileSync(join(process.cwd(), 'assets/themes', 'kami.css'), 'utf8');
 	const marp = new Marp({ minifyCSS: true });
@@ -70,7 +82,7 @@ lang: en
 
 # Title
 
-<div class="meta">Meta</div>
+<div class="marp-extended-metadata">Meta</div>
 `);
 
 	expect(html).toContain('lang="en"');

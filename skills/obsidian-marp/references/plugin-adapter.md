@@ -74,7 +74,7 @@ Before calling Marp CLI, the plugin:
 
 1. Resolves a filesystem path for the source note (desktop only).
 2. Collects existing theme paths from `.marp-extended/themes`.
-3. Compiles generic Marp Extended and legacy Kami `%%marp-*%%` markers into Marp-compatible directives/HTML.
+3. Compiles Marp Extended `%%marp-*%%` markers into Marp-compatible directives/HTML.
 4. Converts image wiki-links.
 5. Loads Mermaid theme CSS, parses `--bg/--fg/...` into beautiful-mermaid render options, and replaces Mermaid fences with inline SVG figures.
 6. Writes a temporary export source when content was transformed.
@@ -114,9 +114,9 @@ math: mathjax
 ```
 
 Available themes out of the box: Marp Core built-ins `default` / `gaia` /
-`uncover`, plus packaged `kami`. Kami keeps the former CN metrics by default and
-the former `kami-en` metrics when frontmatter sets `lang: en` (Marpit writes
-`lang` on each `<section>`; theme CSS uses `section:lang(en)`).
+`uncover`, plus packaged `kami`. Kami uses Chinese metrics by default and English
+metrics when frontmatter sets `lang: en` (Marpit writes `lang` on each
+`<section>`; theme CSS uses `section:lang(en)`).
 
 Preview and export inject a small scale override so built-in themes use the same
 body size as Kami (`13pt` on `section[data-theme=…]`). Headings stay `em`-relative.
@@ -136,7 +136,7 @@ Obsidian property suggestions for `theme`, `size`, `mermaidTheme`, and
 - Preview uses Marp Core Shiki plugin with CSS variables `--marp-shiki-*`.
 - Language coverage is a curated subset in `src/shims/marp-shiki.cjs` (not the full 200+ Marp Core pack).
 - Theme authors must not rely on highlight.js `.hljs-*` classes for preview.
-- Kami / Kami-en code chrome: ivory background, `1px` border, `6pt` radius, mono ~`10pt`, `width: fit-content; max-width: 100%`, optional scroll for tall blocks.
+- Kami code chrome: ivory background, `1px` border, `6pt` radius, mono ~`10pt`, `width: fit-content; max-width: 100%`, optional scroll for tall blocks.
 
 ## Authoring language style (plugin posture)
 
@@ -148,7 +148,7 @@ Obsidian-native notes:
 | --- | --- |
 | YAML frontmatter for deck globals | First-class Obsidian properties + Marpit front-matter |
 | `%%marp-slide[...]%%` for spot locals | Hidden in Reading view; compiles to `_` spot directives |
-| Marp Extended `%%marp-*%%` layout markers | Stable namespaced classes plus Kami compatibility classes without raw HTML noise |
+| Marp Extended `%%marp-*%%` layout markers | Stable namespaced classes without raw HTML noise |
 | `![[img\|600]]` wiki-links | Vault-resolved paths; size aliases → `w`/`h` |
 | MathJax only | KaTeX not bundled in preview |
 | Shiki fence tags from the curated subset | Full Marp Core language pack is not shipped |
@@ -161,9 +161,9 @@ See `references/syntax.md` for the full syntax matrix.
 
 ## Marp Extended comment-marker compiler
 
-Preview and export both run `compileMarpExtendedCommentBlocks` (backward-compatible
-alias: `compileKamiCommentBlocks`) before Marp rendering. The compiler is
-implemented in `src/utilities/kamiDsl.ts`:
+Preview and export both run `compileMarpExtendedCommentBlocks` before Marp
+rendering. The compiler is implemented in
+`src/utilities/marpExtendedDsl.ts`:
 
 ```markdown
 %%marp-slide[class=cover paginate=false footer=""]%%
@@ -178,10 +178,9 @@ implemented in `src/utilities/kamiDsl.ts`:
 ```
 
 - `%%marp-slide[...]%%` metadata becomes Marp spot directives such as `<!-- _class: cover -->`.
-- Canonical `subtitle`, `metadata`, `callout[variant=...]`, `columns`/`column`, and `cards[columns=N]` forms emit stable `marp-extended-*` classes.
-- Legacy `sub`, `meta`, `co`, `mc`, `note`, `cols`/`col`, and `cards[2x2]` forms and classes remain compatible.
+- `lead`, `subtitle`, `metadata`, `callout[variant=...]`, `columns`/`column`, and `cards[columns=N]` forms emit stable `marp-extended-*` classes.
 - Backtick/tilde CommonMark fences and nested blocks are preserved and processed by their later pipeline stages.
-- `%%marp-note%%` remains a visible `co` callout; presenter notes use ordinary Marpit HTML comments.
+- `%%marp-callout[variant=note]%%` is a visible block; presenter notes use ordinary Marpit HTML comments.
 
 ## Themes in this repo
 

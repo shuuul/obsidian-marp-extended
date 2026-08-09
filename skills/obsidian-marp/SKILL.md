@@ -25,7 +25,7 @@ Runtime stack (2026-08):
 
 ## Start here
 
-1. Read `docs/marp-extended-syntax.md` first for the canonical, user-facing Extended marker language and legacy Kami compatibility contract.
+1. Read `docs/marp-extended-syntax.md` first for the canonical, user-facing Extended marker language.
 2. Read `references/syntax.md` for the wider Marpit base syntax, directives, images, fragments, Marp Core extras, and the **language style** table for this plugin.
 3. Read `references/plugin-adapter.md` before advising on plugin behavior: wiki-links, themes, Mermaid, export options, and local-file handling differ from generic Marp CLI docs.
 4. Read `references/SOURCES.md` for upstream links or to refresh the downloaded reference bundle.
@@ -52,15 +52,15 @@ Marp Extended strengthens that for Obsidian.
 - Split slides with a horizontal rule (`---`, `___`, `***`, or `- - -`). Blank line before `---` when CommonMark needs it. Do not confuse the closing frontmatter `---` with a slide separator.
 - Prefer `headingDivider` when converting a plain note into slides without littering rulers.
 - Prefer deck frontmatter plus Marp Extended `%%marp-*%%` comment-marker blocks over raw HTML/CSS where possible.
-- Treat `docs/marp-extended-syntax.md` as the product source of truth for canonical markers, generated classes, nesting rules, and legacy aliases.
-- Use canonical `%%marp-slide[...]%%`, `%%marp-lead%%`, `%%marp-subtitle%%`, `%%marp-metadata%%`, `%%marp-callout[variant=...]%%`, `%%marp-columns%%`, and `%%marp-cards[columns=N]%%`. Split columns/cards with `%%marp-column%%` / `%%marp-card%%`. Legacy Kami aliases (`sub`, `meta`, `co`, `mc`, `note`, `cols`, `col`, `cards[2x2]`) remain valid.
+- Treat `docs/marp-extended-syntax.md` as the product source of truth for canonical markers, generated classes, and nesting rules.
+- Use `%%marp-slide[...]%%`, `%%marp-lead%%`, `%%marp-subtitle%%`, `%%marp-metadata%%`, `%%marp-callout[variant=...]%%`, `%%marp-columns%%`, and `%%marp-cards[columns=N]%%`. Split columns/cards with `%%marp-column%%` / `%%marp-card%%`.
 - Local directives apply forward; prefix `_` for current-slide-only spot directives. `paginate` accepts `true` / `false` / `hold` / `skip`.
 - Use Obsidian image wiki-links for images: `![[diagram.png]]`, `![[diagram.png|Alt text]]`, `![[diagram.png|600]]`, and `![[diagram.png|600x400]]`. Size aliases become Marp image directives such as `![w:600]` and `![w:600 h:400]`.
 - For backgrounds, split layouts, and filters, use Marpit image syntax (`![bg left:40%](…)`, `![brightness:.8](…)`). Advanced multi/split backgrounds need inline SVG (enabled in this plugin).
 - Fragmented lists: bullets with `*`, ordered with `1)`. Regular lists use `-`/`+` and `1.`. The plugin preview toolbar/commands step, reverse, and reset fragments for the active slide.
 - Fitting headers (theme must support `@auto-scaling`): `# <!-- fit --> Title`.
 - For predictable export, keep local images and theme CSS inside the vault. Export uses Marp CLI with `--allow-local-files`.
-- Themes: Marp Core built-ins `default`, `gaia`, `uncover`, plus packaged custom `kami`. Kami default = former CN look; `lang: en` = former `kami-en` look. Add more via vault CSS with `/* @theme name */`. Kami sizes: `kami`, `portfolio`.
+- Themes: Marp Core built-ins `default`, `gaia`, `uncover`, plus packaged custom `kami`. Kami uses Chinese typography by default and English typography with `lang: en`. Add more via vault CSS with `/* @theme name */`. Kami sizes: `kami`, `portfolio`.
 - For math, use `math: mathjax` (or omit; MathJax is the plugin default). **KaTeX is not bundled** in Marp Extended preview.
 - For diagrams, Mermaid fences render as inline SVG via `beautiful-mermaid` (with official Mermaid fallback for unsupported diagram types). Style with `mermaidTheme` / `mermaidFlat`. Caption via ` ```mermaid[Title] `.
 - For code fences, prefer languages in the curated Shiki subset (e.g. `python`, `ts`/`typescript`, `rust`, `js`, `json`, `yaml`, `bash`/`shellscript`, `go`, `sql`). Unsupported languages fall back to plain text. Line highlight: ` ```ts {1,3-4} `.

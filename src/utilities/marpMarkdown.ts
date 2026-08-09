@@ -1,6 +1,6 @@
 import type { App, TFile } from 'obsidian';
-import { compileKamiCommentBlocks } from './kamiDsl';
 import { FilePath } from './filePath';
+import { compileMarpExtendedCommentBlocks } from './marpExtendedDsl';
 import { renderMermaidFences, type MermaidPluginOptions } from './mermaid';
 
 export type CompileMarkdownForMarpOptions = {
@@ -15,7 +15,7 @@ export async function compileMarkdownForMarp(
 	filePath: FilePath,
 	options: CompileMarkdownForMarpOptions = {},
 ): Promise<string> {
-	const compiled = compileKamiCommentBlocks(markdown);
+	const compiled = compileMarpExtendedCommentBlocks(markdown);
 	const converted = filePath.convertImageWikiLinks(compiled, file, app);
 
 	if (options.renderMermaidInline === true) {

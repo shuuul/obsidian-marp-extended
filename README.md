@@ -19,7 +19,7 @@ Marp Extended is an Obsidian plugin for creating, previewing, presenting, and ex
 - Convert Obsidian image wiki-links to standard Markdown image links for preview/export.
 - Built-in Mermaid diagrams rendered with `beautiful-mermaid` and official Mermaid, featuring an interactive zooming and panning frame in the editor Live Preview (can be toggled in settings).
 - Use standard Marpit fragments and presenter comments in preview, with fragment controls and a notes panel.
-- Add theme-independent Marp Extended comment markers for slide metadata, semantic text, callouts, 1–6 columns, and configurable card grids while retaining legacy Kami syntax.
+- Add theme-independent Marp Extended comment markers for slide metadata, semantic text, callouts, 1–6 columns, and configurable card grids.
 - Keep preview and managed exports on the same shipped Marp Core 5 semantic engine.
 
 ## Markdown compatibility
@@ -100,11 +100,10 @@ A themeable callout.
 %%/marp-callout%%
 ```
 
-Legacy `marp-cols`, `marp-sub`, `marp-meta`, `marp-cards[2x2]`, and other Kami
-forms remain compatible. `%%marp-note%%` remains a visible Kami callout;
-presenter notes use ordinary Marpit `<!-- comments -->`. See
+Callouts are visible slide content; presenter notes use ordinary Marpit
+`<!-- comments -->`. See
 [Marp Extended syntax](docs/marp-extended-syntax.md) for every marker, generated
-class, nesting/fence rule, runtime control, and compatibility alias.
+class, nesting/fence rule, and runtime control.
 
 ## Getting started
 
@@ -139,13 +138,13 @@ Bundled themes do not load font files from the network. Install the matching fon
 
 | Theme | Recommended local fonts |
 | --- | --- |
-| `kami` default / `lang: zh*` | TsangerJinKai02 W04/W05, CJK serif fallbacks, JetBrains Mono — original CN look |
-| `kami` + `lang: en` | Charter / Georgia / Palatino, JetBrains Mono — original `kami-en` look |
+| `kami` default / `lang: zh*` | TsangerJinKai02 W04/W05, CJK serif fallbacks, JetBrains Mono — Chinese typography |
+| `kami` + `lang: en` | Charter / Georgia / Palatino, JetBrains Mono — English typography |
 | `default` / `gaia` / `uncover` | Marp Core built-ins — system font stacks; body size scaled to Kami `13pt` in preview/export |
 
 Marp Extended does not bundle font files. TsangerJinKai02 may require a separate license for commercial use.
 
-Kami is one theme file. Keep Chinese decks on `theme: kami` (omit `lang` or set `lang: zh-CN`). For the former English theme rendering, set:
+Kami is one theme file. Keep Chinese decks on `theme: kami` (omit `lang` or set `lang: zh-CN`). For English typography, set:
 
 ```yaml
 theme: kami
@@ -230,11 +229,11 @@ Theme authors: Core 5 highlights code with Shiki. Prefer `--marp-shiki-*` CSS va
 
 Preview ships a **curated Shiki language subset** (common web/systems/data languages used in slides) instead of Marp Core’s full 200+ grammar pack, to keep `main.js` smaller. Unsupported fence languages fall back to plain text. Edit `src/shims/marp-shiki.cjs` to add languages.
 
-The packaged Kami theme styles code blocks after upstream Kami code-card language: ivory fill, soft border, mono ~10pt, `width: fit-content; max-width: 100%`. One `kami` theme covers Chinese and English: omit `lang` (or `zh*`) for CN metrics; set `lang: en` for the former `kami-en` metrics.
+The packaged Kami theme styles code blocks after upstream Kami code-card language: ivory fill, soft border, mono ~10pt, `width: fit-content; max-width: 100%`. One `kami` theme covers Chinese and English: omit `lang` (or use `zh*`) for Chinese metrics; set `lang: en` for English metrics.
 
 ## Security note
 
-Slide HTML is enabled for Extended wrappers, inline Mermaid SVG, and legacy raw
+Slide HTML is enabled for Extended wrappers, inline Mermaid SVG, and author raw
 HTML. The Obsidian preview iframe is sandboxed without script permission, but an
 HTML export follows Marp CLI `--html` behavior and may execute author-supplied
 scripts when opened. Treat decks and themes as trusted author content.
@@ -248,7 +247,7 @@ Marp Extended builds on the original [Marp Slides for Obsidian](https://github.c
 Slide themes available out of the box:
 
 - **Marp Core built-ins:** `default`, `gaia`, `uncover` (no vault CSS install).
-- **Packaged custom theme:** `kami` from [tw93/Kami](https://github.com/tw93/Kami) (MIT). Installed into `.marp-extended/themes/` on first load. Default CSS matches the former Chinese Kami; `lang: en` matches the former `kami-en` typography. TsangerJinKai02 may need a separate commercial font license.
+- **Packaged custom theme:** `kami` from [tw93/Kami](https://github.com/tw93/Kami) (MIT). Installed into `.marp-extended/themes/` on first load. It uses Chinese typography by default and English typography with `lang: en`. TsangerJinKai02 may need a separate commercial font license.
 
 Add more themes anytime by pasting CSS in settings or dropping files into `.marp-extended/themes/`.
 

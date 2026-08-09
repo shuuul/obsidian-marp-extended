@@ -7,73 +7,50 @@ export type MarpExtendedTemplateCommand = {
 	selection: string;
 };
 
-export type KamiTemplateCommand = MarpExtendedTemplateCommand;
-
 export const MARP_EXTENDED_TEMPLATE_COMMANDS: MarpExtendedTemplateCommand[] = [
 	{
-		id: 'insert-kami-slide-metadata',
-		name: 'Insert Kami slide metadata',
+		id: 'insert-marp-extended-slide',
+		name: 'Insert Marp Extended slide metadata',
 		template: '%%marp-slide[class=cover paginate=false footer="" header=""]%%\n',
 		selection: 'class=cover',
 	},
 	{
-		id: 'insert-kami-lead-block',
-		name: 'Insert Kami lead block',
+		id: 'insert-marp-extended-lead',
+		name: 'Insert Marp Extended lead block',
 		template: '%%marp-lead%%\nLead text\n%%/marp-lead%%\n',
 		selection: 'Lead text',
 	},
 	{
-		id: 'insert-kami-sub-block',
-		name: 'Insert Kami subtitle block',
+		id: 'insert-marp-extended-subtitle',
+		name: 'Insert Marp Extended subtitle block',
 		template: '%%marp-subtitle%%\nSubtitle text\n%%/marp-subtitle%%\n',
 		selection: 'Subtitle text',
 	},
 	{
-		id: 'insert-kami-meta-block',
-		name: 'Insert Kami metadata text block',
+		id: 'insert-marp-extended-metadata',
+		name: 'Insert Marp Extended metadata block',
 		template: '%%marp-metadata%%\nMetadata text\n%%/marp-metadata%%\n',
 		selection: 'Metadata text',
 	},
 	{
-		id: 'insert-kami-co-block',
-		name: 'Insert Kami conclusion block',
-		template: '%%marp-co%%\nConclusion text\n%%/marp-co%%\n',
-		selection: 'Conclusion text',
+		id: 'insert-marp-extended-callout',
+		name: 'Insert Marp Extended callout block',
+		template: '%%marp-callout[variant=note]%%\nCallout text\n%%/marp-callout%%\n',
+		selection: 'note',
 	},
 	{
-		id: 'insert-kami-note-block',
-		name: 'Insert Kami note block',
-		template: '%%marp-note%%\nNote text\n%%/marp-note%%\n',
-		selection: 'Note text',
-	},
-	{
-		id: 'insert-kami-mc-block',
-		name: 'Insert Kami mini callout block',
-		template: '%%marp-mc%%\nMini callout text\n%%/marp-mc%%\n',
-		selection: 'Mini callout text',
-	},
-	{
-		id: 'insert-kami-callout-block',
-		name: 'Insert Kami custom callout block',
-		template: '%%marp-callout[variant=mc]%%\nCallout text\n%%/marp-callout%%\n',
-		selection: 'mc',
-	},
-	{
-		id: 'insert-kami-cols-block',
-		name: 'Insert Kami columns block',
+		id: 'insert-marp-extended-columns',
+		name: 'Insert Marp Extended columns block',
 		template: '%%marp-columns%%\n### Left column\n\n- Left content\n\n%%marp-column%%\n\n### Right column\n\n- Right content\n%%/marp-columns%%\n',
 		selection: 'Left content',
 	},
 	{
-		id: 'insert-kami-cards-2x2-block',
-		name: 'Insert Kami 2x2 cards block',
+		id: 'insert-marp-extended-cards',
+		name: 'Insert Marp Extended 2x2 cards block',
 		template: '%%marp-cards[columns=2]%%\n### A · First metric\nFirst card text.\n\n%%marp-card%%\n\n### B · Second metric\nSecond card text.\n\n%%marp-card%%\n\n### C · Third metric\nThird card text.\n\n%%marp-card%%\n\n### D · Fourth metric\nFourth card text.\n%%/marp-cards%%\n',
 		selection: 'First metric',
 	},
 ];
-
-/** Backward-compatible export used by existing command registration and plugins. */
-export const KAMI_TEMPLATE_COMMANDS = MARP_EXTENDED_TEMPLATE_COMMANDS;
 
 function offsetPosition(start: EditorPosition, text: string): EditorPosition {
 	const lines = text.split('\n');
@@ -97,5 +74,3 @@ export function insertMarpExtendedTemplate(editor: Editor, command: MarpExtended
 	const selectionEnd = offsetPosition(selectionStart, command.selection);
 	editor.setSelection(selectionStart, selectionEnd);
 }
-
-export const insertKamiTemplate = insertMarpExtendedTemplate;

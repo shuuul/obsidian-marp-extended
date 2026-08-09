@@ -9,7 +9,7 @@ This note collects Marp theme resources for **Marp Extended**
 | Theme | Source | Notes |
 | --- | --- | --- |
 | `default`, `gaia`, `uncover` | Marp Core built-ins | No vault CSS file; always available via Marp |
-| `kami` | [tw93/Kami Marp templates](https://github.com/tw93/Kami/tree/main/assets/templates/marp) | One file, two locales: default = former CN Kami; `lang: en` = former `kami-en`. Installed to `.marp-extended/themes/kami.css` |
+| `kami` | [tw93/Kami Marp templates](https://github.com/tw93/Kami/tree/main/assets/templates/marp) | One file, two locales: Chinese by default; English with `lang: en`. Installed to `.marp-extended/themes/kami.css` |
 
 ## Not packaged (install yourself if needed)
 

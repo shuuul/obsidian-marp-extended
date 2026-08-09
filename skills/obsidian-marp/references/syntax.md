@@ -24,7 +24,6 @@ Rules of thumb:
 1. Keep CommonMark-compatible structure first (headings, lists, fences, images).
 2. Use Marpit extensions only where Markdown alone cannot express the slide.
 3. Prefer canonical Marp Extended markers for reusable layouts regardless of theme.
-4. Use legacy Kami aliases only when preserving an existing deck.
 
 ## Minimal deck
 
@@ -309,13 +308,13 @@ generated wrappers; there is no separate HTML setting.
 | Marker | Compiles to |
 | --- | --- |
 | `%%marp-slide[...]%%` | Marp local spot directives (`<!-- _key: value -->`). |
-| `%%marp-lead%%` | `lead marp-extended-lead` wrapper. |
-| `%%marp-subtitle%%` (`sub`) | `sub marp-extended-subtitle` wrapper. |
-| `%%marp-metadata%%` (`meta`) | `meta marp-extended-meta` wrapper. |
-| `%%marp-callout[variant=co]%%` (`co`, `note`) | Namespaced callout plus legacy `co`; `note` remains visible. |
-| `%%marp-callout[variant=mc]%%` (`mc`) | Namespaced callout plus legacy `mc`. |
-| `%%marp-columns%%` (`cols`) | 1–6 column grid, split by `%%marp-column%%` (`col`). |
-| `%%marp-cards[columns=N]%%` | 1–6-column metric-card table, split by `%%marp-card%%`; `cards[2x2]` is compatible. |
+| `%%marp-lead%%` | `marp-extended-lead` wrapper. |
+| `%%marp-subtitle%%` | `marp-extended-subtitle` wrapper. |
+| `%%marp-metadata%%` | `marp-extended-metadata` wrapper. |
+| `%%marp-callout[variant=co]%%` | `marp-extended-callout marp-extended-callout-co` wrapper. |
+| `%%marp-callout[variant=mc]%%` | `marp-extended-callout marp-extended-callout-mc` wrapper. |
+| `%%marp-columns%%` | 1–6 column grid, split by `%%marp-column%%`. |
+| `%%marp-cards[columns=N]%%` | 1–6-column metric-card table, split by `%%marp-card%%`. |
 
 Examples:
 
@@ -350,27 +349,26 @@ One serif per page.
 %%/marp-cards%%
 ````
 
-Card headings of the form `Label · Title` become namespaced metric titles while
-retaining the Kami `mt` / `ml` classes:
+Card headings of the form `Label · Title` become namespaced metric titles:
 
 ```html
-<div class="mt"><span class="ml">A</span>Palette</div>
+<div class="marp-extended-card-title"><span class="marp-extended-card-label">A</span>Palette</div>
 ```
 
 Hand-written HTML remains an escape hatch:
 
 ```markdown
-<div class="c2">
-<div>
+<div class="marp-extended-columns marp-extended-columns-2">
+<div class="marp-extended-column">
 
 ### Left column
 
 - Markdown still works inside the HTML wrapper.
 
 </div>
-<div>
+<div class="marp-extended-column">
 
-<div class="mc">A styled callout controlled by the theme CSS.</div>
+<div class="marp-extended-callout marp-extended-callout-mc">A styled callout controlled by the theme CSS.</div>
 
 </div>
 </div>
@@ -378,7 +376,7 @@ Hand-written HTML remains an escape hatch:
 
 Keep HTML semantic and small. Put reusable styling in theme CSS, not repeated
 `style="..."` attributes. See `docs/marp-extended-syntax.md` for the user-facing language
-and compatibility contract.
+contract.
 
 ## Images (Marpit extended `![]()`)
 
@@ -601,7 +599,7 @@ Multi-line is fine.
 
 - Directive comments are excluded from notes collection.
 - The plugin preview maps comments to logical slides and shows them as literal text in a toggleable notes panel.
-- `%%marp-note%%` is a visible Extended/Kami callout and is not presenter-note syntax.
+- `%%marp-callout[variant=note]%%` is a visible block and is not presenter-note syntax.
 - Plugin "PDF with notes" export uses Marp CLI `--pdf-notes` and `--pdf-outlines`.
 
 ## Math (Marp Core + this plugin)
@@ -797,7 +795,7 @@ Rules:
 - Slide size is **one size per theme definition / selected preset**, using static absolute units: `px`, `cm`, `in`, `mm`, `pc`, `pt`, `Q`.
 - Define extra presets with `/* @size name width height */` (Kami ships `kami` and `portfolio`).
 - Import another registered theme with `@import 'default';` or `@import-theme 'default';`.
-- Out of the box: Marp Core built-ins `default`, `gaia`, `uncover`, plus packaged custom `kami`. Kami default = former CN theme; `lang: en` = former `kami-en`. Add more via vault CSS.
+- Out of the box: Marp Core built-ins `default`, `gaia`, `uncover`, plus packaged custom `kami`. Kami uses Chinese typography by default and English typography with `lang: en`. Add more via vault CSS.
 
 ## Transitions (HTML / bespoke export)
 

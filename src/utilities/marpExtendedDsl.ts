@@ -3,12 +3,9 @@ type MarkerAttributes = {
 	values: Record<string, string>;
 };
 
-type BlockName = 'lead' | 'sub' | 'meta' | 'co' | 'mc' | 'note' | 'callout' | 'cols' | 'cards';
+type BlockName = 'lead' | 'subtitle' | 'metadata' | 'callout' | 'columns' | 'cards';
 
-const BLOCK_ALIASES: Record<string, BlockName> = {
-	lead: 'lead', subtitle: 'sub', sub: 'sub', metadata: 'meta', meta: 'meta',
-	co: 'co', mc: 'mc', note: 'note', callout: 'callout', columns: 'cols', cols: 'cols', cards: 'cards',
-};
+const BLOCK_NAMES = new Set<BlockName>(['lead', 'subtitle', 'metadata', 'callout', 'columns', 'cards']);
 
 type Fence = { character: '`' | '~'; length: number };
 
@@ -99,57 +96,64 @@ function splitSegments(body: string, separatorNames: string[]): string[] {
 }
 
 function renderColumns(body: string): string {
-	const columns = splitSegments(body, ['col', 'column']);
+	const columns = splitSegments(body, ['column']);
 	const count = practicalCount(String(columns.length), 1);
-	const cells = columns.map((column) => `<div class="marp-extended-column">\n\n${compileKamiCommentBlocks(column)}\n\n</div>`);
-	return `<div class="c2 marp-extended-columns marp-extended-columns-${count}">\n\n${cells.join('\n\n')}\n\n</div>`;
+	const cells = columns.map((column) => `<div class="marp-extended-column">\n\n${compileMarpExtendedCommentBlocks(column)}\n\n</div>`);
+	return `<div class="marp-extended-columns marp-extended-columns-${count}">\n\n${cells.join('\n\n')}\n\n</div>`;
 }
 
 function renderCards(body: string, attributes: MarkerAttributes): string {
-	const legacyCount = attributes.positional[0]?.match(/^(\d+)x\d+$/)?.[1];
-	const count = practicalCount(attributes.values.columns ?? legacyCount, 2);
+	const count = practicalCount(attributes.values.columns, 2);
 	const cells = splitSegments(body, ['card']).map(renderCardCell);
 	const rows: string[] = [];
 	for (let index = 0; index < cells.length; index += count) rows.push(`<tr>\n${cells.slice(index, index + count).join('\n')}\n</tr>`);
-	return `<table class="t2x2 marp-extended-cards marp-extended-cards-${count}">\n${rows.join('\n')}\n</table>`;
+	return `<table class="marp-extended-cards marp-extended-cards-${count}">\n${rows.join('\n')}\n</table>`;
 }
 
 function renderCardCell(card: string): string {
 	const lines = card.split(/\r?\n/);
 	const headingIndex = lines.findIndex((line) => /^#{1,6}\s+/.test(line.trim()));
-	if (headingIndex < 0) return `<td class="marp-extended-card">\n\n${compileKamiCommentBlocks(card)}\n\n</td>`;
+	if (headingIndex < 0) return `<td class="marp-extended-card">\n\n${compileMarpExtendedCommentBlocks(card)}\n\n</td>`;
 	const heading = lines[headingIndex].trim().replace(/^#{1,6}\s+/, '');
-	const body = compileKamiCommentBlocks([...lines.slice(0, headingIndex), ...lines.slice(headingIndex + 1)].join('\n').trim());
+	const body = compileMarpExtendedCommentBlocks([...lines.slice(0, headingIndex), ...lines.slice(headingIndex + 1)].join('\n').trim());
 	return `<td class="marp-extended-card">\n\n${renderMetricTitle(heading)}\n\n${body}\n\n</td>`;
 }
 
 function renderMetricTitle(heading: string): string {
 	const match = heading.match(/^([^·:：\s]+)\s*[·:：]\s*(.+)$/);
-	if (!match) return `<div class="mt marp-extended-card-title">${escapeHtml(heading)}</div>`;
-	return `<div class="mt marp-extended-card-title"><span class="ml marp-extended-card-label">${escapeHtml(match[1])}</span>${escapeHtml(match[2])}</div>`;
+	if (!match) return `<div class="marp-extended-card-title">${escapeHtml(heading)}</div>`;
+	return `<div class="marp-extended-card-title"><span class="marp-extended-card-label">${escapeHtml(match[1])}</span>${escapeHtml(match[2])}</div>`;
 }
 
 function renderBlock(name: BlockName, attributes: MarkerAttributes, body: string): string {
-	if (name === 'cols') return renderColumns(body);
+	if (name === 'columns') return renderColumns(body);
 	if (name === 'cards') return renderCards(body, attributes);
-	const compiledBody = compileKamiCommentBlocks(body);
+	const compiledBody = compileMarpExtendedCommentBlocks(body);
 	if (name === 'callout') {
-		const explicitVariant = attributes.values.variant;
-		const legacyClass = explicitVariant == null
-			? attributes.positional[0] || attributes.values.type || 'co'
-			: safeToken(explicitVariant, 'co');
-		const variant = safeToken(explicitVariant ?? legacyClass, 'co');
-		return renderClassBlock(`${legacyClass} marp-extended-callout marp-extended-callout-${variant}`, compiledBody);
+		const variant = safeToken(attributes.values.variant ?? 'co', 'co');
+		return renderClassBlock(`marp-extended-callout marp-extended-callout-${variant}`, compiledBody);
 	}
-	const classes: Record<Exclude<BlockName, 'cols' | 'cards' | 'callout'>, string> = {
-		lead: 'lead marp-extended-lead', sub: 'sub marp-extended-subtitle', meta: 'meta marp-extended-meta',
-		co: 'co marp-extended-callout marp-extended-callout-co', note: 'co marp-extended-callout marp-extended-callout-co',
-		mc: 'mc marp-extended-callout marp-extended-callout-mc',
+	const classes: Record<Exclude<BlockName, 'columns' | 'cards' | 'callout'>, string> = {
+		lead: 'marp-extended-lead',
+		subtitle: 'marp-extended-subtitle',
+		metadata: 'marp-extended-metadata',
 	};
 	return renderClassBlock(classes[name], compiledBody);
 }
 
-export function compileKamiCommentBlocks(markdown: string): string {
+function blockName(value: string): BlockName | undefined {
+	return BLOCK_NAMES.has(value as BlockName) ? value as BlockName : undefined;
+}
+
+function supportsAttributes(name: BlockName, attributes: MarkerAttributes): boolean {
+	if (attributes.positional.length > 0) return false;
+	const keys = Object.keys(attributes.values);
+	if (name === 'callout') return keys.every((key) => key === 'variant');
+	if (name === 'cards') return keys.every((key) => key === 'columns');
+	return keys.length === 0;
+}
+
+export function compileMarpExtendedCommentBlocks(markdown: string): string {
 	const lines = markdown.split(/\r?\n/);
 	const output: string[] = [];
 	let index = 0;
@@ -172,10 +176,10 @@ export function compileKamiCommentBlocks(markdown: string): string {
 			continue;
 		}
 		const startMatch = line.match(/^%%marp-([a-z]+)(\[[^\]]*\])?%%$/);
-		const name = startMatch ? BLOCK_ALIASES[startMatch[1]] : undefined;
+		const name = startMatch ? blockName(startMatch[1]) : undefined;
 		if (!startMatch || !name) { output.push(line); index += 1; continue; }
 		const attributes = parseMarkerAttributes(startMatch[2] ?? '');
-		if (!attributes) { output.push(line); index += 1; continue; }
+		if (!attributes || !supportsAttributes(name, attributes)) { output.push(line); index += 1; continue; }
 
 		const body: string[] = [];
 		const stack: BlockName[] = [];
@@ -188,10 +192,10 @@ export function compileKamiCommentBlocks(markdown: string): string {
 			fence = fenceOpener(candidate);
 			if (fence) { body.push(candidate); continue; }
 			const nestedMatch = candidate.match(/^%%marp-([a-z]+)(?:\[[^\]]*\])?%%$/);
-			const nested = nestedMatch ? BLOCK_ALIASES[nestedMatch[1]] : undefined;
+			const nested = nestedMatch ? blockName(nestedMatch[1]) : undefined;
 			if (nested) { stack.push(nested); body.push(candidate); continue; }
 			const closeMatch = candidate.match(/^%%\/marp-([a-z]+)%%$/);
-			const closing = closeMatch ? BLOCK_ALIASES[closeMatch[1]] : undefined;
+			const closing = closeMatch ? blockName(closeMatch[1]) : undefined;
 			if (closing) {
 				if (stack.length && stack[stack.length - 1] === closing) { stack.pop(); body.push(candidate); continue; }
 				if (!stack.length && closing === name) { foundEnd = true; break; }
@@ -205,6 +209,3 @@ export function compileKamiCommentBlocks(markdown: string): string {
 	}
 	return output.join('\n');
 }
-
-/** Backward-compatible name; the compiler now supports generic Marp Extended markers. */
-export const compileMarpExtendedCommentBlocks = compileKamiCommentBlocks;

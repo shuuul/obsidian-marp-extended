@@ -33,10 +33,10 @@ Shiki language allowlist: `src/shims/marp-shiki.cjs`.
 - `manifest.json` — plugin id/name/version.
 - `package.json` — Marp dependency versions and scripts.
 - `README.md` — user-facing behavior and theme credits.
-- `docs/marp-extended-syntax.md` — canonical user-facing Extended syntax and legacy Kami compatibility contract.
+- `docs/marp-extended-syntax.md` — canonical user-facing Extended syntax contract.
 - `src/utilities/settings.ts` — CLI path, npx fallback, Chrome path, editor Mermaid settings.
 - `src/utilities/filePath.ts` — filesystem path resolution and Obsidian image wiki-link conversion.
-- `src/utilities/kamiDsl.ts` — Extended `%%marp-*%%` compiler and legacy Kami aliases.
+- `src/utilities/marpExtendedDsl.ts` — Extended `%%marp-*%%` compiler.
 - `src/utilities/marpExport.ts` — Marp CLI argv construction and export behavior.
 - `src/views/marpPreviewView.ts` — Core 5 `createMarp()` plugin wiring and preview render.
 - `src/shims/marp-shiki.cjs` — curated Shiki language subset for the bundle.
