@@ -27,7 +27,9 @@ DOC_PAGES = [
     DocPage("Marpit image syntax", "https://raw.githubusercontent.com/marp-team/marpit/main/docs/image-syntax.md", "marpit/image-syntax.md", "curl"),
     DocPage("Marpit fragmented list", "https://raw.githubusercontent.com/marp-team/marpit/main/docs/fragmented-list.md", "marpit/fragmented-list.md", "curl"),
     DocPage("Marpit theme CSS", "https://raw.githubusercontent.com/marp-team/marpit/main/docs/theme-css.md", "marpit/theme-css.md", "curl"),
+    DocPage("Marpit inline SVG", "https://raw.githubusercontent.com/marp-team/marpit/main/docs/inline-svg.md", "marpit/inline-svg.md", "curl"),
     DocPage("Marp Core README", "https://raw.githubusercontent.com/marp-team/marp-core/main/README.md", "marp-core/README.md", "curl"),
+    DocPage("Marp Core Markdown features", "https://raw.githubusercontent.com/marp-team/marp-core/main/docs/markdown.md", "marp-core/markdown.md", "curl"),
     DocPage("Marp CLI README", "https://raw.githubusercontent.com/marp-team/marp-cli/main/README.md", "marp-cli/README.md", "curl"),
     DocPage("Marp CLI bespoke transitions", "https://raw.githubusercontent.com/marp-team/marp-cli/main/docs/bespoke-transitions/README.md", "marp-cli/bespoke-transitions.md", "curl"),
 ]

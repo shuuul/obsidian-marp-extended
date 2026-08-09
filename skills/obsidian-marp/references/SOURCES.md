@@ -22,7 +22,9 @@ Shiki language allowlist: `src/shims/marp-shiki.cjs`.
 - Marpit image syntax: https://marpit.marp.app/image-syntax
 - Marpit fragmented list: https://marpit.marp.app/fragmented-list
 - Marpit theme CSS: https://marpit.marp.app/theme-css
-- Marp Core features: https://github.com/marp-team/marp-core#features
+- Marpit inline SVG: https://marpit.marp.app/inline-svg
+- Marp Core Markdown features: https://github.com/marp-team/marp-core/blob/main/docs/markdown.md
+- Marp Core README / features: https://github.com/marp-team/marp-core
 - Marp CLI: https://github.com/marp-team/marp-cli
 - Marp CLI bespoke transitions: https://github.com/marp-team/marp-cli/blob/main/docs/bespoke-transitions/README.md
 
@@ -31,8 +33,10 @@ Shiki language allowlist: `src/shims/marp-shiki.cjs`.
 - `manifest.json` — plugin id/name/version.
 - `package.json` — Marp dependency versions and scripts.
 - `README.md` — user-facing behavior and theme credits.
+- `docs/kami-dsl.md` — user-facing Kami comment-marker DSL.
 - `src/utilities/settings.ts` — CLI path, npx fallback, Chrome path, editor Mermaid settings.
 - `src/utilities/filePath.ts` — filesystem path resolution and Obsidian image wiki-link conversion.
+- `src/utilities/kamiDsl.ts` — Kami `%%marp-*%%` compiler.
 - `src/utilities/marpExport.ts` — Marp CLI argv construction and export behavior.
 - `src/views/marpPreviewView.ts` — Core 5 `createMarp()` plugin wiring and preview render.
 - `src/shims/marp-shiki.cjs` — curated Shiki language subset for the bundle.

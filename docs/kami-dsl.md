@@ -24,14 +24,18 @@ Use normal YAML frontmatter for deck-wide settings:
 ```yaml
 ---
 marp: true
-theme: kami-en
-mermaidTheme: kami-en
+theme: kami
+lang: en
+mermaidTheme: kami
 mermaidFlat: true
 size: kami
 paginate: true
 footer: "Kami · Marp Extended"
 ---
 ```
+
+Use `theme: kami` alone (or `lang: zh-CN`) for the original Chinese Kami
+typography. Set `lang: en` for the original English (`kami-en`) typography.
 
 ## Slide metadata
 

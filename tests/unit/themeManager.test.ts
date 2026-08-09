@@ -48,7 +48,7 @@ test('custom Marp themes cannot overwrite bundled default names', async () => {
 
 	await expect(manager.addThemeFromCss('section { color: red; }', 'kami'))
 		.rejects.toThrow('Bundled default themes cannot be overwritten');
-	await expect(manager.addThemeFromCss('/* @theme github */\nsection {}'))
+	await expect(manager.addThemeFromCss('/* @theme kami */\nsection {}'))
 		.rejects.toThrow('Bundled default themes cannot be overwritten');
 });
 
@@ -148,7 +148,7 @@ test('custom Mermaid themes cannot overwrite bundled default names', async () =>
 
 	await expect(manager.addThemeFromCss('section .mermaid-diagram-container svg {}', 'kami'))
 		.rejects.toThrow('Bundled default Mermaid themes cannot be overwritten');
-	await expect(manager.addThemeFromCss('/* @mermaid-theme github */\nsection .mermaid-diagram-container svg {}'))
+	await expect(manager.addThemeFromCss('/* @mermaid-theme kami */\nsection .mermaid-diagram-container svg {}'))
 		.rejects.toThrow('Bundled default Mermaid themes cannot be overwritten');
 });
 
@@ -208,16 +208,16 @@ test('Mermaid theme CSS loads directly from normalized theme file', async () => 
 	const adapter = new FileSystemAdapter();
 	await adapter.mkdir('.marp-extended');
 	await adapter.mkdir(DEFAULT_MERMAID_THEME_DIRECTORY);
-	await adapter.write(`${DEFAULT_MERMAID_THEME_DIRECTORY}/dracula.css`, '/* @mermaid-theme dracula */\nsection .mermaid-diagram-container svg { --accent: pink; }');
+	await adapter.write(`${DEFAULT_MERMAID_THEME_DIRECTORY}/accent.css`, '/* @mermaid-theme accent */\nsection .mermaid-diagram-container svg { --accent: pink; }');
 	await adapter.write(`${DEFAULT_MERMAID_THEME_DIRECTORY}/other.css`, '/* @mermaid-theme other */\nsection .mermaid-diagram-container svg {}');
 	const readSpy = jest.spyOn(adapter, 'read');
 	const listSpy = jest.spyOn(adapter, 'list');
 
 	const manager = new MermaidThemeManager(createApp(adapter));
-	const css = await manager.loadThemeCss('Dracula');
+	const css = await manager.loadThemeCss('Accent');
 
 	expect(css).toContain('--accent: pink');
 	expect(readSpy).toHaveBeenCalledTimes(1);
-	expect(readSpy).toHaveBeenCalledWith(`${DEFAULT_MERMAID_THEME_DIRECTORY}/dracula.css`);
+	expect(readSpy).toHaveBeenCalledWith(`${DEFAULT_MERMAID_THEME_DIRECTORY}/accent.css`);
 	expect(listSpy).not.toHaveBeenCalled();
 });

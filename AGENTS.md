@@ -65,7 +65,7 @@ Useful commands:
 | Spec validator tests | `npm test -- --runInBand tests/unit/scripts/checkSpecs.test.ts` |
 | Bundle analysis | `npm run analyze:bundle` |
 | Reload local Obsidian dev plugin | `npm run obsidian:reload` |
-| Profile local Obsidian preview | `npm run obsidian:profile -- path="slides/examples/Kami Agent Slides.md"` |
+| Profile local Obsidian preview | `npm run obsidian:profile -- path="slides/examples/kami.md"` |
 | Version metadata sync | `npm run version` |
 
 For manual Obsidian testing, set `OBSIDIAN_VAULT` in `.env.local`; `npm run dev` and `npm run build` auto-copy `main.js`, `manifest.json`, and `styles.css` into:

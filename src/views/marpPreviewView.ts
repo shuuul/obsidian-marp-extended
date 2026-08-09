@@ -10,6 +10,7 @@ import { ThemeManager } from '../utilities/themeManager';
 import { mermaidFencePlugin } from '../utilities/mermaid';
 import { compileMarkdownForMarp } from '../utilities/marpMarkdown';
 import { loadMermaidThemeCssForFile, parseMermaidRenderOptionsFromCss } from '../utilities/mermaidTheme';
+import { BUILTIN_THEME_SCALE_CSS } from '../utilities/builtinThemeScale';
 import { ThemeAssetCache } from '../utilities/themeAssetCache';
 import { exportWithNotice } from '../utilities/marpExport';
 import {
@@ -736,7 +737,7 @@ export class MarpPreviewView extends ItemView  {
 <html>
 <head>
 <base href="${previewBaseUrl}">
-<style id="__marp-vscode-style">${css}\n${mermaidThemeCss}</style>
+<style id="__marp-vscode-style">${css}\n${mermaidThemeCss}\n${BUILTIN_THEME_SCALE_CSS}</style>
 <style id="__marp-extended-preview-style">${PREVIEW_IFRAME_STYLE}</style>
 </head>
 <body>${html}</body>

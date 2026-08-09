@@ -1,7 +1,11 @@
 /* @theme kami */
 /* @size kami 1058px 597px */
 /* @size portfolio 794px 1123px */
-/* Kami Marp theme (CN). Mirrors slides-weasy.html tokens. */
+/* Kami Marp theme (bilingual).
+ * Default / lang=zh* = original CN typography (Tsanger + 0.3pt tracking).
+ * lang=en = original kami-en typography (Charter, tighter tracking, cover meta mono).
+ * Set frontmatter: lang: en   or   lang: zh-CN
+ */
 
 @font-face {
   font-family: "TsangerJinKai02";
@@ -381,3 +385,85 @@ footer {
   bottom: 10mm;
   left: 20mm;
 }
+
+
+/* --------------------------------------------------------------------------
+ * English locale — preserves former `kami-en` rendering.
+ * Activated when Marpit `lang` directive is `en` (section lang="en").
+ * -------------------------------------------------------------------------- */
+
+section:lang(en) {
+  --serif: Charter, Georgia, Palatino, serif;
+  --sans: var(--serif);
+  --mono: "JetBrains Mono", "SF Mono", Consolas, monospace;
+
+  font-family: var(--serif);
+  letter-spacing: normal;
+}
+
+section:lang(en) h2 {
+  letter-spacing: -0.3pt;
+}
+
+section:lang(en) h3 {
+  letter-spacing: normal;
+}
+
+section:lang(en) .lead {
+  font-family: var(--serif);
+  line-height: 1.5;
+  letter-spacing: normal;
+}
+
+section:lang(en) .mt {
+  letter-spacing: normal;
+}
+
+section:lang(en) .mb,
+section:lang(en) p {
+  font-family: var(--serif);
+  letter-spacing: normal;
+}
+
+section:lang(en) .mi {
+  font-family: var(--serif);
+  letter-spacing: normal;
+}
+
+section:lang(en) .mc {
+  font-family: var(--serif);
+  letter-spacing: normal;
+}
+
+section:lang(en) .co {
+  font-family: var(--serif);
+  letter-spacing: normal;
+}
+
+section:lang(en) table.data td {
+  letter-spacing: normal;
+}
+
+section:lang(en) ul,
+section:lang(en) ol {
+  letter-spacing: normal;
+}
+
+section:lang(en).cover h1 {
+  line-height: 1.05;
+  letter-spacing: -0.5pt;
+}
+
+section:lang(en).cover .sub {
+  font-family: var(--serif);
+  line-height: 1.45;
+  letter-spacing: normal;
+}
+
+section:lang(en).cover .meta {
+  font-family: var(--mono);
+  font-size: 9.5pt;
+  letter-spacing: 1.5pt;
+  text-transform: uppercase;
+}
+

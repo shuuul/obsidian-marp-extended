@@ -102,14 +102,18 @@ Bundled themes do not load font files from the network. Install the matching fon
 
 | Theme | Recommended local fonts |
 | --- | --- |
-| `beamer` | CMU Sans Serif, CMU Bright |
-| `dracula` | IBM Plex Sans, IBM Plex Mono |
-| `github` | Lato, Roboto Mono, NasuM, GenShin Gothic / 源真ゴシック |
-| `kami` | TsangerJinKai02 W04, TsangerJinKai02 W05, JetBrains Mono Regular |
-| `kami-en` | JetBrains Mono Regular |
-| `olive` | Lato, Roboto Mono, NasuM, GenShin Gothic / 源真ゴシック |
+| `kami` default / `lang: zh*` | TsangerJinKai02 W04/W05, CJK serif fallbacks, JetBrains Mono — original CN look |
+| `kami` + `lang: en` | Charter / Georgia / Palatino, JetBrains Mono — original `kami-en` look |
+| `default` / `gaia` / `uncover` | Marp Core built-ins — system font stacks; body size scaled to Kami `13pt` in preview/export |
 
-Marp Extended does not bundle these font files. TsangerJinKai02 may require a separate license for commercial use.
+Marp Extended does not bundle font files. TsangerJinKai02 may require a separate license for commercial use.
+
+Kami is one theme file. Keep Chinese decks on `theme: kami` (omit `lang` or set `lang: zh-CN`). For the former English theme rendering, set:
+
+```yaml
+theme: kami
+lang: en
+```
 
 ### Export requirements
 
@@ -160,7 +164,7 @@ Useful scripts:
 | `npm run test:coverage` | Run Jest unit tests with coverage |
 | `npm run analyze:bundle` | Build and emit `metafile.json` for esbuild bundle analysis |
 | `npm run obsidian:reload` | Reload the local Obsidian dev plugin and check dev errors |
-| `npm run obsidian:profile -- path="slides/examples/Kami Agent Slides.md"` | Capture preview Chrome metrics and Marp Extended timing marks for a vault-relative note path; pass `cpu=true` for a `.cpuprofile` |
+| `npm run obsidian:profile -- path="slides/examples/kami.md"` | Capture preview Chrome metrics and Marp Extended timing marks for a vault-relative note path; pass `cpu=true` for a `.cpuprofile` |
 
 `main.js` is generated. Edit files under `src/`, then rebuild.
 
@@ -172,7 +176,7 @@ Theme authors: Core 5 highlights code with Shiki. Prefer `--marp-shiki-*` CSS va
 
 Preview ships a **curated Shiki language subset** (common web/systems/data languages used in slides) instead of Marp Core’s full 200+ grammar pack, to keep `main.js` smaller. Unsupported fence languages fall back to plain text. Edit `src/shims/marp-shiki.cjs` to add languages.
 
-Kami themes style code blocks after upstream Kami code-card language: ivory fill, soft border, mono ~10pt, `width: fit-content; max-width: 100%`.
+The packaged Kami theme styles code blocks after upstream Kami code-card language: ivory fill, soft border, mono ~10pt, `width: fit-content; max-width: 100%`. One `kami` theme covers Chinese and English: omit `lang` (or `zh*`) for CN metrics; set `lang: en` for the former `kami-en` metrics.
 
 ## Security note
 
@@ -182,7 +186,12 @@ Runtime and development dependencies audit clean with `npm audit` and `npm audit
 
 Marp Extended builds on the original [Marp Slides for Obsidian](https://github.com/samuele-cozzi/obsidian-marp-slides) plugin by Samuele Cozzi.
 
-Bundled default themes are limited to `kami`, `kami-en`, `github`, `beamer`, `olive`, and `dracula`, with CSS from [tw93/Kami](https://github.com/tw93/Kami), [matsubara0507/marp-themes](https://github.com/matsubara0507/marp-themes), [dracula/marp](https://github.com/dracula/marp), plus the Marp Extended Beamer sample theme. These upstream projects are MIT-licensed; keep their notices when redistributing modified theme CSS. Kami's Chinese theme references TsangerJinKai02 fonts, whose commercial usage may require a separate font license.
+Slide themes available out of the box:
+
+- **Marp Core built-ins:** `default`, `gaia`, `uncover` (no vault CSS install).
+- **Packaged custom theme:** `kami` from [tw93/Kami](https://github.com/tw93/Kami) (MIT). Installed into `.marp-extended/themes/` on first load. Default CSS matches the former Chinese Kami; `lang: en` matches the former `kami-en` typography. TsangerJinKai02 may need a separate commercial font license.
+
+Add more themes anytime by pasting CSS in settings or dropping files into `.marp-extended/themes/`.
 
 Many thanks to:
 

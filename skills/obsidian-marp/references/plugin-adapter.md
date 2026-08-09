@@ -98,8 +98,8 @@ Example frontmatter for a complete deck:
 ```yaml
 ---
 marp: true
-theme: kami-en
-mermaidTheme: kami-en
+theme: kami
+mermaidTheme: kami
 mermaidFlat: true
 size: kami
 paginate: true
@@ -107,7 +107,17 @@ math: mathjax
 ---
 ```
 
-Obsidian property suggestions for `theme`, `size`, `mermaidTheme`, and `mermaidFlat` are patched by the plugin.
+Available themes out of the box: Marp Core built-ins `default` / `gaia` /
+`uncover`, plus packaged `kami`. Kami keeps the former CN metrics by default and
+the former `kami-en` metrics when frontmatter sets `lang: en` (Marpit writes
+`lang` on each `<section>`; theme CSS uses `section:lang(en)`).
+
+Preview and export inject a small scale override so built-in themes use the same
+body size as Kami (`13pt` on `section[data-theme=…]`). Headings stay `em`-relative.
+See `src/utilities/builtinThemeScale.ts`.
+
+Obsidian property suggestions for `theme`, `size`, `mermaidTheme`, and
+`mermaidFlat` are patched by the plugin.
 
 ## Math
 
@@ -121,6 +131,27 @@ Obsidian property suggestions for `theme`, `size`, `mermaidTheme`, and `mermaidF
 - Language coverage is a curated subset in `src/shims/marp-shiki.cjs` (not the full 200+ Marp Core pack).
 - Theme authors must not rely on highlight.js `.hljs-*` classes for preview.
 - Kami / Kami-en code chrome: ivory background, `1px` border, `6pt` radius, mono ~`10pt`, `width: fit-content; max-width: 100%`, optional scroll for tall blocks.
+
+## Authoring language style (plugin posture)
+
+Marpit's published Markdown page stresses CommonMark compatibility: decks should
+still read well in a normal Markdown editor. This plugin leans further toward
+Obsidian-native notes:
+
+| Prefer in vault notes | Why |
+| --- | --- |
+| YAML frontmatter for deck globals | First-class Obsidian properties + Marpit front-matter |
+| `%%marp-slide[...]%%` for spot locals | Hidden in Reading view; compiles to `_` spot directives |
+| Kami `%%marp-*%%` layout markers | Stable Kami class wrappers without raw HTML noise |
+| `![[img\|600]]` wiki-links | Vault-resolved paths; size aliases → `w`/`h` |
+| MathJax only | KaTeX not bundled in preview |
+| Shiki fence tags from the curated subset | Full Marp Core language pack is not shipped |
+
+Still use raw Marpit when needed: `![bg left:40%]()`, image filters, fragmented
+`*` / `1)` lists, `headingDivider`, fitting headers, and bespoke `transition`.
+Wiki-links do not encode `bg` or filters — switch to standard `![]()` for those.
+
+See `references/syntax.md` for the full syntax matrix.
 
 ## Kami comment-marker compiler
 

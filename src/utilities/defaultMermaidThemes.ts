@@ -20,11 +20,6 @@ function packagedMermaidTheme(name: string): DefaultMermaidThemeDefinition {
 
 export const DEFAULT_MERMAID_THEME_DEFINITIONS: DefaultMermaidThemeDefinition[] = [
 	'kami',
-	'kami-en',
-	'github',
-	'beamer',
-	'olive',
-	'dracula',
 ].map(packagedMermaidTheme);
 
 export const DEFAULT_MERMAID_THEME_FILE_NAMES = new Set(

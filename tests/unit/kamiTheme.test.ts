@@ -35,21 +35,46 @@ size: ${size}
 `).html;
 }
 
-test.each([
-	['kami.css', 'kami'],
-	['kami-en.css', 'kami-en'],
-])('%s defines blockquote styling in Marp output', (themeFile, themeName) => {
-	const css = renderThemeCss(themeFile, themeName);
+test('kami.css defines blockquote styling in Marp output', () => {
+	const css = renderThemeCss('kami.css', 'kami');
 
 	expect(css).toContain('blockquote{margin:0 0 var(--rhythm-section) 0;padding:0 0 0 12pt;border-left:2pt solid var(--brand);color:var(--dark-warm)}');
 	expect(css).toContain('blockquote > :last-child{margin-bottom:0}');
 });
 
-test.each([
-	['kami.css', 'kami'],
-	['kami-en.css', 'kami-en'],
-])('%s supports the A4 portrait portfolio size', (themeFile, themeName) => {
-	const html = renderThemeHtml(themeFile, themeName, 'portfolio');
+test('kami.css supports bilingual font stacks and the A4 portrait portfolio size', () => {
+	const themeCss = readFileSync(join(process.cwd(), 'assets/themes', 'kami.css'), 'utf8');
+	expect(themeCss).toContain('TsangerJinKai02');
+	expect(themeCss).toContain('Charter');
+	expect(themeCss).toContain('section:lang(en)');
+	expect(themeCss).toContain('letter-spacing: 0.3pt');
+	expect(themeCss).toContain('letter-spacing: -0.5pt');
+	expect(themeCss).not.toContain('@theme kami-en');
 
+	const html = renderThemeHtml('kami.css', 'kami', 'portfolio');
 	expect(html).toContain('viewBox="0 0 794 1123"');
+});
+
+test('kami.css applies EN typography when lang is en', () => {
+	const themeCss = readFileSync(join(process.cwd(), 'assets/themes', 'kami.css'), 'utf8');
+	const marp = new Marp({ minifyCSS: true });
+	marp.themeSet.add(themeCss);
+
+	const { html, css } = marp.render(`---
+marp: true
+theme: kami
+lang: en
+---
+
+<!-- _class: cover -->
+
+# Title
+
+<div class="meta">Meta</div>
+`);
+
+	expect(html).toContain('lang="en"');
+	expect(css).toContain(':lang(en)');
+	expect(css).toContain('Charter');
+	expect(css).toContain('TsangerJinKai02');
 });

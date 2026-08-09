@@ -8,8 +8,8 @@ const themesDir = join(root, 'assets/themes');
 const mermaidDir = join(root, 'assets/mermaid-themes');
 const outPath = join(root, 'src/utilities/packagedDefaultThemeCss.ts');
 
-const THEME_ORDER = ['kami.css', 'kami-en.css', 'github.css', 'beamer.css', 'olive.css', 'dracula.css'];
-const MERMAID_ORDER = ['kami.css', 'kami-en.css', 'github.css', 'beamer.css', 'olive.css', 'dracula.css'];
+const THEME_ORDER = ['kami.css'];
+const MERMAID_ORDER = ['kami.css'];
 
 function listCss(directory) {
 	if (!existsSync(directory)) {

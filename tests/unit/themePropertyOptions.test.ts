@@ -44,7 +44,7 @@ test('mermaidTheme property suggestions include installed Mermaid themes', async
 	await adapter.mkdir('.marp-extended');
 	await adapter.mkdir(DEFAULT_MERMAID_THEME_DIRECTORY);
 	await adapter.write(`${DEFAULT_MERMAID_THEME_DIRECTORY}/kami.css`, '/* @mermaid-theme kami */\nsection .mermaid-diagram-container svg {}');
-	await adapter.write(`${DEFAULT_MERMAID_THEME_DIRECTORY}/dracula.css`, '/* @mermaid-theme dracula */\nsection .mermaid-diagram-container svg {}');
+	await adapter.write(`${DEFAULT_MERMAID_THEME_DIRECTORY}/custom-mermaid.css`, '/* @mermaid-theme custom-mermaid */\nsection .mermaid-diagram-container svg {}');
 
 	const app = createApp(adapter, (key) => key === 'mermaidTheme' ? ['local', 'kami'] : []);
 	const options = new ThemePropertyOptions(app, new ThemeManager(app), new MermaidThemeManager(app));
@@ -55,7 +55,7 @@ test('mermaidTheme property suggestions include installed Mermaid themes', async
 	expect(app.metadataCache.getFrontmatterPropertyValuesForKey('mermaidTheme')).toEqual([
 		'local',
 		'kami',
-		'dracula',
+		'custom-mermaid',
 	]);
 });
 

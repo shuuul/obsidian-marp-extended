@@ -100,13 +100,13 @@ test('findMermaidFenceRanges ignores mermaid fences inside frontmatter metadata'
 });
 
 test('resolveEditorMermaidTheme prefers frontmatter mermaidTheme over settings theme', () => {
-	const markdown = '---\nmermaidTheme: dracula\n---\n\n```mermaid\nflowchart LR\n  A --> B\n```';
+	const markdown = '---\nmermaidTheme: custom-mermaid\n---\n\n```mermaid\nflowchart LR\n  A --> B\n```';
 
-	expect(resolveEditorMermaidTheme(markdown, settings)).toBe('dracula');
+	expect(resolveEditorMermaidTheme(markdown, settings)).toBe('custom-mermaid');
 });
 
 test('resolveEditorMermaidTheme falls back to settings theme when frontmatter has no mermaidTheme', () => {
-	const markdown = '---\ntheme: github\n---\n\n```mermaid\nflowchart LR\n  A --> B\n```';
+	const markdown = '---\ntheme: default\n---\n\n```mermaid\nflowchart LR\n  A --> B\n```';
 
 	expect(resolveEditorMermaidTheme(markdown, settings)).toBe('kami');
 });

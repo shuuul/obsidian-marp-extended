@@ -373,7 +373,7 @@ test('export converts wiki-links through a temporary markdown file without chang
 test('export injects selected Mermaid theme CSS and flat mode into the temporary markdown file', async () => {
 	const root = mkdtempSync(join(tmpdir(), 'marp-export-mermaid-theme-'));
 	tempDirectories.push(root);
-	const originalContent = '---\ntheme: kami\nmermaidTheme: dracula\nmermaidFlat: true\n---\n\n```mermaid\nflowchart LR\n  A --> B\n```\n';
+	const originalContent = '---\ntheme: kami\nmermaidTheme: accent\nmermaidFlat: true\n---\n\n```mermaid\nflowchart LR\n  A --> B\n```\n';
 	const file = createDiskBackedFile(root, 'slides/deck.md', originalContent);
 	const exportDirectory = join(root, 'exports');
 	const mermaidThemeDirectory = join(root, '.marp-extended/mermaid-themes');
@@ -381,10 +381,10 @@ test('export injects selected Mermaid theme CSS and flat mode into the temporary
 
 	mkdirSync(exportDirectory, { recursive: true });
 	mkdirSync(mermaidThemeDirectory, { recursive: true });
-	writeFileSync(join(mermaidThemeDirectory, 'dracula.css'), '/* @mermaid-theme dracula */\nsection .mermaid-diagram-container svg { --accent: pink !important; }', 'utf-8');
+	writeFileSync(join(mermaidThemeDirectory, 'accent.css'), '/* @mermaid-theme accent */\nsection .mermaid-diagram-container svg { --accent: pink !important; }', 'utf-8');
 	(file.vault.adapter as any).exists = async (path: string) => existsSync(join(root, path));
 	(file.vault.adapter as any).list = async (path: string) => ({
-		files: [join(path, 'dracula.css')],
+		files: [join(path, 'accent.css')],
 		folders: [],
 	});
 	(file.vault.adapter as any).read = async (path: string) => readFileSync(join(root, path), 'utf-8');
@@ -392,7 +392,7 @@ test('export injects selected Mermaid theme CSS and flat mode into the temporary
 	spawnMock.mockImplementationOnce((_executable, args) => {
 		temporarySourcePath = args[0];
 		const processed = readFileSync(temporarySourcePath, 'utf-8');
-		expect(processed).toMatch(/^---\ntheme: kami\nmermaidTheme: dracula\nmermaidFlat: true\n---\s*<style class="marp-extended-mermaid-theme">/);
+		expect(processed).toMatch(/^---\ntheme: kami\nmermaidTheme: accent\nmermaidFlat: true\n---\s*<style class="marp-extended-mermaid-theme">/);
 		expect(processed).toContain('class="marp-extended-mermaid-theme"');
 		expect(processed).toContain('--accent: pink !important');
 		expect(processed).toContain('background: transparent !important');
@@ -406,7 +406,7 @@ test('export injects selected Mermaid theme CSS and flat mode into the temporary
 	const app = {
 		vault: file.vault,
 		metadataCache: {
-			getFileCache: jest.fn(() => ({ frontmatter: { mermaidTheme: 'dracula', mermaidFlat: true } })),
+			getFileCache: jest.fn(() => ({ frontmatter: { mermaidTheme: 'accent', mermaidFlat: true } })),
 			getFirstLinkpathDest: jest.fn(() => null),
 		},
 	} as unknown as App;

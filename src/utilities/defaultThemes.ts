@@ -19,12 +19,9 @@ function packagedTheme(name: string, fileName: string, credit: string): DefaultT
 }
 
 export const DEFAULT_THEME_DEFINITIONS: DefaultThemeDefinition[] = [
+	// Packaged custom theme only. Marp Core built-ins (default/gaia/uncover)
+	// come from Marp itself and are not installed as vault CSS files.
 	packagedTheme('kami', 'kami.css', 'tw93/Kami'),
-	packagedTheme('kami-en', 'kami-en.css', 'tw93/Kami'),
-	packagedTheme('github', 'github.css', 'matsubara0507/marp-themes'),
-	packagedTheme('beamer', 'beamer.css', 'vault sample theme'),
-	packagedTheme('olive', 'olive.css', 'matsubara0507/marp-themes'),
-	packagedTheme('dracula', 'dracula.css', 'dracula/marp'),
 ];
 
 export const DEFAULT_THEME_FILE_NAMES = new Set(

@@ -12,6 +12,7 @@ import {
 	parseMermaidRenderOptionsFromCss,
 	wrapMermaidThemeCss,
 } from './mermaidTheme';
+import { wrapBuiltinThemeScaleCss } from './builtinThemeScale';
 
 export class MarpCLIError extends Error {}
 
@@ -566,7 +567,7 @@ export class MarpExport {
         });
         const processedContent = insertMarkdownAfterFrontmatter(
             processedMarkdown,
-            wrapMermaidThemeCss(mermaidThemeCss),
+            `${wrapMermaidThemeCss(mermaidThemeCss)}${wrapBuiltinThemeScaleCss()}`,
         );
         const needsTemporarySource = processedContent !== originalContent || filesTool.shouldUseRootExportSource(file);
 
