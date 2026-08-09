@@ -4,6 +4,10 @@
 
 ### Features
 
+* **language:** generalize the Kami comment-marker compiler into a theme-independent Marp Extended authoring layer with namespaced classes, generic aliases, configurable columns/cards/callouts, CommonMark fence handling, and full legacy source compatibility
+* **preview:** add Marpit fragment stepping, reset/status controls, keyboard-bindable commands, active-slide tracking, and a safe presenter-notes panel
+* **runtime:** share one isolated Marp Core 5 engine contract across preview and managed CLI export, including Shiki, MathJax, Mermaid fallback, inline SVG, and Extended structural CSS
+* **export:** ship and embed a standalone `marp-engine.cjs`, verify it by SHA-256 before materialization, and pass it to supported Marp CLI 4.5.0 exports
 * **preview:** migrate slide rendering to Marp Core 5.0.0 RC with curated Shiki and MathJax plugins while keeping the custom Mermaid theme stack
 * **export:** pin npx Marp CLI fallback to `@marp-team/marp-cli@4.5.0`
 * **mermaid:** apply theme CSS variables (`--bg/--fg/...`) to beautiful-mermaid render options
@@ -13,7 +17,8 @@
 
 ### BREAKING CHANGES
 
-* Theme CSS that only styles highlight.js `.hljs-*` classes no longer affects preview code colors under Core 5. Use `--marp-shiki-*` variables (bundled sample themes were migrated). Export via CLI 4.5.0 may still use Core 4 highlighting until Marp CLI tracks Core 5.
+* Theme CSS that only styles highlight.js `.hljs-*` classes no longer affects preview or managed-export code colors under Core 5. Use `--marp-shiki-*` variables (bundled sample themes were migrated).
+* Managed export accepts exactly Marp CLI 4.5.0. Auto-detected incompatible versions may use the pinned npx fallback; an explicitly configured incompatible executable is rejected instead of silently rendering with a different contract.
 * Sample `vault/` tree removed from the repository; theme CSS sources live under `assets/themes` and `assets/mermaid-themes`.
 * KaTeX is not bundled; preview math is MathJax-only.
 

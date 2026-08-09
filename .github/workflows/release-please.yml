@@ -102,6 +102,8 @@ jobs:
         run: npm run check:specs
       - name: Build
         run: npm run build
+      - name: Create release archive
+        run: zip -j "marp-extended-${{ needs.release-please.outputs.version }}.zip" main.js manifest.json styles.css marp-engine.cjs
       - name: Verify release assets
         run: npm run scan:release
       - name: Attest release assets
@@ -111,13 +113,15 @@ jobs:
             main.js
             manifest.json
             styles.css
+            marp-engine.cjs
+            marp-extended-${{ needs.release-please.outputs.version }}.zip
       - name: Upload release assets
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           TAG="${{ needs.release-please.outputs.tag_name }}"
           gh release upload "$TAG" \
-            main.js manifest.json styles.css \
+            main.js manifest.json styles.css marp-engine.cjs "marp-extended-${{ needs.release-please.outputs.version }}.zip" \
             --repo "${{ github.repository }}" --clobber
 
   manual-release-plugin:
@@ -156,6 +160,8 @@ jobs:
         run: npm run check:specs
       - name: Build
         run: npm run build
+      - name: Create release archive
+        run: zip -j "marp-extended-${{ inputs.release_version }}.zip" main.js manifest.json styles.css marp-engine.cjs
       - name: Verify release assets
         run: npm run scan:release
       - name: Attest release assets
@@ -165,13 +171,15 @@ jobs:
             main.js
             manifest.json
             styles.css
+            marp-engine.cjs
+            marp-extended-${{ inputs.release_version }}.zip
       - name: Create release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           TAG="${{ inputs.release_version }}"
           gh release create "$TAG" \
-            main.js manifest.json styles.css \
+            main.js manifest.json styles.css marp-engine.cjs "marp-extended-${{ inputs.release_version }}.zip" \
             --repo "${{ github.repository }}" \
             --title "$TAG" \
             --generate-notes

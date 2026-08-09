@@ -16,8 +16,8 @@ Current project metadata: **Marp Extended** `0.9.0`, plugin/package id
 
 Runtime stack (2026-08):
 
-- **Preview:** `@marp-team/marp-core` `5.0.0` (RC / npm `next`) with curated plugins **Shiki** + **MathJax** only. Custom Mermaid stack (not Core mermaid plugin).
-- **Export:** external Marp CLI or npx pin `@marp-team/marp-cli@4.5.0` (CLI still embeds Core **4.4.x**). Preview and export engines can differ until CLI tracks Core 5.
+- **Preview:** `@marp-team/marp-core` `5.0.0` with curated **Shiki** + **MathJax** plugins and the custom Mermaid stack.
+- **Export:** exactly Marp CLI `4.5.0` as host, always given Marp Extended's shipped Core 5 engine through `--engine`. The optional npx path is pinned to `@marp-team/marp-cli@4.5.0`.
 - **Math:** MathJax only in this plugin build. Do **not** recommend `math: katex` for Marp Extended preview.
 - **Code highlight:** Shiki with a **curated language subset** (`src/shims/marp-shiki.cjs`). Theme colors via `--marp-shiki-*`, not `.hljs-*`.
 - **Themes:** packaged sources under `assets/themes/` and `assets/mermaid-themes/`; installed to vault `.marp-extended/themes/` and `.marp-extended/mermaid-themes/`.
@@ -25,10 +25,11 @@ Runtime stack (2026-08):
 
 ## Start here
 
-1. Read `references/syntax.md` first — Marpit base syntax, directives, images, fragments, Marp Core extras, Kami markers, and the **language style** table for this plugin.
-2. Read `references/plugin-adapter.md` before advising on behavior inside this plugin: wiki-links, custom themes, Mermaid, export options, Chrome requirements, and local-file handling differ from generic Marp CLI docs.
-3. Read `references/SOURCES.md` for upstream links or to refresh the downloaded reference bundle.
-4. Run `scripts/update-references.py` from the repo root to refresh `references/upstream/` from official sources.
+1. Read `docs/marp-extended-syntax.md` first for the canonical, user-facing Extended marker language and legacy Kami compatibility contract.
+2. Read `references/syntax.md` for the wider Marpit base syntax, directives, images, fragments, Marp Core extras, and the **language style** table for this plugin.
+3. Read `references/plugin-adapter.md` before advising on plugin behavior: wiki-links, themes, Mermaid, export options, and local-file handling differ from generic Marp CLI docs.
+4. Read `references/SOURCES.md` for upstream links or to refresh the downloaded reference bundle.
+5. Run `scripts/update-references.py` from the repo root to refresh `references/upstream/` from official sources.
 
 ## Language style (keep decks Obsidian-readable)
 
@@ -38,8 +39,8 @@ Marp Extended strengthens that for Obsidian.
 | Prefer | Default away from |
 | --- | --- |
 | YAML frontmatter for deck settings | Repeated global HTML comment directives |
-| `%%marp-slide[...]%%` for spot slide metadata | Visible `<!-- _class: ... -->` when Kami markers work |
-| Kami `%%marp-*%%` layout blocks | Large hand-rolled HTML trees |
+| `%%marp-slide[...]%%` for spot slide metadata | Visible `<!-- _class: ... -->` when the Extended marker is clearer |
+| Marp Extended `%%marp-*%%` layout blocks | Large hand-rolled HTML trees |
 | Obsidian `![[image\|600]]` wiki-links | Absolute filesystem image paths |
 | `math: mathjax` / omit | `math: katex` |
 | Curated Shiki fence tags + optional `{lines}` | highlight.js / `.hljs-*` theme rules |
@@ -50,12 +51,13 @@ Marp Extended strengthens that for Obsidian.
 - Put `marp: true` in YAML frontmatter when creating decks for editor integrations.
 - Split slides with a horizontal rule (`---`, `___`, `***`, or `- - -`). Blank line before `---` when CommonMark needs it. Do not confuse the closing frontmatter `---` with a slide separator.
 - Prefer `headingDivider` when converting a plain note into slides without littering rulers.
-- Prefer deck frontmatter plus Marp Extended Kami `%%marp-*%%` comment-marker blocks over raw HTML/CSS where possible.
-- Use Kami `%%marp-*%%` comment-marker blocks for Obsidian-friendly authoring: `%%marp-slide[...]%%`, `%%marp-lead%%`, `%%marp-sub%%`, `%%marp-meta%%`, `%%marp-co%%`, `%%marp-mc%%`, `%%marp-note%%`, `%%marp-callout[...]%%`, `%%marp-cols%%`, and `%%marp-cards[2x2]%%`. Split `cols` / `cards` items with hidden `%%marp-col%%` / `%%marp-card%%` marker lines.
+- Prefer deck frontmatter plus Marp Extended `%%marp-*%%` comment-marker blocks over raw HTML/CSS where possible.
+- Treat `docs/marp-extended-syntax.md` as the product source of truth for canonical markers, generated classes, nesting rules, and legacy aliases.
+- Use canonical `%%marp-slide[...]%%`, `%%marp-lead%%`, `%%marp-subtitle%%`, `%%marp-metadata%%`, `%%marp-callout[variant=...]%%`, `%%marp-columns%%`, and `%%marp-cards[columns=N]%%`. Split columns/cards with `%%marp-column%%` / `%%marp-card%%`. Legacy Kami aliases (`sub`, `meta`, `co`, `mc`, `note`, `cols`, `col`, `cards[2x2]`) remain valid.
 - Local directives apply forward; prefix `_` for current-slide-only spot directives. `paginate` accepts `true` / `false` / `hold` / `skip`.
 - Use Obsidian image wiki-links for images: `![[diagram.png]]`, `![[diagram.png|Alt text]]`, `![[diagram.png|600]]`, and `![[diagram.png|600x400]]`. Size aliases become Marp image directives such as `![w:600]` and `![w:600 h:400]`.
 - For backgrounds, split layouts, and filters, use Marpit image syntax (`![bg left:40%](…)`, `![brightness:.8](…)`). Advanced multi/split backgrounds need inline SVG (enabled in this plugin).
-- Fragmented lists: bullets with `*`, ordered with `1)`. Regular lists use `-`/`+` and `1.`. Fragment animation depends on the viewer (bespoke HTML export is the reliable path).
+- Fragmented lists: bullets with `*`, ordered with `1)`. Regular lists use `-`/`+` and `1.`. The plugin preview toolbar/commands step, reverse, and reset fragments for the active slide.
 - Fitting headers (theme must support `@auto-scaling`): `# <!-- fit --> Title`.
 - For predictable export, keep local images and theme CSS inside the vault. Export uses Marp CLI with `--allow-local-files`.
 - Themes: Marp Core built-ins `default`, `gaia`, `uncover`, plus packaged custom `kami`. Kami default = former CN look; `lang: en` = former `kami-en` look. Add more via vault CSS with `/* @theme name */`. Kami sizes: `kami`, `portfolio`.
@@ -83,13 +85,13 @@ math: mathjax
 
 %%marp-slide[class=cover paginate=false]%%
 
-%%marp-sub%%
+%%marp-subtitle%%
 Subtitle for the cover
-%%/marp-sub%%
+%%/marp-subtitle%%
 
-%%marp-meta%%
+%%marp-metadata%%
 Team · 2026
-%%/marp-meta%%
+%%/marp-metadata%%
 
 ---
 
@@ -130,7 +132,7 @@ flowchart LR
 Main slide content.
 
 <!--
-These notes can be exported into PDF notes when using the plugin's PDF with notes export.
+These notes appear in the plugin preview notes panel and can be exported with PDF notes.
 -->
 ````
 

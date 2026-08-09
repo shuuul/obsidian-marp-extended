@@ -18,7 +18,9 @@ Marp Extended is an Obsidian plugin for creating, previewing, presenting, and ex
 - Add custom Marp themes by pasting CSS in plugin settings.
 - Convert Obsidian image wiki-links to standard Markdown image links for preview/export.
 - Built-in Mermaid diagrams rendered with `beautiful-mermaid` and official Mermaid, featuring an interactive zooming and panning frame in the editor Live Preview (can be toggled in settings).
-- Kami DSL fenced blocks for Obsidian-friendly slide metadata, lead text, callouts, columns, and 2×2 cards.
+- Use standard Marpit fragments and presenter comments in preview, with fragment controls and a notes panel.
+- Add theme-independent Marp Extended comment markers for slide metadata, semantic text, callouts, 1–6 columns, and configurable card grids while retaining legacy Kami syntax.
+- Keep preview and managed exports on the same shipped Marp Core 5 semantic engine.
 
 ## Markdown compatibility
 
@@ -55,19 +57,54 @@ When possible, the plugin resolves the image through Obsidian's link resolver an
 
 Other Obsidian-only extensions are not converted automatically. If Marp does not support an Obsidian syntax directly, write it in standard Markdown or Marp syntax.
 
-For Kami-style decks, Marp Extended also supports a small fenced-block DSL that
-compiles to Marp local directives and Kami theme HTML wrappers before
-preview/export. For example, use `slide` blocks instead of Marp local directive
-comments and `cols` / `cards[2x2]` blocks split with `===` for common Kami
-layouts. Previewing these layout wrappers requires the plugin's **Enable HTML**
-setting; export already invokes Marp CLI with HTML enabled. See
-[Kami DSL](docs/kami-dsl.md) for the supported blocks and examples.
+Marp Extended inherits standard Marpit slide splitting, directives, images,
+backgrounds, scoped styles, fragmented lists, and presenter comments. Marp Core
+adds fitting headings, emoji, math, code highlighting, inline SVG, and other Marp
+features. The plugin supplies the host behavior that Marpit leaves to an
+integrating application: fragment stepping and a presenter-notes panel in the
+Obsidian preview.
 
 See also:
 
 - [Marpit Markdown](https://marpit.marp.app/markdown)
-- [Marp Core features](https://github.com/marp-team/marp-core#features)
+- [Marp Core Markdown](https://github.com/marp-team/marp-core/blob/main/docs/markdown.md)
 - [Marp CLI](https://github.com/marp-team/marp-cli)
+
+## Marp Extended syntax
+
+Marp Extended adds an Obsidian-friendly `%%marp-*%%` layer only where standard
+Marp/Marpit Markdown has no equivalent. The markers compile before preview and
+export, while their contents remain ordinary Markdown.
+
+| Purpose | Canonical syntax |
+| --- | --- |
+| Current-slide directives | `%%marp-slide[class=cover paginate=false]%%` |
+| Lead, subtitle, metadata | `%%marp-lead%%`, `%%marp-subtitle%%`, `%%marp-metadata%%` |
+| Themeable callout | `%%marp-callout[variant=warning]%%` |
+| Columns | `%%marp-columns%%`, split with `%%marp-column%%` |
+| Card grid | `%%marp-cards[columns=2]%%`, split with `%%marp-card%%` |
+
+For example:
+
+```md
+%%marp-columns%%
+### Left
+Column content
+%%marp-column%%
+### Right
+Column content
+%%/marp-columns%%
+
+%%marp-callout[variant=note]%%
+A themeable callout.
+%%/marp-callout%%
+```
+
+Legacy `marp-cols`, `marp-sub`, `marp-meta`, `marp-cards[2x2]`, and other Kami
+forms remain compatible. `%%marp-note%%` remains a visible Kami callout;
+presenter notes use ordinary Marpit `<!-- comments -->`. See
+[Marp Extended syntax](docs/marp-extended-syntax.md) for every marker, generated
+class, nesting/fence rule, runtime control, and compatibility alias.
 
 ## Getting started
 
@@ -117,7 +154,10 @@ lang: en
 
 ### Export requirements
 
-Preview and presentation work from the plugin bundle. Export runs an external Marp CLI command so Marp Extended does not bundle the full CLI/Puppeteer toolchain.
+Preview and presentation work from the plugin bundle. Export runs an external
+Marp CLI command, but passes the plugin's shipped `marp-engine.cjs` so preview and
+managed export share Marp Core 5 semantics. Marp Extended does not bundle the
+full CLI/Puppeteer/browser toolchain.
 
 Install Marp CLI globally, set an explicit executable path in **Settings → Marp Extended → Marp CLI path**, or enable **Use npx fallback** to let the plugin run a pinned Marp CLI package through `npx` when no executable is found or when a browser-backed PDF/PPTX export fails without an explicit CLI path:
 
@@ -128,7 +168,16 @@ marp --version
 
 Use **Auto-detect** in settings to search `PATH` and common Homebrew locations such as `/opt/homebrew/bin/marp`. If `marp` is not found automatically, set **Marp CLI path** to the executable path, such as `/opt/homebrew/bin/marp` or `C:\Users\you\AppData\Roaming\npm\marp.cmd`.
 
-The opt-in npx fallback uses `@marp-team/marp-cli@4.5.0`. It requires Node.js/npm and may download the package on first use. Recommend a global Marp CLI ≥ 4.5.0 when not using npx.
+The supported CLI version is exactly **4.5.0**. The opt-in npx fallback uses
+`@marp-team/marp-cli@4.5.0`; it requires Node.js/npm and may download the package
+on first use. Auto-detected incompatible versions can fall back to this pinned
+package. An explicitly configured incompatible CLI path fails with an actionable
+version error.
+
+Manual release installs include four runtime assets: `main.js`, `manifest.json`,
+`styles.css`, and `marp-engine.cjs`. Community-plugin installs receive Obsidian's
+standard three assets; `main.js` contains the same compressed engine and
+materializes a SHA-256-checked, content-addressed engine file on first export.
 
 > ⚠️ PDF and PPTX export require Google Chrome, Chromium, or Microsoft Edge. You can set a custom browser path with the `CHROME_PATH` setting if Marp CLI cannot auto-detect your browser.
 
@@ -144,7 +193,7 @@ npm test -- --runInBand
 npm run build
 ```
 
-For live Obsidian testing, copy `.env.local.example` to `.env.local` and set `OBSIDIAN_VAULT` to your vault path. `npm run dev` and `npm run build` will then auto-copy `main.js`, `manifest.json`, and `styles.css` into `<vault>/.obsidian/plugins/marp-extended/`. Reload the dev plugin with the Obsidian CLI:
+For live Obsidian testing, copy `.env.local.example` to `.env.local` and set `OBSIDIAN_VAULT` to your vault path. `npm run dev` and `npm run build` will then auto-copy `main.js`, `manifest.json`, `styles.css`, and `marp-engine.cjs` into `<vault>/.obsidian/plugins/marp-extended/`. Reload the dev plugin with the Obsidian CLI:
 
 ```bash
 npm run obsidian:reload
@@ -155,7 +204,7 @@ Useful scripts:
 | Command | Description |
 | --- | --- |
 | `npm run dev` | Watch build for local development |
-| `npm run build` | Typecheck and produce production `main.js` |
+| `npm run build` | Typecheck, build `main.js` + `marp-engine.cjs`, and smoke-test the standalone engine |
 | `npm run typecheck` | Run TypeScript checks only |
 | `npm run lint` | Run ESLint over `src` and `tests` |
 | `npm run check:specs` | Validate tracked specs under `specs/` |
@@ -170,7 +219,12 @@ Useful scripts:
 
 Developer guidance lives in [`AGENTS.md`](AGENTS.md). Release notes live in [`CHANGELOG.md`](CHANGELOG.md).
 
-Current Marp-related runtime dependencies center on `@marp-team/marp-core` `5.0.0` (npm `next` / RC) with curated plugins (Shiki, MathJax) plus `beautiful-mermaid` for the custom Mermaid stack. In-Obsidian preview uses Core 5; export still uses an external `@marp-team/marp-cli` executable or optional npx fallback pinned at `4.5.0` (CLI embeds Core 4.x until a Core-5-tracking CLI ships). Marp Extended does not bundle Marp CLI into `main.js`.
+Current Marp-related runtime dependencies center on `@marp-team/marp-core`
+`5.0.0` with curated plugins (Shiki, MathJax) plus `beautiful-mermaid` for the
+custom Mermaid stack. Preview and export both instantiate the shipped Core 5
+engine; export uses Marp CLI 4.5.0 only as the host for templates, browser-backed
+formats, and file orchestration. Marp Extended does not bundle Marp CLI into
+`main.js`.
 
 Theme authors: Core 5 highlights code with Shiki. Prefer `--marp-shiki-*` CSS variables on `section` instead of `.hljs-*` classes.
 
@@ -179,6 +233,11 @@ Preview ships a **curated Shiki language subset** (common web/systems/data langu
 The packaged Kami theme styles code blocks after upstream Kami code-card language: ivory fill, soft border, mono ~10pt, `width: fit-content; max-width: 100%`. One `kami` theme covers Chinese and English: omit `lang` (or `zh*`) for CN metrics; set `lang: en` for the former `kami-en` metrics.
 
 ## Security note
+
+Slide HTML is enabled for Extended wrappers, inline Mermaid SVG, and legacy raw
+HTML. The Obsidian preview iframe is sandboxed without script permission, but an
+HTML export follows Marp CLI `--html` behavior and may execute author-supplied
+scripts when opened. Treat decks and themes as trusted author content.
 
 Runtime and development dependencies audit clean with `npm audit` and `npm audit --omit=dev`.
 

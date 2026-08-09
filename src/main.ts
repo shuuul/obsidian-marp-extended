@@ -53,7 +53,7 @@ export default class MarpExtended extends Plugin {
 
 		this.registerView(
 			MARP_PREVIEW_VIEW,
-			(leaf) => new MarpPreviewView(this.settings, leaf)
+			(leaf) => new MarpPreviewView(this.settings, leaf, this.manifest.dir)
 		);
 
 		addIcon('slides-preview-marp', ICON_SLIDE_PREVIEW);
@@ -124,7 +124,7 @@ export default class MarpExtended extends Plugin {
 
 	async exportFile(type: string) {
 		const file = this.app.workspace.getActiveFile();
-		await exportWithNotice(this.settings, this.app, type, file);
+		await exportWithNotice(this.settings, this.app, type, file, this.manifest.dir);
 	}
 
 	async showPreviewSlide(){

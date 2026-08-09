@@ -53,6 +53,30 @@ If your plugin does not need CSS, delete this file.
 	margin-inline: auto;
 }
 
+.marp-extended-preview-fragment-controls {
+	align-items: center;
+	display: inline-flex;
+	gap: var(--size-2-1);
+}
+
+.marp-extended-preview-fragment-status {
+	color: var(--text-muted);
+	font-size: var(--font-ui-smaller);
+	min-width: 7.5em;
+}
+
+.marp-extended-presenter-notes {
+	background: var(--background-secondary);
+	border-top: 1px solid var(--background-modifier-border);
+	flex: 0 0 auto;
+	max-height: 35%;
+	overflow: auto;
+	padding: var(--size-4-3);
+	white-space: pre-wrap;
+}
+
+.marp-extended-presenter-notes[hidden] { display: none; }
+
 .marp-extended-preview-toolbar-button {
 	align-items: center;
 	background: transparent;
@@ -324,4 +348,3 @@ If your plugin does not need CSS, delete this file.
 	background: var(--background-modifier-hover);
 	color: var(--text-normal);
 }
-

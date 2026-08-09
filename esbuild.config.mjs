@@ -1,14 +1,17 @@
 import esbuild from "esbuild";
 import process from "process";
-import { builtinModules } from "node:module";
+import { builtinModules, createRequire } from "node:module";
 import path from "node:path";
 import {
 	copyFileSync,
 	existsSync,
 	mkdirSync,
+	readFileSync,
 	readdirSync,
 	rmSync,
 } from "node:fs";
+import { createHash } from "node:crypto";
+import { gzipSync } from "node:zlib";
 import { loadEnvLocal } from "./scripts/load-env-local.mjs";
 
 loadEnvLocal();
@@ -27,7 +30,7 @@ const OBSIDIAN_VAULT = process.env.OBSIDIAN_VAULT;
 const OBSIDIAN_PLUGIN_PATH = OBSIDIAN_VAULT && existsSync(OBSIDIAN_VAULT)
 	? path.join(OBSIDIAN_VAULT, ".obsidian", "plugins", "marp-extended")
 	: null;
-const OBSIDIAN_PLUGIN_DEPLOY_FILES = new Set(["main.js", "manifest.json", "styles.css"]);
+const OBSIDIAN_PLUGIN_DEPLOY_FILES = new Set(["main.js", "manifest.json", "styles.css", "marp-engine.cjs"]);
 const OBSIDIAN_PLUGIN_RUNTIME_FILES = new Set(["data.json"]);
 
 function pruneStaleObsidianPluginArtifacts(pluginPath) {
@@ -93,6 +96,87 @@ const marpShikiLangSubsetShim = {
 	},
 };
 
+const engineExternal = [
+	...builtinModules,
+	...builtinModules.map((moduleName) => `node:${moduleName}`),
+];
+
+function verifyStandaloneEngine() {
+	const enginePath = path.resolve("marp-engine.cjs");
+	const require = createRequire(import.meta.url);
+	delete require.cache[enginePath];
+	const engineModule = require(enginePath);
+	const createEngine = engineModule.default ?? engineModule;
+	const first = createEngine({ container: [], slideContainer: [] });
+	const second = createEngine({ container: [], slideContainer: [] });
+	const rendered = first.render([
+		"<!-- presenter note -->",
+		"# Runtime probe",
+		"",
+		"* fragment",
+		"",
+		"```ts",
+		"const answer: number = 42",
+		"```",
+		"",
+		"$E=mc^2$",
+	].join("\n"));
+	const checks = {
+		factory: typeof createEngine === "function" && first !== second,
+		comments: rendered.comments?.[0]?.[0] === "presenter note",
+		fragments: rendered.html.includes('data-marpit-fragment="1"'),
+		shiki: rendered.html.includes("shiki"),
+		mathjax: /mjx|MathJax/i.test(rendered.html),
+	};
+	const failed = Object.entries(checks).filter(([, passed]) => !passed).map(([name]) => name);
+	if (failed.length > 0) throw new Error(`Standalone engine smoke check failed: ${failed.join(", ")}`);
+}
+
+async function buildEngine() {
+	const result = await esbuild.build({
+		entryPoints: ["src/runtime/cliEngine.ts"],
+		bundle: true,
+		platform: "node",
+		format: "cjs",
+		target: "node20",
+		minify: true,
+		treeShaking: true,
+		metafile: true,
+		external: engineExternal,
+		plugins: [sourceMapQuickSortShim, marpShikiLangSubsetShim],
+		outfile: "marp-engine.cjs",
+		logLevel: "info",
+	});
+	const leaked = Object.keys(result.metafile.inputs).find((input) => /(?:^|[/\\])obsidian(?:[/\\]|$)/i.test(input));
+	if (leaked || /require\(["']obsidian["']\)/.test(readFileSync("marp-engine.cjs", "utf8"))) {
+		throw new Error(`Standalone engine must not import or externalize Obsidian${leaked ? `: ${leaked}` : "."}`);
+	}
+	if (prod) verifyStandaloneEngine();
+}
+
+const engineBuildPlugin = {
+	name: "build-standalone-marp-engine",
+	setup(build) {
+		build.onStart(buildEngine);
+	},
+};
+
+const embeddedEnginePlugin = {
+	name: "embedded-marp-engine",
+	setup(build) {
+		build.onResolve({ filter: /^marp-extended:embedded-engine$/ }, () => ({
+			path: "embedded-engine",
+			namespace: "marp-extended",
+		}));
+		build.onLoad({ filter: /.*/, namespace: "marp-extended" }, () => {
+			const bytes = readFileSync("marp-engine.cjs");
+			return {
+				contents: `export const gzipBase64=${JSON.stringify(gzipSync(bytes, { level: 9 }).toString("base64"))};export const sha256=${JSON.stringify(createHash("sha256").update(bytes).digest("hex"))};`,
+				loader: "js",
+			};
+		});
+	},
+};
 
 const context = await esbuild.context({
 	banner: {
@@ -100,7 +184,7 @@ const context = await esbuild.context({
 	},
 	entryPoints: ["src/main.ts"],
 	bundle: true,
-	plugins: [sourceMapQuickSortShim, marpShikiLangSubsetShim, copyToObsidian],
+	plugins: [engineBuildPlugin, sourceMapQuickSortShim, marpShikiLangSubsetShim, embeddedEnginePlugin, copyToObsidian],
 	platform: "node",
 	external: [
 		"obsidian",
@@ -141,5 +225,7 @@ if (prod) {
 	}
 	process.exit(0);
 } else {
+	// Shared runtime edits are inputs to the main bundle. Its onStart hook rebuilds
+	// the standalone artifact before refreshing the embedded payload.
 	await context.watch();
 }

@@ -1,8 +1,9 @@
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
-import { join } from 'node:path';
+import { basename, join } from 'node:path';
+import { execFileSync } from 'node:child_process';
 
 const MAIN_JS_MAX_BYTES = 5 * 1024 * 1024;
-const ROOT_RELEASE_ASSETS = new Set(['main.js', 'manifest.json', 'styles.css']);
+const ROOT_RELEASE_ASSETS = new Set(['main.js', 'manifest.json', 'styles.css', 'marp-engine.cjs']);
 const TEXT_EXTENSIONS_TO_SCAN = new Set(['.css', '.js', '.json', '.md', '.ts', '.tsx', '.mjs', '.cjs']);
 
 const bundleRules = [
@@ -36,25 +37,30 @@ function assertRequiredAssets() {
 		}
 	}
 
-	for (const name of readdirSync('.')) {
-		if (name.endsWith('.zip')) {
-			fail(`Unsupported ZIP release asset found: ${name}`);
+	const version = JSON.parse(readText('manifest.json')).version;
+	const zip = `marp-extended-${version}.zip`;
+	if (!existsSync(zip)) fail(`Missing required release archive: ${zip}`);
+	else {
+		const entries = execFileSync('unzip', ['-Z1', zip], { encoding: 'utf8' }).trim().split(/\r?\n/).filter(Boolean);
+		const expected = [...ROOT_RELEASE_ASSETS].sort();
+		if (entries.some((entry) => basename(entry) !== entry) || JSON.stringify(entries.sort()) !== JSON.stringify(expected)) {
+			fail(`Release archive must contain exactly these root files: ${expected.join(', ')}`);
 		}
 	}
 }
 
-function assertBundle() {
-	if (!existsSync('main.js')) {
+function assertBundle(path) {
+	if (!existsSync(path)) {
 		return;
 	}
 
-	const bytes = statSync('main.js').size;
-	console.log(`main.js bytes: ${bytes}`);
-	if (bytes > MAIN_JS_MAX_BYTES) {
+	const bytes = statSync(path).size;
+	console.log(`${path} bytes: ${bytes}`);
+	if (path === 'main.js' && bytes > MAIN_JS_MAX_BYTES) {
 		console.warn(`Warning: main.js is larger than ${MAIN_JS_MAX_BYTES} bytes.`);
 	}
 
-	const mainJs = readText('main.js');
+	const mainJs = readText(path);
 	for (const rule of bundleRules) {
 		if (rule.pattern.test(mainJs)) {
 			fail(`Blocked release bundle pattern: ${rule.name}`);
@@ -105,7 +111,8 @@ function assertNoRemoteCss() {
 }
 
 assertRequiredAssets();
-assertBundle();
+assertBundle('main.js');
+assertBundle('marp-engine.cjs');
 assertNoRemoteCss();
 
 if (process.exitCode) {

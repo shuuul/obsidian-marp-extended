@@ -135,7 +135,8 @@ section h3 {
   margin-bottom: 8pt;
 }
 
-.lead {
+.lead,
+.marp-extended-lead {
   font-family: var(--sans);
   font-size: 12pt;
   font-weight: 400;
@@ -145,7 +146,8 @@ section h3 {
   margin-bottom: 8pt;
 }
 
-.mt {
+.mt,
+.marp-extended-card-title {
   font-family: var(--serif);
   font-size: 16pt;
   font-weight: 500;
@@ -155,7 +157,8 @@ section h3 {
   margin-bottom: 8pt;
 }
 
-.ml {
+.ml,
+.marp-extended-card-label {
   font-family: var(--serif);
   font-size: 24pt;
   font-weight: 500;
@@ -203,7 +206,8 @@ section blockquote > :last-child {
   padding: 8pt 0;
 }
 
-.mc {
+.mc,
+.marp-extended-callout-mc {
   font-family: var(--sans);
   font-size: 9.5pt;
   line-height: 1.5;
@@ -214,7 +218,8 @@ section blockquote > :last-child {
   margin-top: var(--rhythm-section);
 }
 
-.co {
+.co,
+.marp-extended-callout-co {
   font-family: var(--sans);
   font-size: 11pt;
   font-weight: 500;
@@ -227,19 +232,22 @@ section blockquote > :last-child {
   right: 20mm;
 }
 
-.c2 {
+.c2,
+.marp-extended-columns {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 22pt;
 }
 
-table.t2x2 {
+table.t2x2,
+table.marp-extended-cards {
   width: 100%;
   border-collapse: separate;
   border-spacing: 22pt 18pt;
   margin: -18pt -22pt;
 }
-table.t2x2 td {
+table.t2x2 td,
+table.marp-extended-cards td {
   vertical-align: top;
   width: 50%;
 }
@@ -348,7 +356,8 @@ section.cover h1 {
   color: var(--near-black);
   margin-bottom: 12pt;
 }
-section.cover .sub {
+section.cover .sub,
+section.cover .marp-extended-subtitle {
   font-family: var(--sans);
   font-size: 14pt;
   line-height: 1.5;
@@ -357,7 +366,8 @@ section.cover .sub {
   max-width: 50ch;
   margin-bottom: 32pt;
 }
-section.cover .meta {
+section.cover .meta,
+section.cover .marp-extended-meta {
   font-family: var(--sans);
   font-size: 10pt;
   color: var(--stone);
@@ -466,4 +476,3 @@ section:lang(en).cover .meta {
   letter-spacing: 1.5pt;
   text-transform: uppercase;
 }
-

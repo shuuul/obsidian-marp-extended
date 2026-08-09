@@ -18,6 +18,9 @@ src/utilities/filePath.ts      # Vault/resource path resolution and image wiki-l
 src/utilities/marpExport.ts    # Marp CLI export orchestration
 src/utilities/mermaid.ts       # Mermaid fence rendering for preview/export
 src/utilities/icons.ts         # SVG icons registered with Obsidian
+src/runtime/marpEngine.ts      # Shared Core 5 semantic engine factory
+src/runtime/cliEngine.ts       # Standalone CLI engine entry point
+src/runtime/engineArtifact.ts  # Embedded engine integrity/materialization
 specs/                         # Tracked execution specs (Draft/Active) + archive/
 scripts/check-specs.mjs        # Spec tree validator
 tests/                         # Jest tests and Obsidian mocks
@@ -82,13 +85,19 @@ npm run obsidian:reload
 
 After completing code/config/style changes, refresh the local Obsidian dev plugin automatically: run `npm run build` so the updated runtime files are copied, then run `npm run obsidian:reload`. The reload script prefers `obsidian plugin:reload id=marp-extended`, uses `obsidian plugin:enable id=marp-extended filter=community` only when the plugin is installed but disabled, and then checks `obsidian dev:errors`. Do not run `plugin:enable` in parallel with a full `obsidian reload`; transient command registration during reload can report misleading “command not found” errors. If `OBSIDIAN_VAULT` is unset, the Obsidian CLI is unavailable, or Obsidian is not running, report that the reload could not be completed.
 
-Required runtime files for a local plugin install are:
+Required runtime files for a local/manual plugin install are:
 
 ```text
 main.js
 manifest.json
 styles.css
+marp-engine.cjs
 ```
+
+Obsidian Community installs only the standard first three assets. `main.js`
+embeds a compressed copy of `marp-engine.cjs`; first export verifies and
+materializes a content-addressed engine file in the plugin directory. Release
+archives and direct assets must still include the standalone `marp-engine.cjs`.
 
 `npm run analyze:bundle` writes `metafile.json` for the esbuild analyzer. Remove it after ad-hoc analysis unless a task explicitly asks to keep it.
 
@@ -144,7 +153,7 @@ Do not create tags or GitHub releases manually; let Release Please own them. `ve
 
 Preview flow: active `MarkdownView` → `MarpPreviewView.displaySlides()` → `FilePath` base path/wiki-link conversion → Marp Core render → preview pane update.
 
-Export flow: command/action → `MarpExport.export()` → `FilePath` source/theme/lib paths → optional wiki-link conversion → Marp CLI output.
+Export flow: command/action → `MarpExport.export()` → hash-checked Core 5 engine artifact → `FilePath` source/theme paths → optional wiki-link/Extended/Mermaid compilation → Marp CLI 4.5.0 with `--engine` → output.
 
 ## Runtime requirements
 
@@ -192,9 +201,11 @@ See `specs/README.md` for the full lifecycle.
 ## Gotchas
 
 - Export except HTML requires Chrome/Chromium/Edge or a configured `CHROME_PATH`.
+- Managed export requires Marp CLI 4.5.0. The pinned npx fallback supplies that version; explicit incompatible CLI paths fail validation.
+- Preview and export share Core 5 semantic options/plugins, but iframe/container/template/browser wrappers remain host-owned and are not expected to be pixel-identical.
 - `MarpExport.export()` writes processed Markdown to the resolved export source before invoking Marp CLI. Be careful with source-file mutation semantics.
 - Preview sync uses an `EditorSuggest` subclass as a cursor listener and counts `---` separators, with a lightweight frontmatter delimiter adjustment.
 - Runtime dependencies should audit clean with `npm audit --omit=dev`. Full `npm audit` may still report a dev-only `js-yaml` advisory through Jest/coverage tooling.
-- Keep `docs/` limited to short user-facing notes (`custom-css.md`, `kami-dsl.md`). Do not re-add a full documentation site or a `docs/superpowers` tree unless explicitly requested.
+- Keep `docs/` limited to short user-facing notes (`custom-css.md` and `marp-extended-syntax.md`). Do not re-add a full documentation site or a `docs/superpowers` tree unless explicitly requested.
 - Release notes live at root `CHANGELOG.md`.
 - Tracked specs live only under `specs/` (and `specs/archive/`).

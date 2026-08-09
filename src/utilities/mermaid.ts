@@ -1,5 +1,6 @@
 import { loadMermaid } from 'obsidian';
 import { renderMermaidSVG, type RenderOptions } from 'beautiful-mermaid';
+import { mermaidFencePlugin as pureMermaidFencePlugin } from '../runtime/mermaidFallback';
 
 type MarpMarkdownRenderer = {
 	utils: {
@@ -770,22 +771,5 @@ export async function renderMermaidFences(
 }
 
 export function mermaidFencePlugin(md: MarpMarkdownRenderer, options: MermaidPluginOptions = {}): void {
-	const defaultFence = md.renderer.rules.fence;
-
-	md.renderer.rules.fence = (tokens, idx, renderOptions, env, self) => {
-		const token = tokens[idx];
-		const { language, alt } = parseMermaidFenceInfo(md.utils.unescapeAll(token.info));
-
-		if (language !== 'mermaid') {
-			return defaultFence ? defaultFence(tokens, idx, renderOptions, env, self) : '';
-		}
-
-		try {
-			// Safety net after async pre-render: BM-supported diagrams only.
-			return renderBeautifulMermaidFigure(token.content, alt, options);
-		} catch (error) {
-			const message = error instanceof Error ? error.message : String(error);
-			return `<pre class="mermaid-render-error"><code>${md.utils.escapeHtml(message)}</code></pre>`;
-		}
-	};
+	pureMermaidFencePlugin(md, options);
 }

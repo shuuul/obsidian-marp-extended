@@ -18,12 +18,13 @@ type VaultFixture = {
 const tempDirectories: string[] = [];
 const shouldRunRealMarpExports = /^(1|true)$/i.test(process.env.RUN_REAL_MARP_EXPORTS ?? '') || Boolean(process.env.MARP_CLI_PATH);
 const MARP_CLI_PATH = process.env.MARP_CLI_PATH || (shouldRunRealMarpExports ? MarpExport.detectCliPath() : null) || 'marp';
-const testWithMarpCli = shouldRunRealMarpExports && spawnSync(MARP_CLI_PATH, ['--version'], { encoding: 'utf-8' }).status === 0
+const testWithMarpCli = shouldRunRealMarpExports
+	&& existsSync(join(process.cwd(), 'marp-engine.cjs'))
+	&& spawnSync(MARP_CLI_PATH, ['--version'], { encoding: 'utf-8' }).status === 0
 	? test
 	: test.skip;
 
 function createRealExportFixture(): VaultFixture {
-	const fixtureVaultRoot = join(process.cwd(), 'vault');
 	const tempVaultRoot = mkdtempSync(join(tmpdir(), 'marp-real-export-vault-'));
 	const markdownPath = 'samples/Kami.md';
 	const managedThemeDirectory = join(tempVaultRoot, '.marp-extended/themes');
@@ -32,12 +33,30 @@ function createRealExportFixture(): VaultFixture {
 	mkdirSync(managedThemeDirectory, { recursive: true });
 	writeFileSync(
 		join(tempVaultRoot, markdownPath),
-		readFileSync(join(fixtureVaultRoot, markdownPath), 'utf-8'),
+		[
+			'---',
+			'marp: true',
+			'theme: kami',
+			'paginate: true',
+			'---',
+			'# Managed Core 5 export',
+			'',
+			'* First fragment',
+			'* Second fragment',
+			'',
+			'```ts',
+			'const engine: "core-5" = "core-5"',
+			'```',
+			'',
+			'$E=mc^2$',
+			'',
+			'<!-- Real export presenter note -->',
+		].join('\n'),
 		'utf-8',
 	);
 	writeFileSync(
 		join(managedThemeDirectory, 'kami.css'),
-		readFileSync(join(fixtureVaultRoot, 'themes/kami.css'), 'utf-8'),
+		readFileSync(join(process.cwd(), 'assets/themes/kami.css'), 'utf-8'),
 		'utf-8',
 	);
 

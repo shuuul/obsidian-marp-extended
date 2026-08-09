@@ -21,6 +21,7 @@ Copy [000-template.md](000-template.md) to start a spec.
 | --- | --- | --- |
 | [001-fix-warnings-and-release-please.md](archive/001-fix-warnings-and-release-please.md) | 2026-07-08 | Encapsulated env access, CSS lint cleanups, and Release Please Obsidian metadata sync on the release PR branch. |
 | [002-marp-core-v5-migration.md](archive/002-marp-core-v5-migration.md) | 2026-08-09 | Preview on Marp Core 5.0.0 RC (Shiki+MathJax), CLI pin 4.5.0, custom Mermaid kept, Kami code styling, assets themes, docs/skills sync. |
+| [003-marp-extended-language-and-runtime.md](archive/003-marp-extended-language-and-runtime.md) | 2026-08-09 | Generic Extended language, shared preview/export Core 5 engine, fragments, presenter notes, and legacy Kami compatibility. |
 
 ## Numbering and files
 

@@ -1,9 +1,12 @@
 /** @jest-environment jsdom */
 
 import { ItemView, type MarkdownView, type TFile } from 'obsidian';
+import type { Marp } from '@marp-team/marp-core';
 import { expect, jest, test, beforeEach } from '@jest/globals';
 
 import { DEFAULT_SETTINGS } from '@/utilities/settings';
+import { loadMermaidThemeCssForFile } from '@/utilities/mermaidTheme';
+import { ThemeManager } from '@/utilities/themeManager';
 import { MarpPreviewView } from '@/views/marpPreviewView';
 import { marpPreviewViewTestAccess } from '../helpers/marpPreviewViewTestAccess';
 
@@ -46,6 +49,21 @@ function createPreviewView(appExtras: Record<string, unknown> = {}): MarpPreview
 	access.previewContainerEl = container;
 	access.previewIframeEl = iframe;
 	return view;
+}
+
+function addObsidianDomHelpers<T extends HTMLElement>(element: T): T {
+	const extended = element as T & {
+		createDiv(options?: { text?: string }): HTMLDivElement;
+		createEl<K extends keyof HTMLElementTagNameMap>(tag: K, options?: { text?: string }): HTMLElementTagNameMap[K];
+	};
+	extended.createEl = <K extends keyof HTMLElementTagNameMap>(tag: K, options?: { text?: string }) => {
+		const child = addObsidianDomHelpers(element.ownerDocument.createElement(tag));
+		if (options?.text != null) child.textContent = options.text;
+		element.appendChild(child);
+		return child;
+	};
+	extended.createDiv = (options?: { text?: string }) => extended.createEl('div', options);
+	return element;
 }
 
 beforeEach(() => {
@@ -159,4 +177,168 @@ test('preview view constructs with ItemView toolbar hooks', () => {
 
 	expect(view).toBeInstanceOf(ItemView);
 	expect(view.contentEl.querySelector('iframe')).not.toBeNull();
+});
+
+test('fragment actions follow numeric order, stop at boundaries, and cursor sync preserves progress', () => {
+	const view = createPreviewView();
+	const access = marpPreviewViewTestAccess(view);
+	const wrapper = document.createElement('div');
+	wrapper.innerHTML = '<section><i data-marpit-fragment="2"></i><b data-marpit-fragment="1"></b></section>';
+	(wrapper as unknown as { scrollIntoView: () => void }).scrollIntoView = jest.fn();
+	access.previewSlideEls = [wrapper];
+	access.fragmentStatusEl = document.createElement('span');
+	access.initializePreviewState([[]]);
+
+	view.nextFragment();
+	expect(wrapper.querySelector('[data-marpit-fragment="1"]')?.getAttribute('aria-hidden')).toBe('false');
+	expect(wrapper.querySelector('[data-marpit-fragment="2"]')?.getAttribute('aria-hidden')).toBe('true');
+	view.nextFragment();
+	view.nextFragment();
+	expect(access.fragmentRevealCounts).toEqual([2]);
+	view.onLineChanged(0);
+	expect(access.fragmentRevealCounts).toEqual([2]);
+	view.previousFragment();
+	view.resetActiveSlideFragments();
+	expect(access.fragmentRevealCounts).toEqual([0]);
+});
+
+test('comments map by logical wrapper and presenter notes use literal text with an empty state', () => {
+	const view = createPreviewView();
+	const access = marpPreviewViewTestAccess(view);
+	const first = document.createElement('div');
+	first.innerHTML = '<section></section><section data-marpit-advanced-background="content"></section>';
+	const second = document.createElement('div');
+	access.previewSlideEls = [first, second];
+	access.presenterNotesEl = addObsidianDomHelpers(document.createElement('div'));
+	access.initializePreviewState([['line one\nline two', '<img src=x onerror=alert(1)>'], []]);
+	view.togglePresenterNotes();
+
+	expect(access.presenterNotesEl.querySelectorAll('li')).toHaveLength(2);
+	expect(access.presenterNotesEl.textContent).toContain('<img src=x onerror=alert(1)>');
+	expect(access.presenterNotesEl.querySelector('img')).toBeNull();
+	access.activeSlideIndex = 1;
+	access.applyPreviewState();
+	expect(access.presenterNotesEl.textContent).toBe('No presenter notes for this slide.');
+});
+
+test('outer preview scrolling selects the nearest slide across iframe coordinates', async () => {
+	const view = createPreviewView();
+	const access = marpPreviewViewTestAccess(view);
+	const container = access.previewContainerEl;
+	const iframe = access.previewIframeEl;
+	const first = document.createElement('div');
+	const second = document.createElement('div');
+
+	if (!container || !iframe) throw new Error('Preview harness missing container or iframe');
+	access.previewSlideEls = [first, second];
+	container.getBoundingClientRect = () => ({ top: 100 } as DOMRect);
+	iframe.getBoundingClientRect = () => ({ top: -500 } as DOMRect);
+	first.getBoundingClientRect = () => ({ top: 0 } as DOMRect);
+	second.getBoundingClientRect = () => ({ top: 600 } as DOMRect);
+	access.registerPreviewScrollTracking();
+
+	container.dispatchEvent(new Event('scroll'));
+	await new Promise((resolve) => window.requestAnimationFrame(resolve));
+
+	expect(access.activeSlideIndex).toBe(1);
+});
+
+test('serializes preview commits so stale iframe loads cannot initialize newer state', async () => {
+	const view = createPreviewView();
+	const access = marpPreviewViewTestAccess(view);
+	const pending: Array<() => void> = [];
+	const renderSpy = jest.spyOn(access, 'renderPreviewDocument').mockImplementation(() => (
+		new Promise<void>((resolve) => pending.push(resolve))
+	));
+	jest.spyOn(access, 'applyPreviewZoom').mockImplementation(() => undefined);
+	const staleSlide = document.createElement('div');
+	staleSlide.innerHTML = '<i data-marpit-fragment="1"></i>';
+	const currentSlide = document.createElement('div');
+	currentSlide.innerHTML = '<i data-marpit-fragment="1"></i><i data-marpit-fragment="2"></i>';
+
+	access.displaySlidesRevision = 1;
+	access.previewSlideEls = [staleSlide];
+	const staleCommit = access.commitPreviewRender(1, '<html>stale</html>', [['stale note']]);
+	await new Promise((resolve) => setTimeout(resolve, 0));
+	access.displaySlidesRevision = 2;
+	const currentCommit = access.commitPreviewRender(2, '<html>current</html>', [['current note']]);
+	await new Promise((resolve) => setTimeout(resolve, 0));
+	expect(renderSpy).toHaveBeenCalledTimes(1);
+
+	pending.shift()?.();
+	await staleCommit;
+	await new Promise((resolve) => setTimeout(resolve, 0));
+	expect(renderSpy).toHaveBeenCalledTimes(2);
+	access.previewSlideEls = [currentSlide];
+	pending.shift()?.();
+	await currentCommit;
+
+	expect(access.fragmentTotals).toEqual([2]);
+	expect(access.presenterComments).toEqual([['current note']]);
+	expect(renderSpy).toHaveBeenLastCalledWith('<html>current</html>');
+});
+
+test('uses a fresh render-local engine when theme loads finish out of order', async () => {
+	const view = createPreviewView();
+	const access = marpPreviewViewTestAccess(view);
+	const sourceFile = {
+		path: 'slides/deck.md',
+		parent: { path: 'slides' },
+		vault: {
+			adapter: {
+				write: async () => undefined,
+				getResourcePath: (path: string) => `app://local/${path}`,
+			},
+			getConfig: () => 'relative',
+		},
+	} as unknown as TFile;
+	const markdownView = {
+		file: sourceFile,
+		getViewData: () => '---\nmarp: true\n---\n\n# Current',
+		app: { vault: sourceFile.vault },
+	} as unknown as MarkdownView;
+	let resolveStaleTheme: (themes: string[]) => void = () => undefined;
+	let resolveCurrentMermaid: (css: string) => void = () => undefined;
+	const staleTheme = new Promise<string[]>((resolve) => {
+		resolveStaleTheme = resolve;
+	});
+	const currentMermaid = new Promise<string>((resolve) => {
+		resolveCurrentMermaid = resolve;
+	});
+
+	const themeManagerMock = ThemeManager as jest.MockedClass<typeof ThemeManager>;
+	themeManagerMock
+		.mockImplementationOnce(() => ({ loadThemeCss: () => staleTheme }) as unknown as jest.Mocked<ThemeManager>)
+		.mockImplementationOnce(() => ({ loadThemeCss: async () => ['current-theme'] }) as unknown as jest.Mocked<ThemeManager>);
+	jest.mocked(loadMermaidThemeCssForFile).mockImplementationOnce(() => currentMermaid);
+
+	const engines: Array<{ themes: string[]; engine: Marp }> = [];
+	jest.spyOn(access, 'createMarp').mockImplementation(() => {
+		const themes: string[] = [];
+		const engine = {
+			themeSet: { add: (theme: string) => themes.push(theme) },
+			render: () => ({ html: `<section>${themes.join(',')}</section>`, css: '', comments: [] }),
+		} as unknown as Marp;
+		engines.push({ themes, engine });
+		return engine;
+	});
+	let capturedHtml = '';
+	jest.spyOn(access, 'renderPreviewDocument').mockImplementation(async (html: string) => {
+		capturedHtml = html;
+	});
+
+	const staleDisplay = view.displaySlides(markdownView, '# Stale');
+	await Promise.resolve();
+	const currentDisplay = view.displaySlides(markdownView, '# Current');
+	await Promise.resolve();
+	await Promise.resolve();
+	resolveStaleTheme(['stale-theme']);
+	await staleDisplay;
+	resolveCurrentMermaid('');
+	await currentDisplay;
+
+	expect(engines).toHaveLength(1);
+	expect(engines[0]?.themes).toEqual(['current-theme']);
+	expect(capturedHtml).toContain('current-theme');
+	expect(capturedHtml).not.toContain('stale-theme');
 });

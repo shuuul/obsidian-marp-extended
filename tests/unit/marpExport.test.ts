@@ -78,7 +78,10 @@ function createMockChildProcess(result: {
 }
 
 function mockCliSuccess(stdout = '', stderr = ''): void {
-	spawnMock.mockImplementation(() => createMockChildProcess({ stdout, stderr }));
+	spawnMock.mockImplementation((_executable, args) => createMockChildProcess({
+		stdout: args[args.length - 1] === '--version' ? (stdout || '4.5.0\n') : stdout,
+		stderr,
+	}));
 }
 
 function getLastCliExecutable(): string {
@@ -182,14 +185,14 @@ test('export selects a file and passes output path to external Marp CLI', async 
 		defaultPath: 'vault/slides/deck.pdf',
 		filters: [{ name: 'PDF', extensions: ['pdf'] }],
 	});
-	expect(spawnMock).toHaveBeenCalledTimes(1);
+	expect(spawnMock).toHaveBeenCalledTimes(2);
 	expectMarpExecutable(getLastCliExecutable());
 	expect(getLastCliArgs()).toEqual(expect.arrayContaining([
 		'--pdf',
 		'-o',
 		'/tmp/export/custom.pdf',
 	]));
-	expect(getLastCliArgs()).not.toContain('--engine');
+	expect(getLastCliArgs()).toEqual(expect.arrayContaining(['--engine', expect.stringMatching(/marp-engine\.cjs$/), '--html']));
 	expect(getLastCliOptions().stdio).toEqual(['ignore', 'pipe', 'pipe']);
 });
 
@@ -203,6 +206,53 @@ test('export uses configured Marp CLI path when provided', async () => {
 	await exporter.export(createFile(), 'pdf');
 
 	expect(getLastCliExecutable()).toBe('/opt/homebrew/bin/marp');
+});
+
+test('export accepts the standard Marp CLI 4.5.0 version banner', async () => {
+	mockSaveDialog({ canceled: false, filePath: '/tmp/export/custom.html' });
+	mockCliSuccess('@marp-team/marp-cli v4.5.0 (w/ @marp-team/marp-core v4.4.0)\n');
+	const exporter = new MarpExport({
+		...DEFAULT_SETTINGS,
+		MARP_CLI_PATH: '/opt/homebrew/bin/marp',
+	});
+
+	await exporter.export(createFile(), 'html');
+
+	expect(spawnMock).toHaveBeenCalledTimes(2);
+	expect(getLastCliExecutable()).toBe('/opt/homebrew/bin/marp');
+});
+
+test('export rejects an explicitly configured incompatible Marp CLI', async () => {
+	mockSaveDialog({ canceled: false, filePath: '/tmp/export/custom.html' });
+	mockCliSuccess('@marp-team/marp-cli v4.4.0 (w/ @marp-team/marp-core v4.4.0)\n');
+	const exporter = new MarpExport({
+		...DEFAULT_SETTINGS,
+		MARP_CLI_PATH: '/opt/homebrew/bin/marp',
+	});
+
+	await expect(exporter.export(createFile(), 'html')).rejects.toThrow('requires exactly 4.5.0');
+	expect(spawnMock).toHaveBeenCalledTimes(1);
+});
+
+test('export replaces an incompatible auto-detected CLI with the pinned npx host', async () => {
+	mockSaveDialog({ canceled: false, filePath: '/tmp/export/custom.html' });
+	spawnMock
+		.mockImplementationOnce(() => createMockChildProcess({
+			stdout: '@marp-team/marp-cli v4.4.0 (w/ @marp-team/marp-core v4.4.0)\n',
+		}))
+		.mockImplementationOnce(() => createMockChildProcess());
+	const exporter = new MarpExport({
+		...DEFAULT_SETTINGS,
+		MARP_CLI_USE_NPX: true,
+	});
+
+	await exporter.export(createFile(), 'html');
+
+	expect(spawnMock).toHaveBeenCalledTimes(2);
+	expectNpxExecutable(spawnMock.mock.calls[1][0]);
+	expect(spawnMock.mock.calls[1][1]).toEqual(expect.arrayContaining([
+		'--yes', '--package', NPX_MARP_CLI_PACKAGE, 'marp', '--engine',
+	]));
 });
 
 test('Marp CLI version check runs the configured executable', async () => {
@@ -340,7 +390,8 @@ test('export converts wiki-links through a temporary markdown file without chang
 	mkdirSync(exportDirectory, { recursive: true });
 	linkedImage.path = 'assets/image.png';
 	mockSaveDialog({ canceled: false, filePath: join(exportDirectory, 'deck.pdf') });
-	spawnMock.mockImplementationOnce((_executable, args) => {
+	spawnMock.mockImplementation((_executable, args) => {
+		if (args[args.length - 1] === '--version') return createMockChildProcess({ stdout: '4.5.0\n' });
 		temporarySourcePath = args[0];
 		expect(temporarySourcePath).not.toBe(sourcePath);
 		expect(dirname(temporarySourcePath)).toBe(dirname(sourcePath));
@@ -356,7 +407,7 @@ test('export converts wiki-links through a temporary markdown file without chang
 			getFirstLinkpathDest: jest.fn(() => linkedImage),
 		},
 	} as unknown as App;
-	const exporter = new MarpExport(DEFAULT_SETTINGS, app);
+	const exporter = new MarpExport(DEFAULT_SETTINGS, app, '.obsidian/plugins/marp-extended');
 
 	const outputPath = await exporter.export(file, 'pdf-with-notes');
 
@@ -389,7 +440,8 @@ test('export injects selected Mermaid theme CSS and flat mode into the temporary
 	});
 	(file.vault.adapter as any).read = async (path: string) => readFileSync(join(root, path), 'utf-8');
 	mockSaveDialog({ canceled: false, filePath: join(exportDirectory, 'deck.html') });
-	spawnMock.mockImplementationOnce((_executable, args) => {
+	spawnMock.mockImplementation((_executable, args) => {
+		if (args[args.length - 1] === '--version') return createMockChildProcess({ stdout: '4.5.0\n' });
 		temporarySourcePath = args[0];
 		const processed = readFileSync(temporarySourcePath, 'utf-8');
 		expect(processed).toMatch(/^---\ntheme: kami\nmermaidTheme: accent\nmermaidFlat: true\n---\s*<style class="marp-extended-mermaid-theme">/);
@@ -410,7 +462,7 @@ test('export injects selected Mermaid theme CSS and flat mode into the temporary
 			getFirstLinkpathDest: jest.fn(() => null),
 		},
 	} as unknown as App;
-	const exporter = new MarpExport(DEFAULT_SETTINGS, app);
+	const exporter = new MarpExport(DEFAULT_SETTINGS, app, '.obsidian/plugins/marp-extended');
 
 	await exporter.export(file, 'html');
 
@@ -441,12 +493,13 @@ test('export compiles Kami comment markers in the temporary markdown file', asyn
 
 	mkdirSync(exportDirectory, { recursive: true });
 	mockSaveDialog({ canceled: false, filePath: join(exportDirectory, 'deck.html') });
-	spawnMock.mockImplementationOnce((_executable, args) => {
+	spawnMock.mockImplementation((_executable, args) => {
+		if (args[args.length - 1] === '--version') return createMockChildProcess({ stdout: '4.5.0\n' });
 		temporarySourcePath = args[0];
 		const processed = readFileSync(temporarySourcePath, 'utf-8');
 		expect(processed).toContain('<!-- _class: cover -->');
 		expect(processed).toContain('<!-- _paginate: false -->');
-		expect(processed).toContain('<div class="c2">');
+		expect(processed).toContain('<div class="c2 marp-extended-columns marp-extended-columns-2">');
 		expect(processed).not.toContain('%%marp-slide');
 		expect(processed).not.toContain('%%marp-cols');
 		expect(processed).not.toContain('%%marp-col');
@@ -461,7 +514,7 @@ test('export compiles Kami comment markers in the temporary markdown file', asyn
 			getFirstLinkpathDest: jest.fn(() => null),
 		},
 	} as unknown as App;
-	const exporter = new MarpExport(DEFAULT_SETTINGS, app);
+	const exporter = new MarpExport(DEFAULT_SETTINGS, app, '.obsidian/plugins/marp-extended');
 
 	await exporter.export(file, 'html');
 
@@ -513,11 +566,13 @@ test('export throws an actionable error when Marp CLI is missing', async () => {
 
 test('export throws when Marp CLI returns a failing exit status', async () => {
 	mockSaveDialog({ canceled: false, filePath: '/tmp/export/deck.html' });
-	spawnMock.mockImplementationOnce(() => createMockChildProcess({
-		exitCode: 1,
-		stdout: 'stdout details',
-		stderr: 'stderr details',
-	}));
+	spawnMock
+		.mockImplementationOnce(() => createMockChildProcess({ stdout: '4.5.0\n' }))
+		.mockImplementationOnce(() => createMockChildProcess({
+			exitCode: 1,
+			stdout: 'stdout details',
+			stderr: 'stderr details',
+		}));
 	const exporter = new MarpExport(DEFAULT_SETTINGS);
 	const exportPromise = exporter.export(createFile(), 'html');
 
@@ -527,10 +582,12 @@ test('export throws when Marp CLI returns a failing exit status', async () => {
 
 test('export explains missing browser errors from Marp CLI output', async () => {
 	mockSaveDialog({ canceled: false, filePath: '/tmp/export/deck.pdf' });
-	spawnMock.mockImplementationOnce(() => createMockChildProcess({
-		exitCode: 1,
-		stderr: 'NOT_FOUND_CHROMIUM',
-	}));
+	spawnMock
+		.mockImplementationOnce(() => createMockChildProcess({ stdout: '4.5.0\n' }))
+		.mockImplementationOnce(() => createMockChildProcess({
+			exitCode: 1,
+			stderr: 'NOT_FOUND_CHROMIUM',
+		}));
 	const exporter = new MarpExport(DEFAULT_SETTINGS);
 
 	await expect(exporter.export(createFile(), 'pdf')).rejects.toThrow('could not find Chrome, Chromium, or Microsoft Edge');
@@ -581,6 +638,9 @@ test('PDF export retries through npx when browser is missing and npx fallback is
 	mockSaveDialog({ canceled: false, filePath: '/tmp/export/deck.pdf' });
 	spawnMock
 		.mockImplementationOnce(() => createMockChildProcess({
+			stdout: '@marp-team/marp-cli v4.5.0 (w/ @marp-team/marp-core v4.4.0)\n',
+		}))
+		.mockImplementationOnce(() => createMockChildProcess({
 			exitCode: 1,
 			stderr: 'could not find chrome',
 		}))
@@ -592,9 +652,11 @@ test('PDF export retries through npx when browser is missing and npx fallback is
 
 	await exporter.export(createFile(), 'pdf');
 
-	expect(spawnMock).toHaveBeenCalledTimes(2);
-	expectNpxExecutable(spawnMock.mock.calls[1][0]);
-	expect(spawnMock.mock.calls[1][1]).toEqual(expect.arrayContaining([
+	expect(spawnMock).toHaveBeenCalledTimes(3);
+	expectMarpExecutable(spawnMock.mock.calls[1][0]);
+	expect(spawnMock.mock.calls[1][1]).toEqual(expect.arrayContaining(['--pdf', '--engine']));
+	expectNpxExecutable(spawnMock.mock.calls[2][0]);
+	expect(spawnMock.mock.calls[2][1]).toEqual(expect.arrayContaining([
 		'--yes',
 		'--package',
 		NPX_MARP_CLI_PACKAGE,
@@ -605,10 +667,12 @@ test('PDF export retries through npx when browser is missing and npx fallback is
 
 test('missing-browser stderr does not retry through npx when Marp CLI path is configured', async () => {
 	mockSaveDialog({ canceled: false, filePath: '/tmp/export/deck.pdf' });
-	spawnMock.mockImplementationOnce(() => createMockChildProcess({
-		exitCode: 1,
-		stderr: 'could not find chrome',
-	}));
+	spawnMock
+		.mockImplementationOnce(() => createMockChildProcess({ stdout: '4.5.0\n' }))
+		.mockImplementationOnce(() => createMockChildProcess({
+			exitCode: 1,
+			stderr: 'could not find chrome',
+		}));
 	const exporter = new MarpExport({
 		...DEFAULT_SETTINGS,
 		MARP_CLI_PATH: '/usr/local/bin/marp',
@@ -616,5 +680,7 @@ test('missing-browser stderr does not retry through npx when Marp CLI path is co
 	});
 
 	await expect(exporter.export(createFile(), 'pdf')).rejects.toThrow('could not find Chrome');
-	expect(spawnMock).toHaveBeenCalledTimes(1);
+	expect(spawnMock).toHaveBeenCalledTimes(2);
+	expect(spawnMock.mock.calls[1][0]).toBe('/usr/local/bin/marp');
+	expect(spawnMock.mock.calls[1][1]).toEqual(expect.arrayContaining(['--pdf', '--engine']));
 });

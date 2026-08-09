@@ -13,6 +13,7 @@ const baseConfig = {
 		'^@test/(.*)$': '<rootDir>/tests/$1',
 		'^obsidian$': '<rootDir>/tests/__mocks__/obsidian.ts',
 		'^beautiful-mermaid$': '<rootDir>/tests/__mocks__/beautiful-mermaid.ts',
+		'^marp-extended:embedded-engine$': '<rootDir>/tests/__mocks__/embeddedEngine.ts',
 	},
 };
 

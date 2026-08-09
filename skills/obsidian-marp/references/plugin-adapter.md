@@ -1,6 +1,8 @@
 # Marp Extended plugin adaptation notes
 
 These notes adapt upstream Marp syntax to this repository's Obsidian plugin. Source paths are relative to the repo root.
+The canonical user-facing marker contract lives in `docs/marp-extended-syntax.md`;
+keep this implementation-focused reference aligned with it.
 
 ## Plugin identity
 
@@ -9,7 +11,7 @@ These notes adapt upstream Marp syntax to this repository's Obsidian plugin. Sou
 - Package name: `marp-extended` (`package.json`).
 - Current version: `0.9.0` (`manifest.json`, `package.json`).
 - Repository: <https://github.com/shuuul/obsidian-marp-extended>.
-- Obsidian runtime files: `main.js`, `manifest.json`, `styles.css`.
+- Local/manual runtime files: `main.js`, `manifest.json`, `styles.css`, `marp-engine.cjs`. Community installs materialize a SHA-256-checked, content-addressed copy of the embedded engine on first export.
 - Generated `main.js` should not be edited by hand; change `src/` and run the build.
 - Node.js **≥ 20.19** required for local typecheck/build (Marp Core 5).
 
@@ -17,11 +19,14 @@ These notes adapt upstream Marp syntax to this repository's Obsidian plugin. Sou
 
 | Surface | Engine |
 | --- | --- |
-| In-Obsidian preview | `@marp-team/marp-core` **5.0.0** (RC) + plugins `shiki`, `mathjax` |
-| Export (npx pin) | `@marp-team/marp-cli@4.5.0` (embeds Core **^4.4.0**) |
-| Export (user CLI path) | Whatever is installed; recommend ≥ 4.5.0 |
+| In-Obsidian preview | Shared `@marp-team/marp-core` **5.0.0** factory + `shiki`, `mathjax`, Mermaid fallback |
+| Export host | Exactly `@marp-team/marp-cli@4.5.0` + shipped Core 5 engine through `--engine` |
+| Explicit user CLI path | Accepted only when its reported CLI version is exactly 4.5.0 |
 
-Preview wires Marp in `src/views/marpPreviewView.ts` (`createMarp`): lightweight core + `.use(shikiPlugin())` + `.use(mathjaxPlugin())` + custom `mermaidFencePlugin`. **Do not** enable Core mermaid or KaTeX plugins in this product build.
+Preview and CLI engine entries call `src/runtime/marpEngine.ts`. Each call creates
+a fresh Marp instance with Shiki, MathJax, custom Mermaid fallback, inline SVG,
+HTML, CSS minification, and no injected Marp Core browser script. **Do not**
+enable Core Mermaid or KaTeX plugins in this product build.
 
 Shiki languages are a curated subset via esbuild alias of `#marp-shiki` → `src/shims/marp-shiki.cjs`.
 
@@ -69,16 +74,17 @@ Before calling Marp CLI, the plugin:
 
 1. Resolves a filesystem path for the source note (desktop only).
 2. Collects existing theme paths from `.marp-extended/themes`.
-3. Compiles Marp Extended Kami `%%marp-*%%` comment markers into Marp-compatible directives/HTML.
+3. Compiles generic Marp Extended and legacy Kami `%%marp-*%%` markers into Marp-compatible directives/HTML.
 4. Converts image wiki-links.
 5. Loads Mermaid theme CSS, parses `--bg/--fg/...` into beautiful-mermaid render options, and replaces Mermaid fences with inline SVG figures.
 6. Writes a temporary export source when content was transformed.
-7. Invokes Marp CLI (configured path, PATH detect, or npx pin `4.5.0`).
+7. Verifies/materializes the embedded Core 5 engine by SHA-256.
+8. Validates Marp CLI 4.5.0 (configured path, PATH detect, or npx pin) and invokes it with the engine.
 
 Typical CLI argv shape:
 
 ```text
-<source.md> --allow-local-files --html [--theme-set ...] [--browser-path ...] --pdf|--pptx|--template bespoke ...
+<source.md> --allow-local-files --engine <absolute marp-engine.cjs> --html [--theme-set ...] [--browser-path ...] --pdf|--pptx|--template bespoke ...
 ```
 
 Security note: `--allow-local-files` is necessary for vault resources but should only be used with trusted Markdown.
@@ -142,7 +148,7 @@ Obsidian-native notes:
 | --- | --- |
 | YAML frontmatter for deck globals | First-class Obsidian properties + Marpit front-matter |
 | `%%marp-slide[...]%%` for spot locals | Hidden in Reading view; compiles to `_` spot directives |
-| Kami `%%marp-*%%` layout markers | Stable Kami class wrappers without raw HTML noise |
+| Marp Extended `%%marp-*%%` layout markers | Stable namespaced classes plus Kami compatibility classes without raw HTML noise |
 | `![[img\|600]]` wiki-links | Vault-resolved paths; size aliases → `w`/`h` |
 | MathJax only | KaTeX not bundled in preview |
 | Shiki fence tags from the curated subset | Full Marp Core language pack is not shipped |
@@ -153,26 +159,29 @@ Wiki-links do not encode `bg` or filters — switch to standard `![]()` for thos
 
 See `references/syntax.md` for the full syntax matrix.
 
-## Kami comment-marker compiler
+## Marp Extended comment-marker compiler
 
-Preview (`src/views/marpPreviewView.ts`) and export (`src/utilities/marpExport.ts`) both run `compileKamiCommentBlocks` before Marp rendering. The compiler is implemented in `src/utilities/kamiDsl.ts`:
+Preview and export both run `compileMarpExtendedCommentBlocks` (backward-compatible
+alias: `compileKamiCommentBlocks`) before Marp rendering. The compiler is
+implemented in `src/utilities/kamiDsl.ts`:
 
 ```markdown
 %%marp-slide[class=cover paginate=false footer=""]%%
 
-%%marp-cols%%
+%%marp-columns%%
 ### Left
 
-%%marp-col%%
+%%marp-column%%
 
 ### Right
-%%/marp-cols%%
+%%/marp-columns%%
 ```
 
 - `%%marp-slide[...]%%` metadata becomes Marp spot directives such as `<!-- _class: cover -->`.
-- `%%marp-lead%%`, `%%marp-sub%%`, `%%marp-meta%%`, `%%marp-co%%`, `%%marp-mc%%`, `%%marp-note%%`, and `%%marp-callout[...]%%` become Kami theme class wrappers.
-- `%%marp-cols%%` and `%%marp-cards[2x2]%%` split children on hidden `%%marp-col%%` and `%%marp-card%%` marker lines.
-- Nested code fences such as `mermaid[...]` are preserved inside Kami blocks and are processed later by the Mermaid renderer/export preprocessor.
+- Canonical `subtitle`, `metadata`, `callout[variant=...]`, `columns`/`column`, and `cards[columns=N]` forms emit stable `marp-extended-*` classes.
+- Legacy `sub`, `meta`, `co`, `mc`, `note`, `cols`/`col`, and `cards[2x2]` forms and classes remain compatible.
+- Backtick/tilde CommonMark fences and nested blocks are preserved and processed by their later pipeline stages.
+- `%%marp-note%%` remains a visible `co` callout; presenter notes use ordinary Marpit HTML comments.
 
 ## Themes in this repo
 
@@ -191,5 +200,6 @@ When adding or advising custom themes:
 - PDF, PPTX, and image export require Chrome/Chromium/Edge or a configured browser path.
 - The plugin reports a friendly error when Marp CLI cannot find Chromium.
 - Export is desktop-only (`Platform.isDesktop`).
-- Preview (Core 5 / Shiki / MathJax v4) can differ from export (CLI 4.5 / Core 4) for code highlight and math rendering; Mermaid is largely aligned because fences are pre-rendered by the plugin.
+- Preview and managed export share Core 5 semantics. Container/template/browser wrappers and PDF/PPTX backends can still differ visually.
+- Explicit incompatible Marp CLI paths fail validation; auto-detected incompatible versions may use the pinned npx fallback when enabled.
 - Obsidian preview paths may differ from Node filesystem paths. The plugin normalizes paths for Marp CLI.

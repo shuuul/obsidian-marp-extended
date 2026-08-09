@@ -102,7 +102,7 @@ Not in scope:
 - Collapsing dual TypeScript package aliases.
 - Taking tooling canary/next tags.
 - Re-adding a full user documentation site under `docs/` (existing `docs/custom-css.md`
-  and `docs/kami-dsl.md` may gain a short note only if needed).
+  and `docs/marp-extended-syntax.md` may gain a short note only if needed).
 
 ## Decisions
 

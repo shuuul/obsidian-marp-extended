@@ -48,22 +48,29 @@ export class FilePath  {
         return adapter;
     }
 
-    private getVaultFileSystemPath(vault: Vault, normalizedPath: string): string {
-        const adapter = this.getDesktopFileSystemAdapter(vault);
+    public static resolveVaultFileSystemPath(vault: Vault, normalizedPath: string): string {
+        const adapter = vault.adapter as DesktopFileSystemAdapter;
+        if (typeof adapter.getBasePath !== 'function') {
+            throw new Error('Marp Extended requires Obsidian desktop file system access for export paths.');
+        }
         const path = normalizePath(normalizedPath);
 
         if (adapter.getFullPath) {
-            return this.normalizeFileSystemPath(adapter.getFullPath(path));
+            return FilePath.normalizeFileSystemPath(adapter.getFullPath(path));
         }
 
         if (adapter.getFilePath) {
-            return this.normalizeFileSystemPath(adapter.getFilePath(path));
+            return FilePath.normalizeFileSystemPath(adapter.getFilePath(path));
         }
 
-        return this.normalizeFileSystemPath(`${adapter.getBasePath()}/${path}`);
+        return FilePath.normalizeFileSystemPath(`${adapter.getBasePath()}/${path}`);
     }
 
-    private normalizeFileSystemPath(path: string): string {
+    private getVaultFileSystemPath(vault: Vault, normalizedPath: string): string {
+        return FilePath.resolveVaultFileSystemPath(vault, normalizedPath);
+    }
+
+    private static normalizeFileSystemPath(path: string): string {
         const cleanPath = path.split('?')[0];
 
         if (/^app:\/\//i.test(cleanPath)) {
@@ -71,9 +78,9 @@ export class FilePath  {
             if (match) {
                 const decoded = decodeURIComponent(match[1]);
                 if (decoded.startsWith('/') || /^[A-Za-z]:\//.test(decoded)) {
-                    return this.normalizeFilePathSeparators(decoded);
+                    return FilePath.normalizeFilePathSeparators(decoded);
                 }
-                return this.normalizeFilePathSeparators(`/${decoded}`);
+                return FilePath.normalizeFilePathSeparators(`/${decoded}`);
             }
         }
 
@@ -81,15 +88,15 @@ export class FilePath  {
             const url = new URL(cleanPath);
             const decoded = decodeURIComponent(url.pathname);
             if (/^\/[A-Za-z]:\//.test(decoded)) {
-                return this.normalizeFilePathSeparators(decoded.slice(1));
+                return FilePath.normalizeFilePathSeparators(decoded.slice(1));
             }
-            return this.normalizeFilePathSeparators(decoded);
+            return FilePath.normalizeFilePathSeparators(decoded);
         }
 
-        return this.normalizeFilePathSeparators(cleanPath);
+        return FilePath.normalizeFilePathSeparators(cleanPath);
     }
 
-    private normalizeFilePathSeparators(path: string): string {
+    private static normalizeFilePathSeparators(path: string): string {
         const normalized = path.replace(/\\/g, '/');
         const isAbsolute = normalized.startsWith('/');
         const hasDrivePrefix = /^[A-Za-z]:\//.test(normalized);

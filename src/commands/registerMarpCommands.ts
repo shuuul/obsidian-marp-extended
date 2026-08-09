@@ -2,6 +2,11 @@ import type MarpExtended from '../main';
 import { KAMI_TEMPLATE_COMMANDS, insertKamiTemplate } from '../utilities/kamiTemplates';
 
 export function registerMarpCommands(plugin: MarpExtended): void {
+	plugin.addCommand({ id: 'next-fragment', name: 'Next preview fragment', callback: () => plugin.getViewInstance(false)?.nextFragment() });
+	plugin.addCommand({ id: 'previous-fragment', name: 'Previous preview fragment', callback: () => plugin.getViewInstance(false)?.previousFragment() });
+	plugin.addCommand({ id: 'reset-fragments', name: 'Reset preview fragments', callback: () => plugin.getViewInstance(false)?.resetActiveSlideFragments() });
+	plugin.addCommand({ id: 'toggle-presenter-notes', name: 'Toggle preview presenter notes', callback: () => plugin.getViewInstance(false)?.togglePresenterNotes() });
+
 	plugin.addCommand({
 		id: 'preview',
 		name: 'Slide preview',

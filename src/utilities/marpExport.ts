@@ -13,6 +13,8 @@ import {
 	wrapMermaidThemeCss,
 } from './mermaidTheme';
 import { wrapBuiltinThemeScaleCss } from './builtinThemeScale';
+import { MARP_EXTENDED_STRUCTURAL_CSS } from './marpExtendedStructuralCss';
+import { ensureEngineArtifact } from '../runtime/engineArtifact';
 
 export class MarpCLIError extends Error {}
 
@@ -78,6 +80,7 @@ type NodeFsModule = typeof NodeFs;
 type NodePathModule = typeof NodePath;
 
 const DEFAULT_MARP_CLI_COMMAND = 'marp';
+const SUPPORTED_MARP_CLI_VERSION = '4.5.0';
 type MarpExtendedPackageMetadata = {
     marpExtended: {
         npxMarpCliPackage: string;
@@ -400,6 +403,15 @@ function getMarpCliOutput(error: MarpCliProcessError): string {
     return [error.stderr, error.stdout].filter((output) => output.trim().length > 0).join('\n').trim();
 }
 
+function parseMarpCliVersion(output: string): string | null {
+    const packageVersion = output.match(/@marp-team\/marp-cli\s+v?(\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?)/i);
+    if (packageVersion) {
+        return packageVersion[1];
+    }
+
+    return output.match(/^\s*v?(\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?)(?:\s|$)/)?.[1] ?? null;
+}
+
 function isMissingExecutable(error: MarpCliProcessError): boolean {
     return error.code === 'ENOENT';
 }
@@ -459,6 +471,7 @@ export class MarpExport {
 
     private settings : MarpExtendedSettings;
     private app : App | null;
+    private pluginDir: string | undefined;
 
     static detectCliPath(): string | null {
         return detectMarpCliPath();
@@ -473,9 +486,10 @@ export class MarpExport {
         return (result.stdout || result.stderr).trim();
     }
 
-    constructor(settings: MarpExtendedSettings, app: App | null = null) {
+    constructor(settings: MarpExtendedSettings, app: App | null = null, pluginDir?: string) {
         this.settings = settings;
         this.app = app;
+        this.pluginDir = pluginDir;
     }
 
     async export(file: TFile, type: string): Promise<string | null>{
@@ -486,6 +500,9 @@ export class MarpExport {
         if (this.shouldChooseExportDirectory(type) && outputPath == null) {
             return null;
         }
+        const enginePath = this.app
+            ? await ensureEngineArtifact(this.app, this.pluginDir)
+            : path.resolve('marp-engine.cjs');
 
         const sourceFilePath = filesTool.getExportFileSystemPath(file);
         const themePaths = filesTool.getThemePaths(file).filter((themePath) => fs.existsSync(themePath));
@@ -494,7 +511,7 @@ export class MarpExport {
             const completeFilePath = exportSource.path;
             //console.log(completeFilePath);
 
-            const argv: string[] = [completeFilePath,'--allow-local-files'];
+            const argv: string[] = [completeFilePath, '--allow-local-files', '--engine', enginePath, '--html'];
 
             if (themePaths.length > 0){
                 argv.push('--theme-set');
@@ -502,8 +519,6 @@ export class MarpExport {
             }
 
             this.pushBrowserPath(argv);
-            argv.push('--html');
-
             switch (type) {
                 case 'pdf':
                     argv.push('--pdf');
@@ -542,7 +557,37 @@ export class MarpExport {
 
     //async exportPdf(argv: string[], opts?: MarpCLIAPIOptions | undefined){
     private async run(argv: string[]): Promise<void> {
-        await execMarpCliWithFallback(this.settings, argv);
+        const primary = getPrimaryMarpCliInvocation(this.settings);
+        let invocation = primary;
+        try {
+            const versionResult = await execMarpCli(primary, ['--version'], this.settings);
+            const versionOutput = (versionResult.stdout || versionResult.stderr).trim();
+            const version = parseMarpCliVersion(versionOutput);
+            if (version !== SUPPORTED_MARP_CLI_VERSION) {
+                if (this.settings.MARP_CLI_PATH.trim()) {
+                    throw new MarpCLIError(`Configured Marp CLI version ${version ?? (versionOutput || 'unknown')} is incompatible; Marp Extended requires exactly ${SUPPORTED_MARP_CLI_VERSION}.`);
+                }
+                if (!this.settings.MARP_CLI_USE_NPX) {
+                    throw new MarpCLIError(`Detected Marp CLI version ${version ?? (versionOutput || 'unknown')} is incompatible; enable the pinned npx fallback (${SUPPORTED_MARP_CLI_VERSION}).`);
+                }
+                invocation = getNpxMarpCliInvocation();
+            }
+        } catch (error) {
+            if (error instanceof MarpCLIError) throw error;
+            if (!(error instanceof MarpCliProcessError)) throw error;
+            if (!this.settings.MARP_CLI_USE_NPX || this.settings.MARP_CLI_PATH.trim()) throw toUserFacingCliError(error);
+            invocation = getNpxMarpCliInvocation();
+        }
+
+        try {
+            await execMarpCli(invocation, argv, this.settings);
+        } catch (error) {
+            if (!(error instanceof MarpCliProcessError)) throw error;
+            if (invocation.isNpxFallback || !shouldUseNpxFallback(this.settings, argv, error)) throw toUserFacingCliError(error);
+            await execMarpCli(getNpxMarpCliInvocation(), argv, this.settings).catch((fallbackError: unknown) => {
+                throw fallbackError instanceof MarpCliProcessError ? toUserFacingCliError(fallbackError) : fallbackError;
+            });
+        }
     }
 
     private async prepareExportSource(
@@ -567,7 +612,7 @@ export class MarpExport {
         });
         const processedContent = insertMarkdownAfterFrontmatter(
             processedMarkdown,
-            `${wrapMermaidThemeCss(mermaidThemeCss)}${wrapBuiltinThemeScaleCss()}`,
+            `${wrapMermaidThemeCss(mermaidThemeCss)}${wrapBuiltinThemeScaleCss()}\n<style>${MARP_EXTENDED_STRUCTURAL_CSS}</style>`,
         );
         const needsTemporarySource = processedContent !== originalContent || filesTool.shouldUseRootExportSource(file);
 
@@ -703,6 +748,7 @@ export async function exportWithNotice(
     app: App,
     type: string,
     file: TFile | null,
+    pluginDir?: string,
 ): Promise<void> {
     if (!file) {
         new Notice('Open a Markdown file before exporting Marp slides.', 5000);
@@ -711,7 +757,7 @@ export async function exportWithNotice(
 
     let progressNotice: Notice | null = null;
     try {
-        const marpCli = new MarpExport(settings, app);
+        const marpCli = new MarpExport(settings, app, pluginDir);
         progressNotice = new Notice(`Exporting Marp slides as ${type.toUpperCase()}…`, 0);
         const outputPath = await marpCli.export(file, type);
         progressNotice.hide();

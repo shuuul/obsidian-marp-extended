@@ -1,18 +1,17 @@
 import { ItemView, setIcon, type WorkspaceLeaf, type MarkdownView, type TFile } from 'obsidian';
-import { Marp } from '@marp-team/marp-core'
+import type { Marp } from '@marp-team/marp-core'
 import { browser, type MarpCoreBrowser } from '@marp-team/marp-core/browser'
-import shikiPlugin from '@marp-team/marp-core/plugins/shiki'
-import mathjaxPlugin from '@marp-team/marp-core/plugins/mathjax'
 
 import type { MarpExtendedSettings } from '../utilities/settings'
 import { FilePath } from '../utilities/filePath'
 import { ThemeManager } from '../utilities/themeManager';
-import { mermaidFencePlugin } from '../utilities/mermaid';
+import { createMarpEngine } from '../runtime/marpEngine';
 import { compileMarkdownForMarp } from '../utilities/marpMarkdown';
 import { loadMermaidThemeCssForFile, parseMermaidRenderOptionsFromCss } from '../utilities/mermaidTheme';
 import { BUILTIN_THEME_SCALE_CSS } from '../utilities/builtinThemeScale';
 import { ThemeAssetCache } from '../utilities/themeAssetCache';
 import { exportWithNotice } from '../utilities/marpExport';
+import { MARP_EXTENDED_STRUCTURAL_CSS } from '../utilities/marpExtendedStructuralCss';
 import {
     PREVIEW_ZOOM_RESET,
     clampPreviewZoom,
@@ -50,6 +49,8 @@ body {
 	height: 100%;
 	width: 100%;
 }
+[data-marpit-fragment] { visibility: hidden; }
+[data-marpit-fragment][data-marp-extended-revealed="true"] { visibility: visible; }
 section .mermaid-diagram-container.mermaid-diagram {
 	align-items: center;
 	box-sizing: border-box;
@@ -94,9 +95,6 @@ section .mermaid-diagram-container.mermaid-diagram figcaption {
 `;
 
 export class MarpPreviewView extends ItemView  {
-    private marp: Marp; 
-    private themeCssSignature: string | null = null;
-    
     private marpBrowser: MarpCoreBrowser | undefined;
     private previewContainerEl: HTMLElement | undefined;
     private previewIframeEl: HTMLIFrameElement | undefined;
@@ -109,57 +107,46 @@ export class MarpPreviewView extends ItemView  {
     private zoomLabelEl: HTMLElement | undefined;
     private syncPreviewButtonEl: HTMLButtonElement | undefined;
     private syncPreviewEnabled = true;
+    private activeSlideIndex = 0;
+    private fragmentRevealCounts: number[] = [];
+    private fragmentTotals: number[] = [];
+    private presenterComments: string[][] = [];
+    private presenterNotesVisible = false;
+    private fragmentPreviousButtonEl: HTMLButtonElement | undefined;
+    private fragmentNextButtonEl: HTMLButtonElement | undefined;
+    private fragmentResetButtonEl: HTMLButtonElement | undefined;
+    private fragmentStatusEl: HTMLElement | undefined;
+    private notesToggleButtonEl: HTMLButtonElement | undefined;
+    private presenterNotesEl: HTMLElement | undefined;
+    private previewScrollDetach: (() => void) | undefined;
+    private previewScrollFrame: number | undefined;
+    private previewCommitQueue: Promise<void> = Promise.resolve();
     private displaySlidesRevision = 0;
     private previewProfileMeasureCounter = 0;
     private themeAssetCache: ThemeAssetCache;
     private settings : MarpExtendedSettings;
+    private pluginDir: string | undefined;
 
     private file : TFile | null = null;
 
-    constructor(settings: MarpExtendedSettings, leaf: WorkspaceLeaf) {
+    constructor(settings: MarpExtendedSettings, leaf: WorkspaceLeaf, pluginDir?: string) {
         super(leaf);
 
         this.settings = settings;
+        this.pluginDir = pluginDir;
         this.themeAssetCache = new ThemeAssetCache(this.app);
-
-        this.marp = this.createMarp();
     }
 
     private createMarp(): Marp {
-        return new Marp({
+        return createMarpEngine({
             container: { tag: 'div', id: '__marp-vscode' },
             slideContainer: { tag: 'div', 'data-marp-vscode-slide-wrapper': '' },
-            html: true,
-            inlineSVG: {
-                enabled: true,
-                backdropSelector: false
-            },
-            math: 'mathjax',
-            minifyCSS: true,
-            script: false
-          })
-            .use(shikiPlugin())
-            .use(mathjaxPlugin())
-            // Keep custom Mermaid stack; do not register Core mermaid plugin.
-            // KaTeX is intentionally not bundled — MathJax only.
-            .use(mermaidFencePlugin);
+        });
     }
 
-    private async reloadThemesIfChanged(): Promise<void> {
+    private async loadThemeCss(): Promise<string[]> {
         const themeManager = new ThemeManager(this.app);
-        const fileContents = await themeManager.loadThemeCss();
-        const signature = fileContents.join('\n/* marp-extended-theme-boundary */\n');
-
-        if (signature === this.themeCssSignature) {
-            return;
-        }
-
-        const marp = this.createMarp();
-        fileContents.forEach((content) => {
-            marp.themeSet.add(content);
-        });
-        this.marp = marp;
-        this.themeCssSignature = signature;
+        return themeManager.loadThemeCss();
     }
 
     getViewType() {
@@ -185,17 +172,22 @@ export class MarpPreviewView extends ItemView  {
             cls: 'marp-extended-preview-iframe',
             attr: {
                 title: 'Marp slide preview',
+                sandbox: 'allow-same-origin',
             },
         });
+        this.presenterNotesEl = this.contentEl.createDiv({ cls: 'marp-extended-presenter-notes' });
+        this.presenterNotesEl.id = 'marp-extended-presenter-notes';
+        this.presenterNotesEl.setAttribute('role', 'region');
+        this.presenterNotesEl.setAttribute('aria-label', 'Presenter notes');
+        this.registerPreviewScrollTracking();
         this.registerPreviewZoomGesture();
         this.registerPreviewZoomResizeObserver();
-
-        await this.reloadThemesIfChanged();
 
         this.addActions();
     }
 
     async onClose() {
+        this.displaySlidesRevision += 1;
         this.previewResizeObserver?.disconnect();
         this.previewResizeObserver = undefined;
         if (this.previewZoomApplyFrame !== undefined) {
@@ -204,6 +196,10 @@ export class MarpPreviewView extends ItemView  {
         }
         this.previewIframeZoomDetach?.();
         this.previewIframeZoomDetach = undefined;
+        this.previewScrollDetach?.();
+        this.previewScrollDetach = undefined;
+        if (this.previewScrollFrame !== undefined) window.cancelAnimationFrame(this.previewScrollFrame);
+        this.previewScrollFrame = undefined;
         this.previewSlideEls = [];
         this.previewMaxSlideWidth = 0;
         marpBrowserPolyfillReady = false;
@@ -223,8 +219,36 @@ export class MarpPreviewView extends ItemView  {
             return;
         }
 
+        this.activeSlideIndex = targetSlideIndex;
+        this.applyPreviewState();
         slide.scrollIntoView({ block: 'start', inline: 'nearest' });
 	}
+
+    nextFragment(): void {
+        const total = this.fragmentTotals[this.activeSlideIndex] ?? 0;
+        const count = this.fragmentRevealCounts[this.activeSlideIndex] ?? 0;
+        if (count >= total) return;
+        this.fragmentRevealCounts[this.activeSlideIndex] = count + 1;
+        this.applyPreviewState();
+    }
+
+    previousFragment(): void {
+        const count = this.fragmentRevealCounts[this.activeSlideIndex] ?? 0;
+        if (count <= 0) return;
+        this.fragmentRevealCounts[this.activeSlideIndex] = count - 1;
+        this.applyPreviewState();
+    }
+
+    resetActiveSlideFragments(): void {
+        if ((this.fragmentRevealCounts[this.activeSlideIndex] ?? 0) === 0) return;
+        this.fragmentRevealCounts[this.activeSlideIndex] = 0;
+        this.applyPreviewState();
+    }
+
+    togglePresenterNotes(): void {
+        this.presenterNotesVisible = !this.presenterNotesVisible;
+        this.applyPreviewState();
+    }
 
     isSyncPreviewEnabled() {
         return this.syncPreviewEnabled;
@@ -237,11 +261,30 @@ export class MarpPreviewView extends ItemView  {
     addPreviewToolbar(container: HTMLElement) {
         const toolbar = container.createDiv({ cls: 'marp-extended-preview-toolbar' });
         this.addSyncPreviewToolbarButton(toolbar);
+        this.addFragmentToolbarControls(toolbar);
         this.addZoomToolbarControls(toolbar);
         this.addPreviewToolbarButton(toolbar, 'code-glyph', 'Export as HTML', 'html');
         this.addPreviewToolbarButton(toolbar, 'slides-marp-export-pdf', 'Export as PDF', 'pdf');
         this.addPreviewToolbarButton(toolbar, 'slides-marp-export-pptx', 'Export as PPTX', 'pptx');
         this.addPreviewToolbarButton(toolbar, 'slides-marp-slide-present', 'Preview slides', 'preview');
+    }
+
+    private addFragmentToolbarControls(toolbar: HTMLElement): void {
+        const controls = toolbar.createDiv({ cls: 'marp-extended-preview-fragment-controls' });
+        const addButton = (label: string, text: string, action: () => void) => {
+            const element = controls.createEl('button', { cls: 'marp-extended-preview-toolbar-button', text,
+                attr: { type: 'button', title: label, 'aria-label': label } });
+            this.registerDomEvent(element, 'click', action);
+            return element;
+        };
+        this.fragmentPreviousButtonEl = addButton('Previous fragment', '‹', () => this.previousFragment());
+        this.fragmentNextButtonEl = addButton('Next fragment', '›', () => this.nextFragment());
+        this.fragmentResetButtonEl = addButton('Reset fragments', '↺', () => this.resetActiveSlideFragments());
+        this.fragmentStatusEl = controls.createSpan({ cls: 'marp-extended-preview-fragment-status' });
+        this.fragmentStatusEl.setAttribute('aria-live', 'polite');
+        this.notesToggleButtonEl = addButton('Toggle presenter notes', 'Notes', () => this.togglePresenterNotes());
+        this.notesToggleButtonEl.setAttribute('aria-controls', 'marp-extended-presenter-notes');
+        this.applyPreviewState();
     }
 
     private addSyncPreviewToolbarButton(toolbar: HTMLElement) {
@@ -464,6 +507,19 @@ export class MarpPreviewView extends ItemView  {
         });
     }
 
+    private commitPreviewRender(revision: number, html: string, comments: string[][]): Promise<void> {
+        const commit = this.previewCommitQueue.catch(() => undefined).then(async () => {
+            if (revision !== this.displaySlidesRevision) return;
+            await this.measurePreviewStepAsync('renderPreviewDocument', () => this.renderPreviewDocument(html));
+            if (revision !== this.displaySlidesRevision) return;
+            this.measurePreviewStep('applyPreviewZoom', () => this.applyPreviewZoom());
+            if (revision !== this.displaySlidesRevision) return;
+            this.initializePreviewState(comments);
+        });
+        this.previewCommitQueue = commit.catch(() => undefined);
+        return commit;
+    }
+
     private syncPreviewIframeSize(effectiveZoom: number): void {
         const iframe = this.previewIframeEl;
         const marpRoot = this.getPreviewDocument()?.getElementById('__marp-vscode');
@@ -505,6 +561,76 @@ export class MarpPreviewView extends ItemView  {
                 this.previewMaxSlideWidth = Math.max(this.previewMaxSlideWidth, dimensions[2]);
             }
         });
+    }
+
+    private initializePreviewState(comments: string[][]): void {
+        this.activeSlideIndex = Math.min(this.activeSlideIndex, Math.max(0, this.previewSlideEls.length - 1));
+        this.fragmentTotals = this.previewSlideEls.map((wrapper) => {
+            const values = Array.from(wrapper.querySelectorAll<HTMLElement>('[data-marpit-fragment]'))
+                .map((fragment) => Number(fragment.dataset.marpitFragment))
+                .filter((value) => Number.isFinite(value) && value > 0);
+            return values.length === 0 ? 0 : Math.max(...values);
+        });
+        this.fragmentRevealCounts = this.fragmentTotals.map(() => 0);
+        this.presenterComments = this.previewSlideEls.map((_, index) => comments[index] ?? []);
+        this.applyPreviewState();
+    }
+
+    private applyPreviewState(): void {
+        this.previewSlideEls.forEach((wrapper, slideIndex) => {
+            const revealCount = this.fragmentRevealCounts[slideIndex] ?? 0;
+            wrapper.querySelectorAll<HTMLElement>('[data-marpit-fragment]').forEach((fragment) => {
+                const revealed = Number(fragment.dataset.marpitFragment) <= revealCount;
+                fragment.dataset.marpExtendedRevealed = String(revealed);
+                fragment.setAttribute('aria-hidden', String(!revealed));
+            });
+        });
+        const total = this.fragmentTotals[this.activeSlideIndex] ?? 0;
+        const count = this.fragmentRevealCounts[this.activeSlideIndex] ?? 0;
+        if (this.fragmentStatusEl) this.fragmentStatusEl.textContent = `Fragment ${count} of ${total}`;
+        if (this.fragmentPreviousButtonEl) this.fragmentPreviousButtonEl.disabled = count === 0;
+        if (this.fragmentResetButtonEl) this.fragmentResetButtonEl.disabled = count === 0;
+        if (this.fragmentNextButtonEl) this.fragmentNextButtonEl.disabled = count >= total;
+        this.notesToggleButtonEl?.setAttribute('aria-expanded', String(this.presenterNotesVisible));
+        this.notesToggleButtonEl?.setAttribute('aria-pressed', String(this.presenterNotesVisible));
+        if (this.presenterNotesEl) {
+            this.presenterNotesEl.hidden = !this.presenterNotesVisible;
+            this.presenterNotesEl.replaceChildren();
+            const comments = this.presenterComments[this.activeSlideIndex] ?? [];
+            if (comments.length === 0) {
+                this.presenterNotesEl.createDiv({ text: 'No presenter notes for this slide.' });
+            } else {
+                const list = this.presenterNotesEl.createEl('ol');
+                comments.forEach((comment) => {
+                    list.createEl('li', { text: comment });
+                });
+            }
+        }
+    }
+
+    private registerPreviewScrollTracking(): void {
+        const container = this.previewContainerEl;
+        if (!container) return;
+        const onScroll = () => {
+            if (this.previewScrollFrame !== undefined) return;
+            this.previewScrollFrame = window.requestAnimationFrame(() => {
+                this.previewScrollFrame = undefined;
+                const containerTop = container.getBoundingClientRect().top;
+                const iframeTop = this.previewIframeEl?.getBoundingClientRect().top ?? containerTop;
+                let nearest = 0;
+                let distance = Infinity;
+                this.previewSlideEls.forEach((slide, index) => {
+                    const nextDistance = Math.abs(iframeTop + slide.getBoundingClientRect().top - containerTop);
+                    if (nextDistance < distance) { distance = nextDistance; nearest = index; }
+                });
+                if (this.previewSlideEls.length > 0 && nearest !== this.activeSlideIndex) {
+                    this.activeSlideIndex = nearest;
+                    this.applyPreviewState();
+                }
+            });
+        };
+        container.addEventListener('scroll', onScroll, { passive: true });
+        this.previewScrollDetach = () => container.removeEventListener('scroll', onScroll);
     }
 
     private isPreviewProfilingEnabled(): boolean {
@@ -651,7 +777,7 @@ export class MarpPreviewView extends ItemView  {
 
         this.previewResizeObserver?.disconnect();
         this.previewResizeObserver = new ResizeObserver(() => {
-            this.applyPreviewZoom();
+            this.schedulePreviewZoomApply();
         });
         this.previewResizeObserver.observe(this.previewContainerEl);
     }
@@ -676,7 +802,7 @@ export class MarpPreviewView extends ItemView  {
 
     private async exportFile(type: string) {
         const file = this.file ?? this.app.workspace.getActiveFile();
-        await exportWithNotice(this.settings, this.app, type, file);
+        await exportWithNotice(this.settings, this.app, type, file, this.pluginDir);
     }
     
     async displaySlides(view : MarkdownView, markdownOverride?: string) {
@@ -692,10 +818,14 @@ export class MarpPreviewView extends ItemView  {
             const filePath = new FilePath(this.settings);
             const previewBaseUrl = filePath.getPreviewBaseUrl(sourceFile);
             const markdownText = markdownOverride ?? view.getViewData();
-            await this.measurePreviewStepAsync('reloadThemesIfChanged', () => this.reloadThemesIfChanged());
+            const themeCss = await this.measurePreviewStepAsync('loadThemeCss', () => this.loadThemeCss());
             if (displayRevision !== this.displaySlidesRevision) {
                 return;
             }
+            const marp = this.createMarp();
+            themeCss.forEach((content) => {
+                marp.themeSet.add(content);
+            });
             const mermaidThemeCss = await this.measurePreviewStepAsync('loadMermaidThemeCss', () => (
                 loadMermaidThemeCssForFile(this.app, sourceFile, markdownText)
             ));
@@ -717,7 +847,7 @@ export class MarpPreviewView extends ItemView  {
             this.previewSlideEls = [];
             this.previewMaxSlideWidth = 0;
 
-            const rendered = this.measurePreviewStep('marp.render', () => this.marp.render(processedMarkdown));
+            const rendered = this.measurePreviewStep('marp.render', () => marp.render(processedMarkdown));
             if (displayRevision !== this.displaySlidesRevision) {
                 return;
             }
@@ -737,19 +867,13 @@ export class MarpPreviewView extends ItemView  {
 <html>
 <head>
 <base href="${previewBaseUrl}">
-<style id="__marp-vscode-style">${css}\n${mermaidThemeCss}\n${BUILTIN_THEME_SCALE_CSS}</style>
+<style id="__marp-vscode-style">${css}\n${mermaidThemeCss}\n${BUILTIN_THEME_SCALE_CSS}\n${MARP_EXTENDED_STRUCTURAL_CSS}</style>
 <style id="__marp-extended-preview-style">${PREVIEW_IFRAME_STYLE}</style>
 </head>
 <body>${html}</body>
 </html>`;
 
-            await this.measurePreviewStepAsync('renderPreviewDocument', () => this.renderPreviewDocument(htmlFile));
-            if (displayRevision !== this.displaySlidesRevision) {
-                return;
-            }
-            this.measurePreviewStep('applyPreviewZoom', () => {
-                this.applyPreviewZoom();
-            });
+            await this.commitPreviewRender(displayRevision, htmlFile, rendered.comments ?? []);
         } finally {
             this.endPreviewMeasure('displaySlides', displayStartMark);
         }

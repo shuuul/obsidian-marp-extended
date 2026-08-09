@@ -74,3 +74,11 @@ test('insertKamiTemplate does not branch on selection state beyond replaceSelect
 	expect(editor.replaceSelection).toHaveBeenCalledWith(command.template, 'marp-extended-template');
 	expect(editor.setSelection).toHaveBeenCalled();
 });
+
+test('legacy command IDs author generic canonical marker forms', () => {
+	expect(KAMI_TEMPLATE_COMMANDS.find((entry) => entry.id === 'insert-kami-sub-block')?.template).toContain('%%marp-subtitle%%');
+	expect(KAMI_TEMPLATE_COMMANDS.find((entry) => entry.id === 'insert-kami-meta-block')?.template).toContain('%%marp-metadata%%');
+	expect(KAMI_TEMPLATE_COMMANDS.find((entry) => entry.id === 'insert-kami-cols-block')?.template).toContain('%%marp-columns%%');
+	expect(KAMI_TEMPLATE_COMMANDS.find((entry) => entry.id === 'insert-kami-cards-2x2-block')?.template).toContain('[columns=2]');
+	expect(KAMI_TEMPLATE_COMMANDS.find((entry) => entry.id === 'insert-kami-callout-block')?.template).toContain('[variant=mc]');
+});

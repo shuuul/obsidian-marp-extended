@@ -3,255 +3,208 @@ type MarkerAttributes = {
 	values: Record<string, string>;
 };
 
-type KamiBlockName = 'lead' | 'sub' | 'meta' | 'co' | 'mc' | 'note' | 'callout' | 'cols' | 'cards';
+type BlockName = 'lead' | 'sub' | 'meta' | 'co' | 'mc' | 'note' | 'callout' | 'cols' | 'cards';
 
-const KAMI_BLOCK_CLASS_BY_NAME: Partial<Record<KamiBlockName, string>> = {
-	lead: 'lead',
-	sub: 'sub',
-	meta: 'meta',
-	co: 'co',
-	mc: 'mc',
-	note: 'co',
+const BLOCK_ALIASES: Record<string, BlockName> = {
+	lead: 'lead', subtitle: 'sub', sub: 'sub', metadata: 'meta', meta: 'meta',
+	co: 'co', mc: 'mc', note: 'note', callout: 'callout', columns: 'cols', cols: 'cols', cards: 'cards',
 };
 
-function escapeHtml(value: string): string {
-	return value
-		.replace(/&/g, '&amp;')
-		.replace(/</g, '&lt;')
-		.replace(/>/g, '&gt;')
-		.replace(/"/g, '&quot;');
+type Fence = { character: '`' | '~'; length: number };
+
+function fenceOpener(line: string): Fence | undefined {
+	const match = line.match(/^ {0,3}(`{3,}|~{3,})/);
+	if (!match) return undefined;
+	return { character: match[1][0] as Fence['character'], length: match[1].length };
 }
 
-function parseMarkerAttributes(rawInfo: string): MarkerAttributes {
-	const bracketMatch = rawInfo.match(/\[(.*)]/);
-	const rawAttributes = bracketMatch?.[1].trim() ?? '';
-	if (!rawAttributes) {
-		return { positional: [], values: {} };
-	}
+function closesFence(line: string, fence: Fence): boolean {
+	const match = line.match(/^ {0,3}(`+|~+)[ \t]*$/);
+	return Boolean(match && match[1][0] === fence.character && match[1].length >= fence.length);
+}
 
+function escapeHtml(value: string): string {
+	return value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+function parseMarkerAttributes(rawInfo: string): MarkerAttributes | undefined {
+	const rawAttributes = rawInfo.match(/\[(.*)]/)?.[1].trim() ?? '';
+	let quote: '"' | "'" | undefined;
+	for (let index = 0; index < rawAttributes.length; index += 1) {
+		const character = rawAttributes[index];
+		if (character !== '"' && character !== "'") continue;
+		if (!quote && (index === 0 || /[\s=]/.test(rawAttributes[index - 1]))) quote = character;
+		else if (quote === character) quote = undefined;
+	}
+	if (quote) return undefined;
 	const tokens = rawAttributes.match(/(?:[^\s"']+|"[^"]*"|'[^']*')+/g) ?? [];
 	const positional: string[] = [];
 	const values: Record<string, string> = {};
-
 	for (const token of tokens) {
 		const separatorIndex = token.indexOf('=');
-		if (separatorIndex === -1) {
-			positional.push(unquoteValue(token));
-			continue;
-		}
-
-		const key = token.slice(0, separatorIndex).trim();
-		const value = token.slice(separatorIndex + 1).trim();
-		if (key) {
-			values[key] = unquoteValue(value);
+		if (separatorIndex < 0) positional.push(unquoteValue(token));
+		else {
+			const key = token.slice(0, separatorIndex).trim();
+			if (key) values[key] = unquoteValue(token.slice(separatorIndex + 1).trim());
 		}
 	}
-
 	return { positional, values };
 }
 
 function unquoteValue(value: string): string {
-	if (value === '""' || value === "''") {
-		return value;
-	}
-
-	if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
-		return value.slice(1, -1);
-	}
-
+	if (value === '""' || value === "''") return value;
+	if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) return value.slice(1, -1);
 	return value;
 }
 
-function renderSlideMetadata(rawInfo: string): string {
-	const attributes = parseMarkerAttributes(rawInfo);
+function safeToken(value: string, fallback: string): string {
+	return value.toLowerCase().replace(/[^a-z0-9_-]+/g, '-').replace(/^-+|-+$/g, '') || fallback;
+}
+
+function practicalCount(value: string | undefined, fallback: number): number {
+	const count = Number.parseInt(value ?? '', 10);
+	return Number.isInteger(count) && count >= 1 && count <= 6 ? count : fallback;
+}
+
+function renderSlideMetadata(attributes: MarkerAttributes): string {
 	return Object.entries(attributes.values)
-		.map(([key, value]) => `<!-- ${key.startsWith('_') ? key : `_${key}`}: ${value} -->`)
-		.join('\n');
+		.map(([key, value]) => `<!-- ${key.startsWith('_') ? key : `_${key}`}: ${value} -->`).join('\n');
 }
 
 function renderClassBlock(className: string, body: string): string {
 	return `<div class="${escapeHtml(className)}">\n\n${body.trim()}\n\n</div>`;
 }
 
-function splitKamiSegments(body: string, separatorPattern: RegExp): string[] {
+function splitSegments(body: string, separatorNames: string[]): string[] {
 	const segments: string[] = [];
-	const currentSegment: string[] = [];
-	let nestedFence = false;
-
+	let current: string[] = [];
+	let fence: Fence | undefined;
 	for (const line of body.split(/\r?\n/)) {
-		if (nestedFence) {
-			currentSegment.push(line);
-			if (/^```[ \t]*$/.test(line)) {
-				nestedFence = false;
-			}
+		if (fence) {
+			current.push(line);
+			if (closesFence(line, fence)) fence = undefined;
 			continue;
 		}
-
-		if (separatorPattern.test(line)) {
-			const segment = currentSegment.join('\n').trim();
-			if (segment) {
-				segments.push(segment);
-			}
-			currentSegment.length = 0;
+		const separator = line.match(/^%%marp-([a-z]+)%%$/)?.[1];
+		if (separator && separatorNames.includes(separator)) {
+			if (current.join('\n').trim()) segments.push(current.join('\n').trim());
+			current = [];
 			continue;
 		}
-
-		currentSegment.push(line);
-		if (/^```/.test(line)) {
-			nestedFence = true;
-		}
+		current.push(line);
+		fence = fenceOpener(line);
 	}
-
-	const finalSegment = currentSegment.join('\n').trim();
-	if (finalSegment) {
-		segments.push(finalSegment);
-	}
-
+	if (current.join('\n').trim()) segments.push(current.join('\n').trim());
 	return segments;
 }
 
 function renderColumns(body: string): string {
-	const columns = splitKamiSegments(body, /^%%marp-col%%$/);
-	return `<div class="c2">\n\n${columns.map((column) => `<div>\n\n${compileKamiCommentBlocks(column)}\n\n</div>`).join('\n\n')}\n\n</div>`;
+	const columns = splitSegments(body, ['col', 'column']);
+	const count = practicalCount(String(columns.length), 1);
+	const cells = columns.map((column) => `<div class="marp-extended-column">\n\n${compileKamiCommentBlocks(column)}\n\n</div>`);
+	return `<div class="c2 marp-extended-columns marp-extended-columns-${count}">\n\n${cells.join('\n\n')}\n\n</div>`;
 }
 
-function renderCards(body: string): string {
-	const cards = splitKamiSegments(body, /^%%marp-card%%$/);
-	const cells = cards.map(renderCardCell);
+function renderCards(body: string, attributes: MarkerAttributes): string {
+	const legacyCount = attributes.positional[0]?.match(/^(\d+)x\d+$/)?.[1];
+	const count = practicalCount(attributes.values.columns ?? legacyCount, 2);
+	const cells = splitSegments(body, ['card']).map(renderCardCell);
 	const rows: string[] = [];
-
-	for (let index = 0; index < cells.length; index += 2) {
-		rows.push(`<tr>\n${cells.slice(index, index + 2).join('\n')}\n</tr>`);
-	}
-
-	return `<table class="t2x2">\n${rows.join('\n')}\n</table>`;
+	for (let index = 0; index < cells.length; index += count) rows.push(`<tr>\n${cells.slice(index, index + count).join('\n')}\n</tr>`);
+	return `<table class="t2x2 marp-extended-cards marp-extended-cards-${count}">\n${rows.join('\n')}\n</table>`;
 }
 
 function renderCardCell(card: string): string {
 	const lines = card.split(/\r?\n/);
 	const headingIndex = lines.findIndex((line) => /^#{1,6}\s+/.test(line.trim()));
-	if (headingIndex === -1) {
-		return `<td>\n\n${compileKamiCommentBlocks(card)}\n\n</td>`;
-	}
-
+	if (headingIndex < 0) return `<td class="marp-extended-card">\n\n${compileKamiCommentBlocks(card)}\n\n</td>`;
 	const heading = lines[headingIndex].trim().replace(/^#{1,6}\s+/, '');
-	const body = compileKamiCommentBlocks([
-		...lines.slice(0, headingIndex),
-		...lines.slice(headingIndex + 1),
-	].join('\n').trim());
-	const title = renderMetricTitle(heading);
-
-	return `<td>\n\n${title}\n\n${body}\n\n</td>`;
+	const body = compileKamiCommentBlocks([...lines.slice(0, headingIndex), ...lines.slice(headingIndex + 1)].join('\n').trim());
+	return `<td class="marp-extended-card">\n\n${renderMetricTitle(heading)}\n\n${body}\n\n</td>`;
 }
 
 function renderMetricTitle(heading: string): string {
 	const match = heading.match(/^([^·:：\s]+)\s*[·:：]\s*(.+)$/);
-	if (!match) {
-		return `<div class="mt">${escapeHtml(heading)}</div>`;
-	}
-
-	return `<div class="mt"><span class="ml">${escapeHtml(match[1])}</span>${escapeHtml(match[2])}</div>`;
+	if (!match) return `<div class="mt marp-extended-card-title">${escapeHtml(heading)}</div>`;
+	return `<div class="mt marp-extended-card-title"><span class="ml marp-extended-card-label">${escapeHtml(match[1])}</span>${escapeHtml(match[2])}</div>`;
 }
 
-function renderKamiBlock(name: KamiBlockName, rawInfo: string, body: string): string {
-	if (name === 'cols') {
-		return renderColumns(body);
-	}
-
-	if (name === 'cards') {
-		return renderCards(body);
-	}
-
+function renderBlock(name: BlockName, attributes: MarkerAttributes, body: string): string {
+	if (name === 'cols') return renderColumns(body);
+	if (name === 'cards') return renderCards(body, attributes);
+	const compiledBody = compileKamiCommentBlocks(body);
 	if (name === 'callout') {
-		const attributes = parseMarkerAttributes(rawInfo);
-		return renderClassBlock(attributes.positional[0] || attributes.values.type || 'co', body);
+		const explicitVariant = attributes.values.variant;
+		const legacyClass = explicitVariant == null
+			? attributes.positional[0] || attributes.values.type || 'co'
+			: safeToken(explicitVariant, 'co');
+		const variant = safeToken(explicitVariant ?? legacyClass, 'co');
+		return renderClassBlock(`${legacyClass} marp-extended-callout marp-extended-callout-${variant}`, compiledBody);
 	}
-
-	return renderClassBlock(KAMI_BLOCK_CLASS_BY_NAME[name] ?? name, body);
+	const classes: Record<Exclude<BlockName, 'cols' | 'cards' | 'callout'>, string> = {
+		lead: 'lead marp-extended-lead', sub: 'sub marp-extended-subtitle', meta: 'meta marp-extended-meta',
+		co: 'co marp-extended-callout marp-extended-callout-co', note: 'co marp-extended-callout marp-extended-callout-co',
+		mc: 'mc marp-extended-callout marp-extended-callout-mc',
+	};
+	return renderClassBlock(classes[name], compiledBody);
 }
 
 export function compileKamiCommentBlocks(markdown: string): string {
 	const lines = markdown.split(/\r?\n/);
 	const output: string[] = [];
 	let index = 0;
-
+	let outerFence: Fence | undefined;
 	while (index < lines.length) {
-		const slideMatch = lines[index].match(/^%%marp-slide(\[[^\]]*\])%%$/);
+		const line = lines[index];
+		if (outerFence) {
+			output.push(line);
+			if (closesFence(line, outerFence)) outerFence = undefined;
+			index += 1;
+			continue;
+		}
+		outerFence = fenceOpener(line);
+		if (outerFence) { output.push(line); index += 1; continue; }
+		const slideMatch = line.match(/^%%marp-slide(\[[^\]]*\])%%$/);
 		if (slideMatch) {
-			output.push(renderSlideMetadata(slideMatch[1]));
+			const attributes = parseMarkerAttributes(slideMatch[1]);
+			output.push(attributes ? renderSlideMetadata(attributes) : line);
 			index += 1;
 			continue;
 		}
+		const startMatch = line.match(/^%%marp-([a-z]+)(\[[^\]]*\])?%%$/);
+		const name = startMatch ? BLOCK_ALIASES[startMatch[1]] : undefined;
+		if (!startMatch || !name) { output.push(line); index += 1; continue; }
+		const attributes = parseMarkerAttributes(startMatch[2] ?? '');
+		if (!attributes) { output.push(line); index += 1; continue; }
 
-		const startMatch = lines[index].match(/^%%marp-(lead|sub|meta|co|mc|note|callout|cols|cards)(\[[^\]]*\])?%%$/);
-		if (!startMatch) {
-			output.push(lines[index]);
-			index += 1;
-			continue;
-		}
-
-		const name = startMatch[1] as KamiBlockName;
-		const rawInfo = startMatch[2] ?? '';
 		const body: string[] = [];
-		const nestedBlockCounts: Partial<Record<KamiBlockName, number>> = {};
+		const stack: BlockName[] = [];
 		let cursor = index + 1;
-		let nestedFence = false;
+		let fence: Fence | undefined;
 		let foundEnd = false;
-
-		while (cursor < lines.length) {
-			const line = lines[cursor];
-			if (nestedFence) {
-				body.push(line);
-				if (/^```[ \t]*$/.test(line)) {
-					nestedFence = false;
-				}
-				cursor += 1;
-				continue;
-			}
-
-			const nestedStartMatch = line.match(/^%%marp-(lead|sub|meta|co|mc|note|callout|cols|cards)(\[[^\]]*\])?%%$/);
-			if (nestedStartMatch) {
-				const nestedName = nestedStartMatch[1] as KamiBlockName;
-				nestedBlockCounts[nestedName] = (nestedBlockCounts[nestedName] ?? 0) + 1;
-				body.push(line);
-				cursor += 1;
-				continue;
-			}
-
-			const closingMatch = line.match(/^%%\/marp-([a-z]+)%%$/);
-			if (closingMatch) {
-				if (closingMatch[1] === name && Object.values(nestedBlockCounts).every((count) => (count ?? 0) === 0)) {
-					foundEnd = true;
-					break;
-				}
-
-				const nestedName = closingMatch[1] as KamiBlockName;
-				if ((nestedBlockCounts[nestedName] ?? 0) > 0) {
-					nestedBlockCounts[nestedName] = (nestedBlockCounts[nestedName] ?? 0) - 1;
-					body.push(line);
-					cursor += 1;
-					continue;
-				}
-
+		for (; cursor < lines.length; cursor += 1) {
+			const candidate = lines[cursor];
+			if (fence) { body.push(candidate); if (closesFence(candidate, fence)) fence = undefined; continue; }
+			fence = fenceOpener(candidate);
+			if (fence) { body.push(candidate); continue; }
+			const nestedMatch = candidate.match(/^%%marp-([a-z]+)(?:\[[^\]]*\])?%%$/);
+			const nested = nestedMatch ? BLOCK_ALIASES[nestedMatch[1]] : undefined;
+			if (nested) { stack.push(nested); body.push(candidate); continue; }
+			const closeMatch = candidate.match(/^%%\/marp-([a-z]+)%%$/);
+			const closing = closeMatch ? BLOCK_ALIASES[closeMatch[1]] : undefined;
+			if (closing) {
+				if (stack.length && stack[stack.length - 1] === closing) { stack.pop(); body.push(candidate); continue; }
+				if (!stack.length && closing === name) { foundEnd = true; break; }
 				break;
 			}
-
-			body.push(line);
-			if (/^```/.test(line)) {
-				nestedFence = true;
-			}
-			cursor += 1;
+			body.push(candidate);
 		}
-
-		if (!foundEnd) {
-			output.push(lines[index]);
-			index += 1;
-			continue;
-		}
-
-		output.push(renderKamiBlock(name, rawInfo, body.join('\n')));
+		if (!foundEnd) { output.push(line); index += 1; continue; }
+		output.push(renderBlock(name, attributes, body.join('\n')));
 		index = cursor + 1;
 	}
-
 	return output.join('\n');
 }
+
+/** Backward-compatible name; the compiler now supports generic Marp Extended markers. */
+export const compileMarpExtendedCommentBlocks = compileKamiCommentBlocks;

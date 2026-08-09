@@ -12,8 +12,8 @@ in Marp Extended preview/export.
 | Layer | Prefer | Avoid as default |
 | --- | --- | --- |
 | Deck metadata | YAML frontmatter | Repeated global HTML comments |
-| Slide metadata | `%%marp-slide[...]%%` | Visible `<!-- _class: ... -->` when Kami markers work |
-| Layout | Kami `%%marp-*%%` blocks, then small HTML | Large hand-rolled HTML trees |
+| Slide metadata | `%%marp-slide[...]%%` | Visible `<!-- _class: ... -->` when the Extended marker is clearer |
+| Layout | Marp Extended `%%marp-*%%` blocks, then small HTML | Large hand-rolled HTML trees |
 | Images | Obsidian `![[...]]` wiki-links | Hard-coded absolute disk paths |
 | Math | `math: mathjax` / omit | `math: katex` |
 | Diagrams | ` ```mermaid ` fences (+ plugin Mermaid stack) | Assuming Core mermaid plugin options |
@@ -23,8 +23,8 @@ Rules of thumb:
 
 1. Keep CommonMark-compatible structure first (headings, lists, fences, images).
 2. Use Marpit extensions only where Markdown alone cannot express the slide.
-3. Prefer Kami markers for Kami/Kami-en theme layouts.
-4. Call out preview vs export engine differences when they affect advice.
+3. Prefer canonical Marp Extended markers for reusable layouts regardless of theme.
+4. Use legacy Kami aliases only when preserving an existing deck.
 
 ## Minimal deck
 
@@ -299,26 +299,23 @@ Compiles to:
 - Quote `key=value` attributes when values contain spaces.
 - Keys are always emitted as spot directives (`_key`) unless already prefixed.
 
-## Kami comment markers (Marp Extended)
+## Marp Extended comment markers
 
-Kami DSL is a small compile step before Marp Core / Marp CLI. Marker lines are
-complete Obsidian comments (hidden in Reading view). Content between paired
-markers stays normal Markdown.
-
-Layout wrappers compile to HTML → Obsidian preview needs the plugin **Enable HTML**
-setting. Export already enables HTML for Marp CLI.
+The Extended language is a small compile step before the shared Marp Core 5
+engine. Marker lines are complete Obsidian comments (hidden in Reading view).
+Content between paired markers stays normal Markdown. HTML is always enabled for
+generated wrappers; there is no separate HTML setting.
 
 | Marker | Compiles to |
 | --- | --- |
 | `%%marp-slide[...]%%` | Marp local spot directives (`<!-- _key: value -->`). |
-| `%%marp-lead%%` | `<div class="lead">...`. |
-| `%%marp-sub%%` | `<div class="sub">...`. |
-| `%%marp-meta%%` | `<div class="meta">...`. |
-| `%%marp-co%%`, `%%marp-note%%` | `<div class="co">...`. |
-| `%%marp-mc%%` | `<div class="mc">...`. |
-| `%%marp-callout[mc]%%` / `%%marp-callout[type=mc]%%` | Custom class callout (default `co`). |
-| `%%marp-cols%%` | `<div class="c2">...` columns, split by `%%marp-col%%`. |
-| `%%marp-cards[2x2]%%` | `<table class="t2x2">...` metric cards, split by `%%marp-card%%`. |
+| `%%marp-lead%%` | `lead marp-extended-lead` wrapper. |
+| `%%marp-subtitle%%` (`sub`) | `sub marp-extended-subtitle` wrapper. |
+| `%%marp-metadata%%` (`meta`) | `meta marp-extended-meta` wrapper. |
+| `%%marp-callout[variant=co]%%` (`co`, `note`) | Namespaced callout plus legacy `co`; `note` remains visible. |
+| `%%marp-callout[variant=mc]%%` (`mc`) | Namespaced callout plus legacy `mc`. |
+| `%%marp-columns%%` (`cols`) | 1–6 column grid, split by `%%marp-column%%` (`col`). |
+| `%%marp-cards[columns=N]%%` | 1–6-column metric-card table, split by `%%marp-card%%`; `cards[2x2]` is compatible. |
 
 Examples:
 
@@ -327,12 +324,12 @@ Examples:
 Same palette, fonts, layout tokens. Only the editing posture changes.
 %%/marp-lead%%
 
-%%marp-cols%%
+%%marp-columns%%
 ### Left column
 
 - Markdown content
 
-%%marp-col%%
+%%marp-column%%
 
 ### Right column
 
@@ -340,9 +337,9 @@ Same palette, fonts, layout tokens. Only the editing posture changes.
 flowchart LR
   A --> B
 ```
-%%/marp-cols%%
+%%/marp-columns%%
 
-%%marp-cards[2x2]%%
+%%marp-cards[columns=2]%%
 ### A · Palette
 One ink-blue accent.
 
@@ -353,7 +350,8 @@ One serif per page.
 %%/marp-cards%%
 ````
 
-Card headings of the form `Label · Title` become Kami metric titles:
+Card headings of the form `Label · Title` become namespaced metric titles while
+retaining the Kami `mt` / `ml` classes:
 
 ```html
 <div class="mt"><span class="ml">A</span>Palette</div>
@@ -379,7 +377,8 @@ Hand-written HTML remains an escape hatch:
 ```
 
 Keep HTML semantic and small. Put reusable styling in theme CSS, not repeated
-`style="..."` attributes. See `docs/kami-dsl.md` for the user-facing DSL note.
+`style="..."` attributes. See `docs/marp-extended-syntax.md` for the user-facing language
+and compatibility contract.
 
 ## Images (Marpit extended `![]()`)
 
@@ -584,7 +583,8 @@ Rendering notes:
 
 - HTML structure matches normal lists; items get `data-marpit-fragment="N"`.
 - The slide `<section>` gets `data-marpit-fragments` with the fragment count.
-- Actual step-through behavior depends on the viewer. Marp CLI **bespoke** HTML supports fragments. Plugin in-Obsidian preview may not animate fragments the same way as bespoke HTML export.
+- The plugin preview tracks each logical slide independently and exposes previous, next, and reset fragment controls plus keyboard-bindable commands.
+- Marp CLI **bespoke** HTML has its own fragment runtime for exported presentations.
 
 ## Presenter notes
 
@@ -600,6 +600,8 @@ Multi-line is fine.
 ```
 
 - Directive comments are excluded from notes collection.
+- The plugin preview maps comments to logical slides and shows them as literal text in a toggleable notes panel.
+- `%%marp-note%%` is a visible Extended/Kami callout and is not presenter-note syntax.
 - Plugin "PDF with notes" export uses Marp CLI `--pdf-notes` and `--pdf-outlines`.
 
 ## Math (Marp Core + this plugin)
@@ -831,19 +833,20 @@ Also added by the plugin:
 
 - `--allow-local-files`
 - `--html` (preserve pre-rendered Mermaid SVG / Kami HTML)
+- `--engine <absolute plugin path>/marp-engine.cjs` (shipped Core 5 engine)
 - optional `--theme-set <vault .marp-extended/themes>`
 - optional `--browser-path <CHROME_PATH>`
 - engine wiring for export path
 
-Engine split to remember when advising users:
+Runtime boundary to remember when advising users:
 
 | Surface | Engine |
 | --- | --- |
-| In-Obsidian preview | Marp Core **5** + Shiki + MathJax + custom Mermaid |
-| Export via npx pin | Marp CLI **4.5** (embeds Core **4.x**) |
+| In-Obsidian preview | Shared Marp Core **5** factory + Shiki + MathJax + custom Mermaid |
+| Managed export | Marp CLI **4.5.0** host + the same shipped Core **5** semantic engine |
 
-Code highlight and math can differ slightly between preview and export until CLI
-tracks Core 5. Mermaid is largely aligned because fences are pre-rendered.
+Containers, templates, browser layout, PDF, and PPTX remain host-owned, so parity
+is semantic rather than pixel-identical.
 
 ## Authoring checklist
 
@@ -851,10 +854,10 @@ tracks Core 5. Mermaid is largely aligned because fences are pre-rendered.
 2. Split slides with rulers or `headingDivider`; never confuse frontmatter `---`.
 3. Spot layout/class via `%%marp-slide[...]%%` or `_class`.
 4. Images via `![[file|size]]` or Marpit `![bg …]()` / filters.
-5. Fragments only when the target viewer supports them (`*` / `1)`).
+5. Use standard fragments (`*` / `1)`); test the plugin controls and the target export viewer.
 6. Math with MathJax syntax only.
 7. Code fences in the curated Shiki set; add `{lines}` when highlighting matters.
-8. Kami layouts through `%%marp-*%%` before inventing HTML.
+8. Extended layouts through canonical `%%marp-*%%` markers before inventing HTML.
 9. Verify in plugin preview, then export the format you actually need.
 
 ## Sources
@@ -872,4 +875,4 @@ Primary sources:
 - Marp CLI: https://github.com/marp-team/marp-cli
 - Marp CLI transitions: https://github.com/marp-team/marp-cli/blob/main/docs/bespoke-transitions/README.md
 - Plugin adaptation: `plugin-adapter.md`
-- Kami DSL user note: `docs/kami-dsl.md`
+- Canonical Marp Extended syntax: `docs/marp-extended-syntax.md`
