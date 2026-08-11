@@ -2,7 +2,7 @@
 
 Generated/updatable upstream snapshots are stored in `upstream/` by `../scripts/update-references.py`.
 
-Current project metadata source: **Marp Extended** package `0.10.0-beta.0`
+Current project metadata source: **Marp Extended** package `0.10.0-beta.1`
 (`package.json`; stable Community `manifest.json` stays on the latest published
 stable until the next Community release), plugin/package id `marp-extended`,
 repository <https://github.com/shuuul/obsidian-marp-extended>.

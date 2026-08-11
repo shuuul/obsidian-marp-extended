@@ -11,7 +11,7 @@ metadata:
 
 Use this skill to help agents author Marp slide decks that work in **Marp Extended**, this repository's Obsidian plugin (`manifest.json` id: `marp-extended`).
 
-Current project metadata: **Marp Extended** package `0.10.0-beta.0`
+Current project metadata: **Marp Extended** package `0.10.0-beta.1`
 (`package.json`; stable Community `manifest.json` stays on the latest published
 stable until the next Community release), plugin/package id `marp-extended`,
 repository <https://github.com/shuuul/obsidian-marp-extended>.
