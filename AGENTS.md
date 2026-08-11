@@ -4,33 +4,40 @@
 
 This is **Marp Extended**, an Obsidian community plugin forked from `obsidian-marp-slides`. It previews, presents, and exports Marp-based Markdown slide decks inside Obsidian.
 
-The fork is being renamed from upstream **Marp Slides** to **Marp Extended**. Prefer changes that preserve current slide/export behavior while making fork metadata and maintenance workflows explicit.
+Prefer changes that preserve current slide/export behavior while keeping fork metadata and maintenance workflows explicit.
 
 Current plugin ID: `marp-extended`.
 
 ## Repo structure
 
 ```text
-src/main.ts                    # Obsidian plugin entry point, commands, settings UI, preview sync
-src/views/marpPreviewView.ts   # Custom ItemView for rendered slide preview
-src/utilities/settings.ts      # Settings interface and defaults
-src/utilities/filePath.ts      # Vault/resource path resolution and image wiki-link conversion
-src/utilities/marpExport.ts    # Marp CLI export orchestration
-src/utilities/mermaid.ts       # Mermaid fence rendering for preview/export
-src/utilities/icons.ts         # SVG icons registered with Obsidian
-src/runtime/marpEngine.ts      # Shared Core 5 semantic engine factory
-src/runtime/cliEngine.ts       # Standalone CLI engine entry point
-src/runtime/engineArtifact.ts  # Embedded engine integrity/materialization
-specs/                         # Tracked execution specs (Draft/Active) + archive/
-scripts/check-specs.mjs        # Spec tree validator
-tests/                         # Jest tests and Obsidian mocks
-assets/themes/                 # Packaged slide theme CSS sources
-assets/mermaid-themes/         # Packaged Mermaid theme CSS sources
-docs/                          # Optional user-facing notes (not a full docs site)
-manifest.json                  # Obsidian plugin metadata
-styles.css                     # Plugin CSS
-esbuild.config.mjs             # Build/watch configuration
-CHANGELOG.md                   # Release notes
+src/main.ts                         # Obsidian plugin entry point, ribbon, settings load
+src/commands/registerMarpCommands.ts # Command palette registration
+src/settings/marpExtendedSettingTab.ts # Settings UI
+src/views/marpPreviewView.ts        # Custom ItemView for rendered slide preview
+src/editor/mermaidEditorExtension.ts # Live Preview Mermaid decorations
+src/utilities/settings.ts           # Settings interface and defaults
+src/utilities/filePath.ts           # Vault/resource path resolution and image wiki-link conversion
+src/utilities/marpExport.ts         # Marp CLI export orchestration
+src/utilities/marpExtendedDsl.ts    # %%marp-*%% marker compiler
+src/utilities/marpMarkdown.ts       # Shared preview/export Markdown compile path
+src/utilities/mermaid.ts            # Mermaid fence rendering for preview/export
+src/utilities/icons.ts              # SVG icons registered with Obsidian
+src/runtime/marpEngine.ts           # Shared Core 5 semantic engine factory
+src/runtime/cliEngine.ts            # Standalone CLI engine entry point
+src/runtime/engineArtifact.ts       # Embedded engine integrity/materialization
+src/runtime/mermaidFallback.ts      # Engine-side Mermaid fence fallback
+src/shims/marp-shiki.cjs            # Curated Shiki language subset for Core 5
+specs/                              # Tracked execution specs (Draft/Active) + archive/
+scripts/check-specs.mjs             # Spec tree validator
+tests/                              # Jest tests and Obsidian mocks
+assets/themes/                      # Packaged slide theme CSS sources
+assets/mermaid-themes/              # Packaged Mermaid theme CSS sources
+docs/                               # Optional user-facing notes (not a full docs site)
+manifest.json                       # Obsidian plugin metadata
+styles.css                          # Plugin CSS
+esbuild.config.mjs                  # Build/watch configuration
+CHANGELOG.md                        # Release notes
 ```
 
 ## Commands
@@ -71,7 +78,7 @@ Useful commands:
 | Profile local Obsidian preview | `npm run obsidian:profile -- path="slides/examples/kami.md"` |
 | Version metadata sync | `npm run version` |
 
-For manual Obsidian testing, set `OBSIDIAN_VAULT` in `.env.local`; `npm run dev` and `npm run build` auto-copy `main.js`, `manifest.json`, and `styles.css` into:
+For manual Obsidian testing, set `OBSIDIAN_VAULT` in `.env.local`; `npm run dev` and `npm run build` auto-copy `main.js`, `manifest.json`, `styles.css`, and `marp-engine.cjs` into:
 
 ```text
 <vault>/.obsidian/plugins/marp-extended/

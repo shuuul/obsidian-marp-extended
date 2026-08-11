@@ -677,30 +677,6 @@ async function renderOfficialMermaidSvg(source: string, renderOptions: RenderOpt
 	}));
 }
 
-/**
- * Sync BM-only render for markdown-it fence safety net after async pre-render.
- * Throws when the diagram is not BM-supported or BM fails.
- */
-export function renderBeautifulMermaidFigure(
-	source: string,
-	alt: string,
-	options: MermaidPluginOptions = {},
-): string {
-	const diagramType = detectMermaidDiagramType(source);
-	if (!isBeautifulMermaidSupported(diagramType)) {
-		throw new Error(
-			diagramType
-				? `Diagram type "${diagramType}" is not supported by beautiful-mermaid; use async pre-render for official Mermaid fallback.`
-				: 'Unable to detect Mermaid diagram type for beautiful-mermaid rendering.',
-		);
-	}
-
-	const containerClass = options.containerClass ?? DEFAULT_CONTAINER_CLASS;
-	const renderOptions = mergeRenderOptions(options.renderOptions);
-	const svg = renderBeautifulMermaidSvg(source, renderOptions);
-	return buildMermaidFigure(svg, alt, containerClass, 'beautiful-mermaid');
-}
-
 export async function renderMermaidFigure(
 	source: string,
 	alt: string,

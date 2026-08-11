@@ -823,9 +823,7 @@ transition: slide 750ms
 | PDF | `--pdf -o deck.pdf` |
 | PDF with notes | `--pdf --pdf-notes --pdf-outlines -o deck.pdf` |
 | PPTX | `--pptx -o deck.pptx` |
-| PNG | `--image png -o deck.png` |
 | HTML | `--html --template <bare\|bespoke> -o deck.html` |
-| Preview (CLI) | `--html --preview` |
 
 Also added by the plugin:
 

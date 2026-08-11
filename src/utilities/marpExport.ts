@@ -555,7 +555,6 @@ export class MarpExport {
 
     }
 
-    //async exportPdf(argv: string[], opts?: MarpCLIAPIOptions | undefined){
     private async run(argv: string[]): Promise<void> {
         const primary = getPrimaryMarpCliInvocation(this.settings);
         let invocation = primary;

@@ -207,7 +207,7 @@ Useful scripts:
 | `npm run dev` | Watch build for local development |
 | `npm run build` | Typecheck, build `main.js` + `marp-engine.cjs`, and smoke-test the standalone engine |
 | `npm run typecheck` | Run TypeScript checks only |
-| `npm run lint` | Run ESLint over `src` and `tests` |
+| `npm run lint` | Run ESLint over `src/**/*.ts` |
 | `npm run check:specs` | Validate tracked specs under `specs/` |
 | `npm run sync:themes` | Regenerate `packagedDefaultThemeCss.ts` from `assets/` |
 | `npm test` | Run Jest unit tests |
@@ -222,11 +222,11 @@ Useful scripts:
 Developer guidance lives in [`AGENTS.md`](AGENTS.md). Release notes live in [`CHANGELOG.md`](CHANGELOG.md).
 
 Current Marp-related runtime dependencies center on `@marp-team/marp-core`
-`5.0.0` with curated plugins (Shiki, MathJax) plus `beautiful-mermaid` for the
-custom Mermaid stack. Preview and export both instantiate the shipped Core 5
-engine; export uses Marp CLI 4.5.0 only as the host for templates, browser-backed
-formats, and file orchestration. Marp Extended does not bundle Marp CLI into
-`main.js`.
+`5.0.1` (npm `next` channel; `latest` remains 4.x) with curated plugins (Shiki,
+MathJax) plus `beautiful-mermaid` for the custom Mermaid stack. Preview and
+export both instantiate the shipped Core 5 engine; export uses Marp CLI 4.5.0
+only as the host for templates, browser-backed formats, and file orchestration.
+Marp Extended does not bundle Marp CLI into `main.js`.
 
 Theme authors: Core 5 highlights code with Shiki. Prefer `--marp-shiki-*` CSS variables on `section` instead of `.hljs-*` classes.
 

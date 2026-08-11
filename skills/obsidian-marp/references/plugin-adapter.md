@@ -9,7 +9,7 @@ keep this implementation-focused reference aligned with it.
 - Display name: `Marp Extended` (`manifest.json`).
 - Plugin id: `marp-extended` (`manifest.json`).
 - Package name: `marp-extended` (`package.json`).
-- Current version: `0.9.0` (`manifest.json`, `package.json`).
+- Package version: `0.10.0-beta.0` (`package.json`). Stable Community `manifest.json` stays on the latest published stable until the next Community release.
 - Repository: <https://github.com/shuuul/obsidian-marp-extended>.
 - Local/manual runtime files: `main.js`, `manifest.json`, `styles.css`, `marp-engine.cjs`. Community installs materialize a SHA-256-checked, content-addressed copy of the embedded engine on first export.
 - Generated `main.js` should not be edited by hand; change `src/` and run the build.
@@ -19,7 +19,7 @@ keep this implementation-focused reference aligned with it.
 
 | Surface | Engine |
 | --- | --- |
-| In-Obsidian preview | Shared `@marp-team/marp-core` **5.0.0** factory + `shiki`, `mathjax`, Mermaid fallback |
+| In-Obsidian preview | Shared `@marp-team/marp-core` **5.0.1** factory + `shiki`, `mathjax`, Mermaid fallback |
 | Export host | Exactly `@marp-team/marp-cli@4.5.0` + shipped Core 5 engine through `--engine` |
 | Explicit user CLI path | Accepted only when its reported CLI version is exactly 4.5.0 |
 

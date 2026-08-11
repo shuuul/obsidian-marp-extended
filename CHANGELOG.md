@@ -4,11 +4,12 @@
 
 ### Features
 
+* **runtime:** bump shared Marp Core engine pin to `5.0.1` (`next` channel)
 * **language:** add a theme-independent Marp Extended authoring layer with namespaced classes, configurable columns/cards/callouts, and CommonMark fence handling
 * **preview:** add Marpit fragment stepping, reset/status controls, keyboard-bindable commands, active-slide tracking, and a safe presenter-notes panel
 * **runtime:** share one isolated Marp Core 5 engine contract across preview and managed CLI export, including Shiki, MathJax, Mermaid fallback, inline SVG, and Extended structural CSS
 * **export:** ship and embed a standalone `marp-engine.cjs`, verify it by SHA-256 before materialization, and pass it to supported Marp CLI 4.5.0 exports
-* **preview:** migrate slide rendering to Marp Core 5.0.0 RC with curated Shiki and MathJax plugins while keeping the custom Mermaid theme stack
+* **preview:** migrate slide rendering to Marp Core 5 (`5.0.1`) with curated Shiki and MathJax plugins while keeping the custom Mermaid theme stack
 * **export:** pin npx Marp CLI fallback to `@marp-team/marp-cli@4.5.0`
 * **mermaid:** apply theme CSS variables (`--bg/--fg/...`) to beautiful-mermaid render options
 * **themes:** move packaged theme sources to `assets/` and add `npm run sync:themes`

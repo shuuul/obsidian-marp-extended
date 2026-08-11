@@ -2,13 +2,16 @@
 
 Generated/updatable upstream snapshots are stored in `upstream/` by `../scripts/update-references.py`.
 
-Current project metadata source: **Marp Extended** `0.9.0`, plugin/package id
-`marp-extended`, repository <https://github.com/shuuul/obsidian-marp-extended>.
+Current project metadata source: **Marp Extended** package `0.10.0-beta.0`
+(`package.json`; stable Community `manifest.json` stays on the latest published
+stable until the next Community release), plugin/package id `marp-extended`,
+repository <https://github.com/shuuul/obsidian-marp-extended>.
 
-Preview: `@marp-team/marp-core` `5.0.0` (RC/`next`) with curated **Shiki** + **MathJax**
-plugins and a custom Mermaid stack. Export npx pin: `@marp-team/marp-cli@4.5.0`
-(CLI embeds Core 4.x). Packaged themes: `assets/themes/`, `assets/mermaid-themes/`.
-Shiki language allowlist: `src/shims/marp-shiki.cjs`.
+Preview: `@marp-team/marp-core` `5.0.1` (npm `next` channel; `latest` remains 4.x)
+with curated **Shiki** + **MathJax** plugins and a custom Mermaid stack. Export
+npx pin: `@marp-team/marp-cli@4.5.0` (CLI embeds Core 4.x). Packaged themes:
+`assets/themes/`, `assets/mermaid-themes/`. Shiki language allowlist:
+`src/shims/marp-shiki.cjs`.
 
 ## Agent Skill specification
 
@@ -38,7 +41,8 @@ Shiki language allowlist: `src/shims/marp-shiki.cjs`.
 - `src/utilities/filePath.ts` — filesystem path resolution and Obsidian image wiki-link conversion.
 - `src/utilities/marpExtendedDsl.ts` — Extended `%%marp-*%%` compiler.
 - `src/utilities/marpExport.ts` — Marp CLI argv construction and export behavior.
-- `src/views/marpPreviewView.ts` — Core 5 `createMarp()` plugin wiring and preview render.
+- `src/runtime/marpEngine.ts` — shared Core 5 engine factory (`createMarpEngine`).
+- `src/views/marpPreviewView.ts` — preview host wiring and render.
 - `src/shims/marp-shiki.cjs` — curated Shiki language subset for the bundle.
 - `assets/Themes.md`, `assets/themes/*.css`, `assets/mermaid-themes/*.css` — packaged theme sources.
 

@@ -11,12 +11,14 @@ metadata:
 
 Use this skill to help agents author Marp slide decks that work in **Marp Extended**, this repository's Obsidian plugin (`manifest.json` id: `marp-extended`).
 
-Current project metadata: **Marp Extended** `0.9.0`, plugin/package id
-`marp-extended`, repository <https://github.com/shuuul/obsidian-marp-extended>.
+Current project metadata: **Marp Extended** package `0.10.0-beta.0`
+(`package.json`; stable Community `manifest.json` stays on the latest published
+stable until the next Community release), plugin/package id `marp-extended`,
+repository <https://github.com/shuuul/obsidian-marp-extended>.
 
 Runtime stack (2026-08):
 
-- **Preview:** `@marp-team/marp-core` `5.0.0` with curated **Shiki** + **MathJax** plugins and the custom Mermaid stack.
+- **Preview:** `@marp-team/marp-core` `5.0.1` (npm `next` channel) with curated **Shiki** + **MathJax** plugins and the custom Mermaid stack.
 - **Export:** exactly Marp CLI `4.5.0` as host, always given Marp Extended's shipped Core 5 engine through `--engine`. The optional npx path is pinned to `@marp-team/marp-cli@4.5.0`.
 - **Math:** MathJax only in this plugin build. Do **not** recommend `math: katex` for Marp Extended preview.
 - **Code highlight:** Shiki with a **curated language subset** (`src/shims/marp-shiki.cjs`). Theme colors via `--marp-shiki-*`, not `.hljs-*`.

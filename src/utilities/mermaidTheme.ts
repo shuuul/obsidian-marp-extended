@@ -80,14 +80,6 @@ export async function loadMermaidThemeCssByName(app: App, themeName: string): Pr
 	return normalizedThemeName ? await new MermaidThemeManager(app).loadThemeCss(normalizedThemeName) ?? '' : '';
 }
 
-export async function loadMermaidThemeCssForMarkdown(app: App, markdown: string): Promise<string> {
-	const themeName = getMermaidThemeName(markdown);
-	const themeCss = themeName ? await loadMermaidThemeCssByName(app, themeName) : '';
-	const flatCss = getMermaidFlatCss(getMermaidFlat(markdown));
-
-	return [themeCss, flatCss].filter(Boolean).join('\n');
-}
-
 export async function loadMermaidThemeCssForFile(app: App, file: TFile, markdown: string): Promise<string> {
 	const frontmatter = app.metadataCache.getFileCache?.(file)?.frontmatter;
 	const cacheTheme: unknown = frontmatter?.[MERMAID_THEME_PROPERTY];
@@ -125,15 +117,6 @@ export function parseMermaidRenderOptionsFromCss(css: string): RenderOptions {
 	}
 
 	return options;
-}
-
-export async function loadMermaidRenderOptionsForFile(
-	app: App,
-	file: TFile,
-	markdown: string,
-): Promise<RenderOptions> {
-	const css = await loadMermaidThemeCssForFile(app, file, markdown);
-	return parseMermaidRenderOptionsFromCss(css);
 }
 
 export function insertMarkdownAfterFrontmatter(markdown: string, content: string): string {
