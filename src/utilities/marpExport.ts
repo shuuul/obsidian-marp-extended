@@ -91,6 +91,7 @@ const NPX_MARP_CLI_PACKAGE = (packageMetadata as MarpExtendedPackageMetadata).ma
 const MISSING_MARP_CLI_INSTALL_HINT = 'Install it with `npm install -g @marp-team/marp-cli`, set the Marp CLI path, or enable npx fallback in Marp Extended settings.';
 const MISSING_NPX_INSTALL_HINT = 'Install Node.js/npm so npx is available, or set the Marp CLI path in Marp Extended settings.';
 const MARP_CLI_MAX_BUFFER = 10 * 1024 * 1024;
+const marpCliValidationCache = new Map<string, MarpCliInvocation>();
 const COMMON_MARP_CLI_DIRECTORIES = [
     '/opt/homebrew/bin',
     '/usr/local/bin',
@@ -467,6 +468,44 @@ async function execMarpCliWithFallback(
     }
 }
 
+function getMarpCliValidationCacheKey(settings: MarpExtendedSettings): string {
+    return `${settings.MARP_CLI_PATH.trim()}\0${settings.MARP_CLI_USE_NPX ? '1' : '0'}`;
+}
+
+async function getValidatedMarpCliInvocation(settings: MarpExtendedSettings): Promise<MarpCliInvocation> {
+    const cacheKey = getMarpCliValidationCacheKey(settings);
+    const cachedInvocation = marpCliValidationCache.get(cacheKey);
+    if (cachedInvocation) {
+        return cachedInvocation;
+    }
+
+    const primary = getPrimaryMarpCliInvocation(settings);
+    let invocation = primary;
+    try {
+        const versionResult = await execMarpCli(primary, ['--version'], settings);
+        const versionOutput = (versionResult.stdout || versionResult.stderr).trim();
+        const version = parseMarpCliVersion(versionOutput);
+        if (version !== SUPPORTED_MARP_CLI_VERSION) {
+            if (settings.MARP_CLI_PATH.trim()) {
+                throw new MarpCLIError(`Configured Marp CLI version ${version ?? (versionOutput || 'unknown')} is incompatible; Marp Extended requires exactly ${SUPPORTED_MARP_CLI_VERSION}.`);
+            }
+            if (!settings.MARP_CLI_USE_NPX) {
+                throw new MarpCLIError(`Detected Marp CLI version ${version ?? (versionOutput || 'unknown')} is incompatible; enable the pinned npx fallback (${SUPPORTED_MARP_CLI_VERSION}).`);
+            }
+            invocation = getNpxMarpCliInvocation();
+        }
+    } catch (error) {
+        if (error instanceof MarpCLIError) throw error;
+        if (!(error instanceof MarpCliProcessError)) throw error;
+        if (!settings.MARP_CLI_USE_NPX || settings.MARP_CLI_PATH.trim()) throw toUserFacingCliError(error);
+        invocation = getNpxMarpCliInvocation();
+    }
+
+    // Only successful decisions are cached so a user can fix a CLI error without reloading Obsidian.
+    marpCliValidationCache.set(cacheKey, invocation);
+    return invocation;
+}
+
 export class MarpExport {
 
     private settings : MarpExtendedSettings;
@@ -479,6 +518,11 @@ export class MarpExport {
 
     static detectBrowserPath(): string | null {
         return detectBrowserPath();
+    }
+
+    /** Clears the process-local CLI validation cache. */
+    static clearCliVersionCache(): void {
+        marpCliValidationCache.clear();
     }
 
     static async getCliVersion(settings: MarpExtendedSettings): Promise<string> {
@@ -556,27 +600,7 @@ export class MarpExport {
     }
 
     private async run(argv: string[]): Promise<void> {
-        const primary = getPrimaryMarpCliInvocation(this.settings);
-        let invocation = primary;
-        try {
-            const versionResult = await execMarpCli(primary, ['--version'], this.settings);
-            const versionOutput = (versionResult.stdout || versionResult.stderr).trim();
-            const version = parseMarpCliVersion(versionOutput);
-            if (version !== SUPPORTED_MARP_CLI_VERSION) {
-                if (this.settings.MARP_CLI_PATH.trim()) {
-                    throw new MarpCLIError(`Configured Marp CLI version ${version ?? (versionOutput || 'unknown')} is incompatible; Marp Extended requires exactly ${SUPPORTED_MARP_CLI_VERSION}.`);
-                }
-                if (!this.settings.MARP_CLI_USE_NPX) {
-                    throw new MarpCLIError(`Detected Marp CLI version ${version ?? (versionOutput || 'unknown')} is incompatible; enable the pinned npx fallback (${SUPPORTED_MARP_CLI_VERSION}).`);
-                }
-                invocation = getNpxMarpCliInvocation();
-            }
-        } catch (error) {
-            if (error instanceof MarpCLIError) throw error;
-            if (!(error instanceof MarpCliProcessError)) throw error;
-            if (!this.settings.MARP_CLI_USE_NPX || this.settings.MARP_CLI_PATH.trim()) throw toUserFacingCliError(error);
-            invocation = getNpxMarpCliInvocation();
-        }
+        const invocation = await getValidatedMarpCliInvocation(this.settings);
 
         try {
             await execMarpCli(invocation, argv, this.settings);

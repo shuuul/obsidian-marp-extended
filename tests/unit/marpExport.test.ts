@@ -163,6 +163,7 @@ function mockSaveDialog(result: { canceled: boolean; filePath?: string }) {
 }
 
 beforeEach(() => {
+	MarpExport.clearCliVersionCache();
 	spawnMock.mockReset();
 	mockCliSuccess();
 });
@@ -222,6 +223,22 @@ test('export accepts the standard Marp CLI 4.5.0 version banner', async () => {
 	expect(getLastCliExecutable()).toBe('/opt/homebrew/bin/marp');
 });
 
+test('export caches CLI version validation for unchanged settings and revalidates changed paths', async () => {
+	const exporter = new MarpExport(DEFAULT_SETTINGS);
+
+	await exporter.export(createFile(), 'html');
+	await exporter.export(createFile(), 'html');
+	await new MarpExport({
+		...DEFAULT_SETTINGS,
+		MARP_CLI_PATH: '/opt/homebrew/bin/marp',
+	}).export(createFile(), 'html');
+
+	expect(spawnMock).toHaveBeenCalledTimes(5);
+	expect(spawnMock.mock.calls.filter((call) => call[1].includes('--version'))).toHaveLength(2);
+	expect(spawnMock.mock.calls[2][1]).not.toContain('--version');
+	expect(spawnMock.mock.calls[3][1]).toEqual(['--version']);
+});
+
 test('export rejects an explicitly configured incompatible Marp CLI', async () => {
 	mockSaveDialog({ canceled: false, filePath: '/tmp/export/custom.html' });
 	mockCliSuccess('@marp-team/marp-cli v4.4.0 (w/ @marp-team/marp-core v4.4.0)\n');
@@ -231,7 +248,8 @@ test('export rejects an explicitly configured incompatible Marp CLI', async () =
 	});
 
 	await expect(exporter.export(createFile(), 'html')).rejects.toThrow('requires exactly 4.5.0');
-	expect(spawnMock).toHaveBeenCalledTimes(1);
+	await expect(exporter.export(createFile(), 'html')).rejects.toThrow('requires exactly 4.5.0');
+	expect(spawnMock).toHaveBeenCalledTimes(2);
 });
 
 test('export replaces an incompatible auto-detected CLI with the pinned npx host', async () => {
