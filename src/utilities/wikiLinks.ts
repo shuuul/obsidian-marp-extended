@@ -1,3 +1,5 @@
+import { mapOutsideCodeFences, mapOutsideInlineCode } from '@/utilities/codeFenceScanner';
+
 const NOTE_WIKI_LINK_REGEX = /(?<!!)\[\[([^\]]+)\]\]/g;
 const OBSIDIAN_OPEN_PROTOCOL = 'obsidian:';
 const OBSIDIAN_OPEN_HOST = 'open';
@@ -11,26 +13,30 @@ export type NoteWikiLinkMode = 'preview' | 'export';
  *   preview click handler can open the note inside Obsidian.
  * - export: renders as plain display text; exported decks contain no link.
  *
- * Image embeds (![[...]]) are left untouched, and fenced code blocks are
- * skipped so Mermaid shapes like A[[subroutine]] and code samples survive.
+ * Image embeds (![[...]]) are left untouched, and fenced or inline code blocks
+ * are skipped so Mermaid shapes like A[[subroutine]] and code samples survive.
+ * Indented (4-space) code blocks are intentionally out of scope because their
+ * CommonMark interpretation is ambiguous with list content.
  */
 export function convertNoteWikiLinks(markdown: string, mode: NoteWikiLinkMode): string {
 	return mapOutsideCodeFences(markdown, (segment) =>
-		segment.replace(NOTE_WIKI_LINK_REGEX, (match: string, wikiLink: string) => {
-			const pipeIndex = wikiLink.indexOf('|');
-			const linkpath = (pipeIndex >= 0 ? wikiLink.slice(0, pipeIndex) : wikiLink).trim();
-			const displayText = (pipeIndex >= 0 ? wikiLink.slice(pipeIndex + 1) : linkpath).trim();
+		mapOutsideInlineCode(segment, (plainText) =>
+			plainText.replace(NOTE_WIKI_LINK_REGEX, (match: string, wikiLink: string) => {
+				const pipeIndex = wikiLink.indexOf('|');
+				const linkpath = (pipeIndex >= 0 ? wikiLink.slice(0, pipeIndex) : wikiLink).trim();
+				const displayText = (pipeIndex >= 0 ? wikiLink.slice(pipeIndex + 1) : linkpath).trim();
 
-			if (!linkpath || !displayText) {
-				return match;
-			}
+				if (!linkpath || !displayText) {
+					return match;
+				}
 
-			if (mode === 'export') {
-				return displayText;
-			}
+				if (mode === 'export') {
+					return displayText;
+				}
 
-			return `[${escapeMarkdownLinkText(displayText)}](${buildObsidianOpenHref(linkpath)})`;
-		}),
+				return `[${escapeMarkdownLinkText(displayText)}](<${buildObsidianOpenHref(linkpath)}>)`;
+			}),
+		),
 	);
 }
 
@@ -65,49 +71,4 @@ export function getInternalLinkpathFromHref(href: string): string | null {
 
 function escapeMarkdownLinkText(text: string): string {
 	return text.replace(/\\/g, '\\\\').replace(/\[/g, '\\[').replace(/]/g, '\\]');
-}
-
-/**
- * Apply a transform only to markdown outside fenced code blocks (``` or ~~~).
- */
-function mapOutsideCodeFences(markdown: string, transform: (segment: string) => string): string {
-	const lines = markdown.split('\n');
-	const parts: string[] = [];
-	let buffer: string[] = [];
-	let inFence = false;
-	let fenceMarker = '';
-
-	const flush = (transformable: boolean) => {
-		if (buffer.length === 0) {
-			return;
-		}
-		const segment = buffer.join('\n');
-		parts.push(transformable ? transform(segment) : segment);
-		buffer = [];
-	};
-
-	for (const line of lines) {
-		const fenceMatch = line.match(/^\s*(`{3,}|~{3,})/);
-		if (!inFence && fenceMatch) {
-			flush(true);
-			inFence = true;
-			fenceMarker = fenceMatch[1][0];
-			buffer.push(line);
-			continue;
-		}
-
-		if (inFence) {
-			buffer.push(line);
-			if (fenceMatch && fenceMatch[1][0] === fenceMarker) {
-				inFence = false;
-				flush(false);
-			}
-			continue;
-		}
-
-		buffer.push(line);
-	}
-
-	flush(!inFence);
-	return parts.join('\n');
 }

@@ -66,7 +66,7 @@ test('preview mode keeps note wiki-links clickable while export mode emits plain
 		noteWikiLinkMode: 'preview',
 	});
 	expect(preview).toContain('![photo.png](../assets/photo.png)');
-	expect(preview).toContain('[来源笔记](obsidian://open?file=');
+	expect(preview).toContain('[来源笔记](<obsidian://open?file=');
 	expect(preview).not.toContain('[[');
 
 	const exported = await compileMarkdownForMarp(markdown, sourceFile, app, filePath, {
