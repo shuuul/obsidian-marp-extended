@@ -28,6 +28,7 @@ src/utilities/vaultThemeManager.ts  # Generic vault theme manager base (differen
 src/utilities/icons.ts              # SVG icons registered with Obsidian
 src/runtime/marpEngine.ts           # Shared Core 5 semantic engine factory
 src/runtime/cliEngine.ts            # Standalone CLI engine entry point
+src/runtime/marpCli.ts               # Marp CLI discovery, validation, process execution, fallback
 src/runtime/engineArtifact.ts       # Embedded engine integrity/materialization
 src/runtime/mermaidFallback.ts      # Engine-side Mermaid fence fallback
 src/runtime/mermaidShared.ts        # Shared Mermaid constants and fence-info parsing

@@ -1,123 +1,67 @@
-import type * as NodeChildProcess from 'node:child_process';
 import type * as NodeFs from 'node:fs';
 import type * as NodePath from 'node:path';
 import { App, Notice, Platform, TFile } from 'obsidian';
-import { MarpExtendedSettings } from './settings';
+import { ensureEngineArtifact } from '../runtime/engineArtifact';
+import {
+	clearMarpCliVersionCache,
+	detectBrowserPath,
+	detectMarpCliPath,
+	getMarpCliVersion,
+	MarpCLIError,
+	runMarpCli,
+} from '../runtime/marpCli';
+import { wrapBuiltinThemeScaleCss } from './builtinThemeScale';
 import { FilePath } from './filePath';
-import packageMetadata from '../../package.json';
 import { compileMarkdownForMarp } from './marpMarkdown';
+import { MARP_EXTENDED_STRUCTURAL_CSS } from './marpExtendedStructuralCss';
 import {
 	insertMarkdownAfterFrontmatter,
 	loadMermaidThemeCssForFile,
 	parseMermaidRenderOptionsFromCss,
 	wrapMermaidThemeCss,
 } from './mermaidTheme';
-import { wrapBuiltinThemeScaleCss } from './builtinThemeScale';
-import { MARP_EXTENDED_STRUCTURAL_CSS } from './marpExtendedStructuralCss';
-import { ensureEngineArtifact } from '../runtime/engineArtifact';
+import { MarpExtendedSettings } from './settings';
 
-export class MarpCLIError extends Error {}
-
-function getEnvVar(key: string): string {
-	const p = (typeof window !== 'undefined' ? (window as Window & { process?: { env?: Record<string, string> } }).process : undefined) ?? (typeof process !== 'undefined' ? process : undefined);
-	const env = p ? p['env'] : undefined;
-	return (env ? env[key] : '') ?? '';
-}
+export { MarpCLIError };
 
 interface ElectronSaveDialogOptions {
-    title: string;
-    defaultPath?: string;
-    filters?: Array<{
-        name: string;
-        extensions: string[];
-    }>;
+	title: string;
+	defaultPath?: string;
+	filters?: Array<{
+		name: string;
+		extensions: string[];
+	}>;
 }
 
 interface ElectronSaveDialogResult {
-    canceled: boolean;
-    filePath?: string;
+	canceled: boolean;
+	filePath?: string;
 }
 
 interface ElectronDialog {
-    showSaveDialog?: (options: ElectronSaveDialogOptions) => Promise<ElectronSaveDialogResult>;
-    showSaveDialogSync?: (options: ElectronSaveDialogOptions) => string | undefined;
+	showSaveDialog?: (options: ElectronSaveDialogOptions) => Promise<ElectronSaveDialogResult>;
+	showSaveDialogSync?: (options: ElectronSaveDialogOptions) => string | undefined;
 }
 
 interface ElectronModule {
-    dialog?: ElectronDialog;
-    remote?: {
-        dialog?: ElectronDialog;
-    };
+	dialog?: ElectronDialog;
+	remote?: {
+		dialog?: ElectronDialog;
+	};
 }
 
 type ElectronRequire = (moduleName: string) => ElectronModule;
 
-interface MarpCliExecResult {
-    stdout: string;
-    stderr: string;
-}
-
-interface MarpCliExecError extends Error {
-    code?: string | number;
-    errno?: number;
-    syscall?: string;
-    path?: string;
-}
-
 interface ExportSource {
-    path: string;
-    temporaryPath: string | null;
+	path: string;
+	temporaryPath: string | null;
 }
 
-interface MarpCliInvocation {
-    executable: string;
-    argsPrefix: string[];
-    isNpxFallback: boolean;
-}
-
-type NodeChildProcessModule = typeof NodeChildProcess;
 type NodeFsModule = typeof NodeFs;
 type NodePathModule = typeof NodePath;
 
-const DEFAULT_MARP_CLI_COMMAND = 'marp';
-const SUPPORTED_MARP_CLI_VERSION = '4.5.0';
-type MarpExtendedPackageMetadata = {
-    marpExtended: {
-        npxMarpCliPackage: string;
-    };
-};
-
-const NPX_MARP_CLI_PACKAGE = (packageMetadata as MarpExtendedPackageMetadata).marpExtended.npxMarpCliPackage;
-const MISSING_MARP_CLI_INSTALL_HINT = 'Install it with `npm install -g @marp-team/marp-cli`, set the Marp CLI path, or enable npx fallback in Marp Extended settings.';
-const MISSING_NPX_INSTALL_HINT = 'Install Node.js/npm so npx is available, or set the Marp CLI path in Marp Extended settings.';
-const MARP_CLI_MAX_BUFFER = 10 * 1024 * 1024;
-const marpCliValidationCache = new Map<string, MarpCliInvocation>();
-const COMMON_MARP_CLI_DIRECTORIES = [
-    '/opt/homebrew/bin',
-    '/usr/local/bin',
-    '/opt/local/bin',
-    '/usr/bin',
-    '/bin',
-];
-
-const COMMON_DARWIN_BROWSER_PATHS = [
-    '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
-    '/Applications/Chromium.app/Contents/MacOS/Chromium',
-    '/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge',
-    `${getEnvVar('HOME')}/Applications/Google Chrome.app/Contents/MacOS/Google Chrome`,
-    `${getEnvVar('HOME')}/Applications/Chromium.app/Contents/MacOS/Chromium`,
-    `${getEnvVar('HOME')}/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge`,
-];
-const COMMON_WINDOWS_BROWSER_PATHS = [
-    `${getEnvVar('PROGRAMFILES')}\\Google\\Chrome\\Application\\chrome.exe`,
-    `${getEnvVar('PROGRAMFILES(X86)')}\\Google\\Chrome\\Application\\chrome.exe`,
-    `${getEnvVar('LOCALAPPDATA')}\\Google\\Chrome\\Application\\chrome.exe`,
-    `${getEnvVar('PROGRAMFILES')}\\Microsoft\\Edge\\Application\\msedge.exe`,
-    `${getEnvVar('PROGRAMFILES(X86)')}\\Microsoft\\Edge\\Application\\msedge.exe`,
-    `${getEnvVar('LOCALAPPDATA')}\\Microsoft\\Edge\\Application\\msedge.exe`,
-];
-
 const HTML_EXPORT_TEMPLATE = 'bespoke';
+
 function assertDesktopExport(): void {
 	if (!Platform.isDesktop) {
 		throw new MarpCLIError('Export is only available on desktop Obsidian.');
@@ -136,666 +80,267 @@ function getNodePath(): NodePathModule {
 	return require('node:path') as NodePathModule;
 }
 
-function getNodeChildProcess(): NodeChildProcessModule {
-	assertDesktopExport();
-	// eslint-disable-next-line @typescript-eslint/no-require-imports -- Obsidian desktop export uses Node child_process via require(); dynamic import() fails at runtime
-	return require('node:child_process') as NodeChildProcessModule;
-}
-
 const EXPORT_EXTENSIONS: Record<string, string> = {
-    pdf: 'pdf',
-    'pdf-with-notes': 'pdf',
-    pptx: 'pptx',
-    html: 'html',
+	pdf: 'pdf',
+	'pdf-with-notes': 'pdf',
+	pptx: 'pptx',
+	html: 'html',
 };
 
-class MarpCliProcessError extends Error {
-    constructor(
-        message: string,
-        readonly executable: string,
-        readonly args: string[],
-        readonly exitCode: number | null,
-        readonly code: string | number | undefined,
-        readonly stdout: string,
-        readonly stderr: string,
-        readonly isNpxFallback: boolean,
-    ) {
-        super(message);
-        this.name = 'MarpCliProcessError';
-    }
-}
+export class MarpExport {
+	private settings: MarpExtendedSettings;
+	private app: App | null;
+	private pluginDir: string | undefined;
 
-function getMarpCliExecutableNames(): string[] {
-    return process.platform === 'win32'
-        ? ['marp.cmd', 'marp.exe', 'marp']
-        : [DEFAULT_MARP_CLI_COMMAND];
-}
+	static detectCliPath(): string | null {
+		return detectMarpCliPath();
+	}
 
-function getNpxExecutableNames(): string[] {
-    return process.platform === 'win32'
-        ? ['npx.cmd', 'npx.exe', 'npx']
-        : ['npx'];
-}
+	static detectBrowserPath(): string | null {
+		return detectBrowserPath();
+	}
 
-function uniqueStrings(values: string[]): string[] {
-    return [...new Set(values.filter((value) => value.trim().length > 0))];
-}
+	/** Clears the process-local CLI validation cache. */
+	static clearCliVersionCache(): void {
+		clearMarpCliVersionCache();
+	}
 
-function getPathSearchDirectories(path: NodePathModule): string[] {
-    return uniqueStrings([
-        ...getEnvVar('PATH').split(path.delimiter),
-        ...COMMON_MARP_CLI_DIRECTORIES,
-    ]);
-}
+	static getCliVersion(settings: MarpExtendedSettings): Promise<string> {
+		return getMarpCliVersion(settings);
+	}
 
-function isExecutableFile(fs: NodeFsModule, path: string): boolean {
-    try {
-        fs.accessSync(path, fs.constants.X_OK);
-        return true;
-    } catch {
-        return false;
-    }
-}
+	constructor(settings: MarpExtendedSettings, app: App | null = null, pluginDir?: string) {
+		this.settings = settings;
+		this.app = app;
+		this.pluginDir = pluginDir;
+	}
 
-function detectExecutablePath(executableNames: string[]): string | null {
-    const fs = getNodeFs();
-    const path = getNodePath();
-    const directories = getPathSearchDirectories(path);
+	async export(file: TFile, type: string): Promise<string | null> {
+		const fs = getNodeFs();
+		const path = getNodePath();
+		const filesTool = new FilePath(this.settings);
+		const outputPath = await this.getOutputPath(file, type, filesTool, path);
+		if (this.shouldChooseExportDirectory(type) && outputPath == null) {
+			return null;
+		}
+		const enginePath = this.app
+			? await ensureEngineArtifact(this.app, this.pluginDir)
+			: path.resolve('marp-engine.cjs');
 
-    for (const directory of directories) {
-        for (const executableName of executableNames) {
-            const executablePath = path.join(directory, executableName);
-            if (isExecutableFile(fs, executablePath)) {
-                return executablePath;
-            }
-        }
-    }
+		const sourceFilePath = filesTool.getExportFileSystemPath(file);
+		const themePaths = filesTool.getThemePaths(file).filter((themePath) => fs.existsSync(themePath));
+		if (sourceFilePath !== '') {
+			const exportSource = await this.prepareExportSource(file, filesTool, sourceFilePath, fs, path);
+			const argv: string[] = [exportSource.path, '--allow-local-files', '--engine', enginePath, '--html'];
 
-    return null;
-}
+			if (themePaths.length > 0) {
+				argv.push('--theme-set');
+				argv.push(...themePaths);
+			}
 
-function detectMarpCliPath(): string | null {
-    return detectExecutablePath(getMarpCliExecutableNames());
-}
+			this.pushBrowserPath(argv);
+			switch (type) {
+				case 'pdf':
+					argv.push('--pdf');
+					this.pushOutputPath(argv, outputPath);
+					break;
+				case 'pdf-with-notes':
+					argv.push('--pdf');
+					argv.push('--pdf-notes');
+					argv.push('--pdf-outlines');
+					this.pushOutputPath(argv, outputPath);
+					break;
+				case 'pptx':
+					argv.push('--pptx');
+					this.pushOutputPath(argv, outputPath);
+					break;
+				case 'html':
+					argv.push('--template');
+					argv.push(HTML_EXPORT_TEMPLATE);
+					this.pushOutputPath(argv, outputPath);
+					break;
+				case 'preview':
+					argv.push('--preview');
+					break;
+			}
+			try {
+				await runMarpCli(this.settings, argv);
+				return outputPath;
+			} finally {
+				this.removeTemporaryExportSource(exportSource.temporaryPath, fs);
+			}
+		}
 
-function getBrowserExecutableNames(): string[] {
-    if (process.platform === 'win32') {
-        return ['chrome.exe', 'msedge.exe', 'chromium.exe'];
-    }
+		return null;
+	}
 
-    return [
-        'google-chrome',
-        'google-chrome-stable',
-        'chromium',
-        'chromium-browser',
-        'microsoft-edge',
-        'microsoft-edge-stable',
-        'chrome',
-        'msedge',
-    ];
-}
+	private async prepareExportSource(
+		file: TFile,
+		filesTool: FilePath,
+		sourceFilePath: string,
+		fs: NodeFsModule,
+		path: NodePathModule,
+	): Promise<ExportSource> {
+		if (!this.app) {
+			await filesTool.removeFileFromRoot(file);
+			await filesTool.copyFileToRoot(file);
+			return { path: sourceFilePath, temporaryPath: null };
+		}
 
-function detectBrowserPath(): string | null {
-    const pathExecutable = detectExecutablePath(getBrowserExecutableNames());
-    if (pathExecutable) {
-        return pathExecutable;
-    }
+		const originalContent = await this.app.vault.cachedRead(file);
+		const mermaidThemeCss = await loadMermaidThemeCssForFile(this.app, file, originalContent);
+		const mermaidRenderOptions = parseMermaidRenderOptionsFromCss(mermaidThemeCss);
+		const processedMarkdown = await compileMarkdownForMarp(originalContent, file, this.app, filesTool, {
+			renderMermaidInline: true,
+			mermaidOptions: {
+				renderOptions: mermaidRenderOptions,
+				autoFit: { enabled: this.settings.MERMAID_AUTO_FIT },
+			},
+			noteWikiLinkMode: 'export',
+		});
+		const processedContent = insertMarkdownAfterFrontmatter(
+			processedMarkdown,
+			`${wrapMermaidThemeCss(mermaidThemeCss)}${wrapBuiltinThemeScaleCss()}\n<style>${MARP_EXTENDED_STRUCTURAL_CSS}</style>`,
+		);
+		const needsTemporarySource = processedContent !== originalContent || filesTool.shouldUseRootExportSource(file);
 
-    const fs = getNodeFs();
-    const platformPaths = process.platform === 'darwin'
-        ? COMMON_DARWIN_BROWSER_PATHS
-        : process.platform === 'win32'
-            ? COMMON_WINDOWS_BROWSER_PATHS
-            : [];
+		if (!needsTemporarySource) {
+			return { path: sourceFilePath, temporaryPath: null };
+		}
 
-    for (const browserPath of uniqueStrings(platformPaths)) {
-        if (isExecutableFile(fs, browserPath)) {
-            return browserPath;
-        }
-    }
+		const temporaryPath = this.getTemporaryExportSourcePath(sourceFilePath, file.basename, path);
+		fs.writeFileSync(temporaryPath, processedContent, { encoding: 'utf-8', flag: 'wx' });
+		return { path: temporaryPath, temporaryPath };
+	}
 
-    return null;
-}
+	private getTemporaryExportSourcePath(sourceFilePath: string, basename: string, path: NodePathModule): string {
+		const suffix = `${process.pid}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
+		return path.join(path.dirname(sourceFilePath), `.${basename}.marp-export-${suffix}.md`);
+	}
 
-function getNpxExecutable(): string {
-    return detectExecutablePath(getNpxExecutableNames()) ?? (process.platform === 'win32' ? 'npx.cmd' : 'npx');
-}
+	private removeTemporaryExportSource(temporaryPath: string | null, fs: NodeFsModule): void {
+		if (!temporaryPath || !fs.existsSync(temporaryPath)) {
+			return;
+		}
+		fs.unlinkSync(temporaryPath);
+	}
 
-function getPrimaryMarpCliInvocation(settings: MarpExtendedSettings): MarpCliInvocation {
-    const configuredPath = settings.MARP_CLI_PATH.trim();
-    const detectedPath = configuredPath ? null : detectMarpCliPath();
-    const executable = configuredPath || detectedPath || DEFAULT_MARP_CLI_COMMAND;
-    return {
-        executable,
-        argsPrefix: [],
-        isNpxFallback: false,
-    };
-}
+	private shouldChooseExportDirectory(type: string): boolean {
+		return EXPORT_EXTENSIONS[type] != null;
+	}
 
-function getNpxMarpCliInvocation(): MarpCliInvocation {
-    return {
-        executable: getNpxExecutable(),
-        argsPrefix: ['--yes', '--package', NPX_MARP_CLI_PACKAGE, DEFAULT_MARP_CLI_COMMAND],
-        isNpxFallback: true,
-    };
-}
+	private async getOutputPath(
+		file: TFile,
+		type: string,
+		filesTool: FilePath,
+		path: NodePathModule,
+	): Promise<string | null> {
+		const extension = EXPORT_EXTENSIONS[type];
+		if (!extension) {
+			return null;
+		}
 
-function shouldUseNpxFallback(settings: MarpExtendedSettings, args: string[], error: MarpCliProcessError): boolean {
-    if (!settings.MARP_CLI_USE_NPX || settings.MARP_CLI_PATH.trim().length > 0 || error.isNpxFallback) {
-        return false;
-    }
+		const sourceFilePath = filesTool.getExportFileSystemPath(file);
+		const defaultPath = path.join(path.dirname(sourceFilePath), `${file.basename}.${extension}`);
+		return this.chooseExportFile(defaultPath, extension);
+	}
 
-    if (isMissingExecutable(error)) {
-        return true;
-    }
-
-    const isBrowserBackedExport = args.includes('--pdf') || args.includes('--pptx');
-    return isBrowserBackedExport && isMissingBrowserError(getMarpCliOutput(error));
-}
-
-function getMarpCliEnvironment(settings: MarpExtendedSettings): Record<string, string> {
-	const p = (typeof window !== 'undefined' ? (window as Window & { process?: { env?: Record<string, string> } }).process : undefined) ?? (typeof process !== 'undefined' ? process : undefined);
-	const envCopy: Record<string, string> = {};
-	const env = p ? p['env'] : undefined;
-	if (env) {
-		for (const key of Object.keys(env)) {
-			envCopy[key] = env[key] ?? '';
+	private pushOutputPath(argv: string[], outputPath: string | null): void {
+		if (outputPath) {
+			argv.push('-o', outputPath);
 		}
 	}
-	if (settings.CHROME_PATH.trim()) {
-		envCopy.CHROME_PATH = settings.CHROME_PATH.trim();
+
+	private pushBrowserPath(argv: string[]): void {
+		if (this.settings.CHROME_PATH) {
+			argv.push('--browser-path', this.settings.CHROME_PATH);
+		}
 	}
-	return envCopy;
+
+	private async chooseExportFile(defaultPath: string, extension: string): Promise<string | null> {
+		const dialog = this.getElectronDialog();
+		if (!dialog) {
+			return defaultPath;
+		}
+
+		const options: ElectronSaveDialogOptions = {
+			title: 'Choose export file',
+			defaultPath,
+			filters: [{ name: extension.toUpperCase(), extensions: [extension] }],
+		};
+		if (dialog.showSaveDialog) {
+			const result = await dialog.showSaveDialog(options);
+			return result.canceled ? null : result.filePath ?? null;
+		}
+		if (dialog.showSaveDialogSync) {
+			return dialog.showSaveDialogSync(options) ?? null;
+		}
+		return defaultPath;
+	}
+
+	private getElectronDialog(): ElectronDialog | null {
+		const electronRequire = this.getElectronRequire();
+		if (!electronRequire) {
+			return null;
+		}
+
+		try {
+			const electron = electronRequire('electron');
+			const dialog = electron.remote?.dialog ?? electron.dialog;
+			if (dialog) {
+				return dialog;
+			}
+		} catch {
+			// Try @electron/remote below.
+		}
+
+		try {
+			return electronRequire('@electron/remote').dialog ?? null;
+		} catch {
+			return null;
+		}
+	}
+
+	private getElectronRequire(): ElectronRequire | null {
+		const maybeWindowRequire = typeof window !== 'undefined'
+			? (window as Window & { require?: ElectronRequire }).require
+			: undefined;
+		if (maybeWindowRequire) {
+			return maybeWindowRequire;
+		}
+		if (typeof require !== 'undefined') {
+			return require as ElectronRequire;
+		}
+		return null;
+	}
 }
-
-function toOutputText(output: string | Buffer | undefined): string {
-    if (output == null) {
-        return '';
-    }
-    return Buffer.isBuffer(output) ? output.toString('utf-8') : output;
-}
-
-function getExecErrorExitCode(error: MarpCliExecError): number | null {
-    return typeof error.code === 'number' ? error.code : null;
-}
-
-function execMarpCli(
-    invocation: MarpCliInvocation,
-    args: string[],
-    settings: MarpExtendedSettings,
-): Promise<MarpCliExecResult> {
-    const { spawn } = getNodeChildProcess();
-    const commandArgs = [...invocation.argsPrefix, ...args];
-    return new Promise((resolve, reject) => {
-        const child = spawn(invocation.executable, commandArgs, {
-            env: getMarpCliEnvironment(settings),
-            stdio: ['ignore', 'pipe', 'pipe'],
-            windowsHide: true,
-        });
-        let stdoutText = '';
-        let stderrText = '';
-        let settled = false;
-
-        const rejectOnce = (
-            message: string,
-            exitCode: number | null,
-            code: string | number | undefined,
-        ): void => {
-            if (settled) {
-                return;
-            }
-            settled = true;
-            reject(new MarpCliProcessError(
-                message,
-                invocation.executable,
-                commandArgs,
-                exitCode,
-                code,
-                stdoutText,
-                stderrText,
-                invocation.isNpxFallback,
-            ));
-        };
-
-        const appendOutput = (target: 'stdout' | 'stderr', output: string | Buffer): void => {
-            if (target === 'stdout') {
-                stdoutText += toOutputText(output);
-            } else {
-                stderrText += toOutputText(output);
-            }
-
-            if (stdoutText.length + stderrText.length > MARP_CLI_MAX_BUFFER) {
-                child.kill();
-                rejectOnce('Marp CLI output exceeded the maximum buffer size.', null, 'ERR_CHILD_PROCESS_STDIO_MAXBUFFER');
-            }
-        };
-
-        child.stdout?.on('data', (output: string | Buffer) => appendOutput('stdout', output));
-        child.stderr?.on('data', (output: string | Buffer) => appendOutput('stderr', output));
-        child.on('error', (error: MarpCliExecError) => {
-            rejectOnce(error.message, getExecErrorExitCode(error), error.code);
-        });
-        child.on('close', (exitCode: number | null, signal: NodeJS.Signals | null) => {
-            if (settled) {
-                return;
-            }
-            settled = true;
-
-            if (exitCode === 0) {
-                resolve({ stdout: stdoutText, stderr: stderrText });
-                return;
-            }
-
-            reject(new MarpCliProcessError(
-                signal ? `Marp CLI was terminated by ${signal}.` : `Marp CLI exited with status ${String(exitCode ?? 'unknown')}.`,
-                invocation.executable,
-                commandArgs,
-                exitCode,
-                exitCode ?? signal ?? undefined,
-                stdoutText,
-                stderrText,
-                invocation.isNpxFallback,
-            ));
-        });
-    });
-}
-
-function getMarpCliOutput(error: MarpCliProcessError): string {
-    return [error.stderr, error.stdout].filter((output) => output.trim().length > 0).join('\n').trim();
-}
-
-function parseMarpCliVersion(output: string): string | null {
-    const packageVersion = output.match(/@marp-team\/marp-cli\s+v?(\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?)/i);
-    if (packageVersion) {
-        return packageVersion[1];
-    }
-
-    return output.match(/^\s*v?(\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?)(?:\s|$)/)?.[1] ?? null;
-}
-
-function isMissingExecutable(error: MarpCliProcessError): boolean {
-    return error.code === 'ENOENT';
-}
-
-function isMissingBrowserError(output: string): boolean {
-    return /NOT_FOUND_CHROMIUM|could not find.*(?:chrome|chromium|edge)|no .*browser|no usable sandbox|install .*chrome|chromium.*not found/i.test(output);
-}
-
-function toUserFacingCliError(error: MarpCliProcessError): MarpCLIError {
-    if (isMissingExecutable(error)) {
-        if (error.isNpxFallback) {
-            return new MarpCLIError(`npx executable was not found. ${MISSING_NPX_INSTALL_HINT} Tried: ${error.executable}`);
-        }
-        return new MarpCLIError(`Marp CLI executable was not found. ${MISSING_MARP_CLI_INSTALL_HINT} Tried: ${error.executable}`);
-    }
-
-    const output = getMarpCliOutput(error);
-    if (isMissingBrowserError(output)) {
-        const suffix = output ? `\n\n${output}` : '';
-        return new MarpCLIError(`Marp CLI could not find Chrome, Chromium, or Microsoft Edge. Install a supported browser or set CHROME_PATH in Marp Extended settings.${suffix}`);
-    }
-
-    const status = error.exitCode == null ? `error code ${String(error.code ?? 'unknown')}` : `exit status ${error.exitCode}`;
-    const suffix = output ? `\n\n${output}` : '';
-    return new MarpCLIError(`Marp CLI failed with ${status}.${suffix}`);
-}
-
-async function execMarpCliWithFallback(
-    settings: MarpExtendedSettings,
-    args: string[],
-): Promise<MarpCliExecResult> {
-    const primaryInvocation = getPrimaryMarpCliInvocation(settings);
-    try {
-        return await execMarpCli(primaryInvocation, args, settings);
-    } catch (error) {
-        if (!(error instanceof MarpCliProcessError)) {
-            throw error;
-        }
-
-        if (!shouldUseNpxFallback(settings, args, error)) {
-            throw toUserFacingCliError(error);
-        }
-
-        try {
-            return await execMarpCli(getNpxMarpCliInvocation(), args, settings);
-        } catch (fallbackError) {
-            if (fallbackError instanceof MarpCliProcessError) {
-                throw toUserFacingCliError(fallbackError);
-            }
-
-            throw fallbackError;
-        }
-    }
-}
-
-function getMarpCliValidationCacheKey(settings: MarpExtendedSettings): string {
-    return `${settings.MARP_CLI_PATH.trim()}\0${settings.MARP_CLI_USE_NPX ? '1' : '0'}`;
-}
-
-async function getValidatedMarpCliInvocation(settings: MarpExtendedSettings): Promise<MarpCliInvocation> {
-    const cacheKey = getMarpCliValidationCacheKey(settings);
-    const cachedInvocation = marpCliValidationCache.get(cacheKey);
-    if (cachedInvocation) {
-        return cachedInvocation;
-    }
-
-    const primary = getPrimaryMarpCliInvocation(settings);
-    let invocation = primary;
-    try {
-        const versionResult = await execMarpCli(primary, ['--version'], settings);
-        const versionOutput = (versionResult.stdout || versionResult.stderr).trim();
-        const version = parseMarpCliVersion(versionOutput);
-        if (version !== SUPPORTED_MARP_CLI_VERSION) {
-            if (settings.MARP_CLI_PATH.trim()) {
-                throw new MarpCLIError(`Configured Marp CLI version ${version ?? (versionOutput || 'unknown')} is incompatible; Marp Extended requires exactly ${SUPPORTED_MARP_CLI_VERSION}.`);
-            }
-            if (!settings.MARP_CLI_USE_NPX) {
-                throw new MarpCLIError(`Detected Marp CLI version ${version ?? (versionOutput || 'unknown')} is incompatible; enable the pinned npx fallback (${SUPPORTED_MARP_CLI_VERSION}).`);
-            }
-            invocation = getNpxMarpCliInvocation();
-        }
-    } catch (error) {
-        if (error instanceof MarpCLIError) throw error;
-        if (!(error instanceof MarpCliProcessError)) throw error;
-        if (!settings.MARP_CLI_USE_NPX || settings.MARP_CLI_PATH.trim()) throw toUserFacingCliError(error);
-        invocation = getNpxMarpCliInvocation();
-    }
-
-    // Only successful decisions are cached so a user can fix a CLI error without reloading Obsidian.
-    marpCliValidationCache.set(cacheKey, invocation);
-    return invocation;
-}
-
-export class MarpExport {
-
-    private settings : MarpExtendedSettings;
-    private app : App | null;
-    private pluginDir: string | undefined;
-
-    static detectCliPath(): string | null {
-        return detectMarpCliPath();
-    }
-
-    static detectBrowserPath(): string | null {
-        return detectBrowserPath();
-    }
-
-    /** Clears the process-local CLI validation cache. */
-    static clearCliVersionCache(): void {
-        marpCliValidationCache.clear();
-    }
-
-    static async getCliVersion(settings: MarpExtendedSettings): Promise<string> {
-        const result = await execMarpCliWithFallback(settings, ['--version']);
-        return (result.stdout || result.stderr).trim();
-    }
-
-    constructor(settings: MarpExtendedSettings, app: App | null = null, pluginDir?: string) {
-        this.settings = settings;
-        this.app = app;
-        this.pluginDir = pluginDir;
-    }
-
-    async export(file: TFile, type: string): Promise<string | null>{
-        const fs = getNodeFs();
-        const path = getNodePath();
-        const filesTool = new FilePath(this.settings);
-        const outputPath = await this.getOutputPath(file, type, filesTool, path);
-        if (this.shouldChooseExportDirectory(type) && outputPath == null) {
-            return null;
-        }
-        const enginePath = this.app
-            ? await ensureEngineArtifact(this.app, this.pluginDir)
-            : path.resolve('marp-engine.cjs');
-
-        const sourceFilePath = filesTool.getExportFileSystemPath(file);
-        const themePaths = filesTool.getThemePaths(file).filter((themePath) => fs.existsSync(themePath));
-        if (sourceFilePath != ''){
-            const exportSource = await this.prepareExportSource(file, filesTool, sourceFilePath, fs, path);
-            const completeFilePath = exportSource.path;
-            //console.log(completeFilePath);
-
-            const argv: string[] = [completeFilePath, '--allow-local-files', '--engine', enginePath, '--html'];
-
-            if (themePaths.length > 0){
-                argv.push('--theme-set');
-                argv.push(...themePaths);
-            }
-
-            this.pushBrowserPath(argv);
-            switch (type) {
-                case 'pdf':
-                    argv.push('--pdf');
-                    this.pushOutputPath(argv, outputPath);
-                    break;
-                case 'pdf-with-notes':
-                    argv.push('--pdf');
-                    argv.push('--pdf-notes');
-                    argv.push('--pdf-outlines');
-                    this.pushOutputPath(argv, outputPath);
-                    break;
-                case 'pptx':
-                    argv.push('--pptx');
-                    this.pushOutputPath(argv, outputPath);
-                    break;
-                case 'html':
-                    argv.push('--template');
-                    argv.push(HTML_EXPORT_TEMPLATE);
-                    this.pushOutputPath(argv, outputPath);
-                    break;
-                case 'preview':
-                    argv.push('--preview');
-                    break;
-            }
-            try {
-                await this.run(argv);
-                return outputPath;
-            } finally {
-                this.removeTemporaryExportSource(exportSource.temporaryPath, fs);
-            }
-        } 
-
-        return null;
-
-    }
-
-    private async run(argv: string[]): Promise<void> {
-        const invocation = await getValidatedMarpCliInvocation(this.settings);
-
-        try {
-            await execMarpCli(invocation, argv, this.settings);
-        } catch (error) {
-            if (!(error instanceof MarpCliProcessError)) throw error;
-            if (invocation.isNpxFallback || !shouldUseNpxFallback(this.settings, argv, error)) throw toUserFacingCliError(error);
-            await execMarpCli(getNpxMarpCliInvocation(), argv, this.settings).catch((fallbackError: unknown) => {
-                throw fallbackError instanceof MarpCliProcessError ? toUserFacingCliError(fallbackError) : fallbackError;
-            });
-        }
-    }
-
-    private async prepareExportSource(
-        file: TFile,
-        filesTool: FilePath,
-        sourceFilePath: string,
-        fs: NodeFsModule,
-        path: NodePathModule,
-    ): Promise<ExportSource> {
-        if (!this.app) {
-            await filesTool.removeFileFromRoot(file);
-            await filesTool.copyFileToRoot(file);
-            return { path: sourceFilePath, temporaryPath: null };
-        }
-
-        const originalContent = await this.app.vault.cachedRead(file);
-        const mermaidThemeCss = await loadMermaidThemeCssForFile(this.app, file, originalContent);
-        const mermaidRenderOptions = parseMermaidRenderOptionsFromCss(mermaidThemeCss);
-        const processedMarkdown = await compileMarkdownForMarp(originalContent, file, this.app, filesTool, {
-            renderMermaidInline: true,
-            mermaidOptions: {
-                renderOptions: mermaidRenderOptions,
-                autoFit: { enabled: this.settings.MERMAID_AUTO_FIT },
-            },
-            noteWikiLinkMode: 'export',
-        });
-        const processedContent = insertMarkdownAfterFrontmatter(
-            processedMarkdown,
-            `${wrapMermaidThemeCss(mermaidThemeCss)}${wrapBuiltinThemeScaleCss()}\n<style>${MARP_EXTENDED_STRUCTURAL_CSS}</style>`,
-        );
-        const needsTemporarySource = processedContent !== originalContent || filesTool.shouldUseRootExportSource(file);
-
-        if (!needsTemporarySource) {
-            return { path: sourceFilePath, temporaryPath: null };
-        }
-
-        const temporaryPath = this.getTemporaryExportSourcePath(sourceFilePath, file.basename, path);
-        fs.writeFileSync(temporaryPath, processedContent, { encoding: 'utf-8', flag: 'wx' });
-
-        return { path: temporaryPath, temporaryPath };
-    }
-
-    private getTemporaryExportSourcePath(sourceFilePath: string, basename: string, path: NodePathModule): string {
-        const suffix = `${process.pid}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
-        return path.join(path.dirname(sourceFilePath), `.${basename}.marp-export-${suffix}.md`);
-    }
-
-    private removeTemporaryExportSource(temporaryPath: string | null, fs: NodeFsModule): void {
-        if (!temporaryPath || !fs.existsSync(temporaryPath)) {
-            return;
-        }
-
-        fs.unlinkSync(temporaryPath);
-    }
-
-    private shouldChooseExportDirectory(type: string): boolean {
-        return EXPORT_EXTENSIONS[type] != null;
-    }
-
-    private async getOutputPath(
-        file: TFile,
-        type: string,
-        filesTool: FilePath,
-        path: NodePathModule,
-    ): Promise<string | null> {
-        const extension = EXPORT_EXTENSIONS[type];
-        if (!extension) {
-            return null;
-        }
-
-        const sourceFilePath = filesTool.getExportFileSystemPath(file);
-        const defaultPath = path.join(path.dirname(sourceFilePath), `${file.basename}.${extension}`);
-
-        return this.chooseExportFile(defaultPath, extension);
-    }
-
-    private pushOutputPath(argv: string[], outputPath: string | null): void {
-        if (!outputPath) {
-            return;
-        }
-
-        argv.push('-o');
-        argv.push(outputPath);
-    }
-
-    private pushBrowserPath(argv: string[]): void {
-        if (!this.settings.CHROME_PATH) {
-            return;
-        }
-
-        argv.push('--browser-path');
-        argv.push(this.settings.CHROME_PATH);
-    }
-
-    private async chooseExportFile(defaultPath: string, extension: string): Promise<string | null> {
-        const dialog = this.getElectronDialog();
-        if (!dialog) {
-            return defaultPath;
-        }
-
-        const options: ElectronSaveDialogOptions = {
-            title: 'Choose export file',
-            defaultPath,
-            filters: [{ name: extension.toUpperCase(), extensions: [extension] }],
-        };
-
-        if (dialog.showSaveDialog) {
-            const result = await dialog.showSaveDialog(options);
-            if (result.canceled) {
-                return null;
-            }
-            return result.filePath ?? null;
-        }
-
-        if (dialog.showSaveDialogSync) {
-            return dialog.showSaveDialogSync(options) ?? null;
-        }
-
-        return defaultPath;
-    }
-
-    private getElectronDialog(): ElectronDialog | null {
-        const electronRequire = this.getElectronRequire();
-        if (!electronRequire) {
-            return null;
-        }
-
-        try {
-            const electron = electronRequire('electron');
-            const dialog = electron.remote?.dialog ?? electron.dialog;
-            if (dialog) {
-                return dialog;
-            }
-        } catch {
-            // Try @electron/remote below.
-        }
-
-        try {
-            return electronRequire('@electron/remote').dialog ?? null;
-        } catch {
-            return null;
-        }
-    }
-
-    private getElectronRequire(): ElectronRequire | null {
-        const maybeWindowRequire = (typeof window !== 'undefined' ? (window as Window & { require?: ElectronRequire }).require : undefined);
-        if (maybeWindowRequire) {
-            return maybeWindowRequire;
-        }
-
-        if (typeof require !== 'undefined') {
-            return require as ElectronRequire;
-        }
-
-        return null;
-    }
-}
-
 
 export async function exportWithNotice(
-    settings: MarpExtendedSettings,
-    app: App,
-    type: string,
-    file: TFile | null,
-    pluginDir?: string,
+	settings: MarpExtendedSettings,
+	app: App,
+	type: string,
+	file: TFile | null,
+	pluginDir?: string,
 ): Promise<void> {
-    if (!file) {
-        new Notice('Open a Markdown file before exporting Marp slides.', 5000);
-        return;
-    }
+	if (!file) {
+		new Notice('Open a Markdown file before exporting Marp slides.', 5000);
+		return;
+	}
 
-    let progressNotice: Notice | null = null;
-    try {
-        const marpCli = new MarpExport(settings, app, pluginDir);
-        progressNotice = new Notice(`Exporting Marp slides as ${type.toUpperCase()}…`, 0);
-        const outputPath = await marpCli.export(file, type);
-        progressNotice.hide();
-        progressNotice = null;
-        if (outputPath) {
-            new Notice(`Exported Marp slides to ${outputPath}`, 7000);
-        }
-    } catch (error) {
-        progressNotice?.hide();
-        const message = error instanceof Error ? error.message : String(error);
-        console.error('Marp export failed:', error);
-        new Notice(`Marp export failed: ${message}`, 8000);
-    }
+	let progressNotice: Notice | null = null;
+	try {
+		const marpCli = new MarpExport(settings, app, pluginDir);
+		progressNotice = new Notice(`Exporting Marp slides as ${type.toUpperCase()}…`, 0);
+		const outputPath = await marpCli.export(file, type);
+		progressNotice.hide();
+		progressNotice = null;
+		if (outputPath) {
+			new Notice(`Exported Marp slides to ${outputPath}`, 7000);
+		}
+	} catch (error) {
+		progressNotice?.hide();
+		const message = error instanceof Error ? error.message : String(error);
+		console.error('Marp export failed:', error);
+		new Notice(`Marp export failed: ${message}`, 8000);
+	}
 }
