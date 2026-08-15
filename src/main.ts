@@ -16,12 +16,18 @@ import { MarpExtendedSettingTab } from './settings/marpExtendedSettingTab';
 
 
 export default class MarpExtended extends Plugin {
-	
+
+	private static readonly PREVIEW_REFRESH_DEBOUNCE_MS = 100;
+
 	public settings: MarpExtendedSettings;
 	private slidesView : MarpPreviewView;
 	private editorView : MarkdownView | null;
 	private themePropertyOptions: ThemePropertyOptions | null = null;
 	private codeMirrorEditorViews = new Set<EditorView>();
+	private pendingPreviewRefreshes = new Map<string, {
+		timer: number;
+		markdownOverride?: string;
+	}>();
 
 	async onload() {
 		await this.loadSettings();
@@ -83,8 +89,14 @@ export default class MarpExtended extends Plugin {
 
 		this.registerEvent(this.app.vault.on('modify', (file) => this.onChange(file)));
 		this.registerEvent(this.app.metadataCache.on('changed', (file, data) => {
-			this.refreshPreviewForFile(file, data);
+			this.schedulePreviewRefreshForFile(file, data);
 		}));
+		this.register(() => {
+			for (const pending of this.pendingPreviewRefreshes.values()) {
+				window.clearTimeout(pending.timer);
+			}
+			this.pendingPreviewRefreshes.clear();
+		});
 	}
 
 	async loadSettings() {
@@ -118,8 +130,33 @@ export default class MarpExtended extends Plugin {
 
 	onChange(file: TAbstractFile) {
 		if (file instanceof TFile) {
-			this.refreshPreviewForFile(file);
+			this.schedulePreviewRefreshForFile(file);
 		}
+	}
+
+	/**
+	 * Trailing debounce for vault modify / metadataCache changed triggers, which
+	 * often fire together for a single edit. Coalesces triggers per file path
+	 * into one displaySlides run, keeping the latest markdownOverride. The
+	 * cursor-sync path (handleEditorUpdate -> onLineChanged) is intentionally
+	 * not debounced.
+	 */
+	private schedulePreviewRefreshForFile(file: TFile, markdownOverride?: string): void {
+		const pending = this.pendingPreviewRefreshes.get(file.path);
+		if (pending) {
+			window.clearTimeout(pending.timer);
+		}
+
+		const timer = window.setTimeout(() => {
+			const scheduled = this.pendingPreviewRefreshes.get(file.path);
+			this.pendingPreviewRefreshes.delete(file.path);
+			if (!scheduled) {
+				return;
+			}
+			this.refreshPreviewForFile(file, scheduled.markdownOverride);
+		}, MarpExtended.PREVIEW_REFRESH_DEBOUNCE_MS);
+
+		this.pendingPreviewRefreshes.set(file.path, { timer, markdownOverride });
 	}
 
 	async exportFile(type: string) {
@@ -211,7 +248,14 @@ export default class MarpExtended extends Plugin {
 
 	refreshActivePreview(): MarpPreviewView | null {
 		const activeView = this.getActiveMarkdownView();
-		return activeView ? this.refreshPreviewForEditor(activeView) : null;
+		if (!activeView) {
+			return null;
+		}
+
+		// Settings-tab theme mutations and the post-install theme refresh route
+		// through here, so drop the cached theme CSS/engine before re-rendering.
+		this.getViewInstance(false)?.invalidatePreviewCaches();
+		return this.refreshPreviewForEditor(activeView);
 	}
 
 	private refreshPreviewForFile(file: TFile, markdownOverride?: string): MarpPreviewView | null {
