@@ -21,12 +21,19 @@ src/utilities/filePath.ts           # Vault/resource path resolution and image w
 src/utilities/marpExport.ts         # Marp CLI export orchestration
 src/utilities/marpExtendedDsl.ts    # %%marp-*%% marker compiler
 src/utilities/marpMarkdown.ts       # Shared preview/export Markdown compile path
+src/utilities/codeFenceScanner.ts   # Shared code-fence / inline-code scanning primitives
+src/utilities/wikiLinks.ts          # Note wiki-link conversion (preview/export modes)
+src/utilities/previewLinks.ts       # Preview iframe link activation (internal/external)
 src/utilities/mermaid.ts            # Mermaid fence rendering for preview/export
+src/utilities/themeManager.ts       # Slide theme manager (thin VaultThemeManager subclass)
+src/utilities/mermaidThemeManager.ts # Mermaid theme manager (thin VaultThemeManager subclass)
+src/utilities/vaultThemeManager.ts  # Generic vault theme manager base (differential writes)
 src/utilities/icons.ts              # SVG icons registered with Obsidian
 src/runtime/marpEngine.ts           # Shared Core 5 semantic engine factory
 src/runtime/cliEngine.ts            # Standalone CLI engine entry point
 src/runtime/engineArtifact.ts       # Embedded engine integrity/materialization
 src/runtime/mermaidFallback.ts      # Engine-side Mermaid fence fallback
+src/runtime/mermaidShared.ts        # Shared Mermaid constants and fence-info parsing
 src/shims/marp-shiki.cjs            # Curated Shiki language subset for Core 5
 specs/                              # Tracked execution specs (Draft/Active) + archive/
 scripts/check-specs.mjs             # Spec tree validator

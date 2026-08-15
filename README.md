@@ -62,7 +62,7 @@ Note wiki-links are also recognized:
 基于 [[sources/transcripts/聊聊朱镕基那个时代和经济政策|来源笔记]] · 再快一点
 ```
 
-The slide shows the alias (`来源笔记`; without an alias, the raw link path). In the preview sidebar the text is clickable and opens the note inside Obsidian (Cmd/Ctrl-click or middle-click opens a new tab; unresolved targets only show a notice). In HTML/PDF/PPTX exports the link is dropped and only the display text remains. Wiki-link-like text inside fenced code blocks (for example Mermaid `A[[subroutine]]` shapes) is left untouched.
+The slide shows the alias (`来源笔记`; without an alias, the raw link path). In the preview sidebar the text is clickable and opens the note inside Obsidian (Cmd/Ctrl-click or middle-click opens a new tab; unresolved targets only show a notice). Links with heading or block subpaths (`[[Note#Section]]`, `[[Note#^block]]`) navigate to that location. In HTML/PDF/PPTX exports the link is dropped and only the display text remains. Wiki-link-like text inside fenced code blocks and inline code spans (for example Mermaid `A[[subroutine]]` shapes or `` `[[x]]` `` samples) is left untouched.
 
 Other Obsidian-only extensions are not converted automatically. If Marp does not support an Obsidian syntax directly, write it in standard Markdown or Marp syntax.
 

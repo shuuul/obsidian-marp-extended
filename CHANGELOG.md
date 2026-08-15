@@ -5,6 +5,21 @@
 ### Bug Fixes
 
 * **preview:** open sidebar http(s) links in the system browser instead of navigating inside Obsidian
+* **preview:** resolve note wiki-links with heading/block subpaths instead of reporting "note not found"
+* **preview:** keep wiki-link-like text inside inline code spans and long/nested code fences untouched
+* **preview:** keep note wiki-links well-formed when note names contain unbalanced parentheses
+
+### Performance Improvements
+
+* **preview:** coalesce duplicate per-edit preview triggers and reuse cached theme CSS and the Marp engine across renders
+* **export:** cache the Marp CLI version check per settings snapshot
+* **themes:** skip rewriting unchanged bundled default themes on plugin load
+
+### Code Refactoring
+
+* deduplicate code-fence scanning into `codeFenceScanner`, shared by the Extended DSL compiler, wiki-link conversion, Mermaid rendering, editor decorations, and preview sync
+* merge the Mermaid dual-stack constants and fence-info parsing into `runtime/mermaidShared`
+* merge the slide/Mermaid theme managers into a shared `VaultThemeManager` base and unify the settings-tab theme UI
 
 ### Features
 
