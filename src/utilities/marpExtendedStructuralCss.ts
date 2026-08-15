@@ -9,4 +9,13 @@ export const MARP_EXTENDED_STRUCTURAL_CSS = `
 .marp-extended-columns-6 { grid-template-columns: repeat(6, minmax(0, 1fr)); }
 .marp-extended-column { min-width: 0; }
 .marp-extended-cards { width: 100%; table-layout: fixed; }
+/* Keep links on the slide palette; zero specificity lets theme link rules win. */
+:where(a[href]) {
+	color: inherit;
+	cursor: pointer;
+	text-decoration: underline;
+	text-decoration-color: color-mix(in srgb, currentColor 40%, transparent);
+	text-underline-offset: 0.15em;
+}
+:where(a[href]):hover { text-decoration-color: currentColor; }
 `;

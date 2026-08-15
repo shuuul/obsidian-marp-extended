@@ -52,18 +52,6 @@ body {
 }
 [data-marpit-fragment] { visibility: hidden; }
 [data-marpit-fragment][data-marp-extended-revealed="true"] { visibility: visible; }
-/* Keep preview links on the slide theme palette instead of browser default blue.
-   :where() keeps specificity at zero so theme-defined link colors still win. */
-:where(section) a[href] {
-	color: inherit;
-	cursor: pointer;
-	text-decoration: underline;
-	text-decoration-color: color-mix(in srgb, currentColor 40%, transparent);
-	text-underline-offset: 0.15em;
-}
-:where(section) a[href]:hover {
-	text-decoration-color: currentColor;
-}
 section .mermaid-diagram-container.mermaid-diagram {
 	align-items: center;
 	box-sizing: border-box;

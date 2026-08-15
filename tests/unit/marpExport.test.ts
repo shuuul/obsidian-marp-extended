@@ -518,6 +518,8 @@ test('export compiles Marp Extended comment markers in the temporary markdown fi
 		expect(processed).toContain('<!-- _class: cover -->');
 		expect(processed).toContain('<!-- _paginate: false -->');
 		expect(processed).toContain('<div class="marp-extended-columns marp-extended-columns-2">');
+		expect(processed).toContain(':where(a[href])');
+		expect(processed).toContain('color: inherit');
 		expect(processed).not.toContain('%%marp-slide');
 		expect(processed).not.toContain('%%marp-columns');
 		expect(processed).not.toContain('%%marp-column');
