@@ -46,6 +46,38 @@ test('default preview pipeline compiles Kami and wiki images but keeps mermaid f
 	expect(processed).not.toContain('data-mermaid-renderer="beautiful-mermaid"');
 });
 
+test('preview mode keeps note wiki-links clickable while export mode emits plain text', async () => {
+	const filePath = new FilePath(DEFAULT_SETTINGS);
+	const sourceFile = new TFile();
+	const linkedImage = new TFile();
+
+	sourceFile.path = 'slides/deck.md';
+	sourceFile.parent = { path: 'slides' } as TFile['parent'];
+	linkedImage.path = 'assets/photo.png';
+
+	const markdown = [
+		'![[photo.png]]',
+		'',
+		'基于 [[sources/transcripts/聊聊朱镕基那个时代和经济政策|来源笔记]] · 再快一点',
+	].join('\n');
+	const app = createAppWithResolvedFile(linkedImage);
+
+	const preview = await compileMarkdownForMarp(markdown, sourceFile, app, filePath, {
+		noteWikiLinkMode: 'preview',
+	});
+	expect(preview).toContain('![photo.png](../assets/photo.png)');
+	expect(preview).toContain('[来源笔记](obsidian://open?file=');
+	expect(preview).not.toContain('[[');
+
+	const exported = await compileMarkdownForMarp(markdown, sourceFile, app, filePath, {
+		noteWikiLinkMode: 'export',
+	});
+	expect(exported).toContain('![photo.png](../assets/photo.png)');
+	expect(exported).toContain('基于 来源笔记 · 再快一点');
+	expect(exported).not.toContain('obsidian://');
+	expect(exported).not.toContain('[[');
+});
+
 test('inline mermaid export mode replaces fences with beautiful-mermaid figures', async () => {
 	const filePath = new FilePath(DEFAULT_SETTINGS);
 	const sourceFile = new TFile();

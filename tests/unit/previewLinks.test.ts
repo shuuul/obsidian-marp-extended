@@ -6,7 +6,9 @@ import {
 	getExternalPreviewUrl,
 	handlePreviewLinkActivation,
 	openExternalPreviewUrl,
+	type OpenInternalPreviewLink,
 } from '@/utilities/previewLinks';
+import { buildObsidianOpenHref } from '@/utilities/wikiLinks';
 
 const YOUTUBE_URL = 'https://www.youtube.com/watch?v=mGhvK8xJP1w';
 
@@ -74,10 +76,41 @@ test('handlePreviewLinkActivation follows nested clicks and middle-clicks', () =
 	expect(openUrl).not.toHaveBeenCalled();
 });
 
+test('handlePreviewLinkActivation routes obsidian://open links to the internal handler', () => {
+	const linkpath = 'sources/transcripts/聊聊朱镕基那个时代和经济政策';
+	const href = buildObsidianOpenHref(linkpath);
+	const openUrl = jest.fn<(url: string) => boolean>(() => true);
+	const openInternalLink = jest.fn<OpenInternalPreviewLink>(() => true);
+
+	const clickEvent = createAnchorEvent(href);
+	expect(handlePreviewLinkActivation(clickEvent, openUrl, openInternalLink)).toBe(true);
+	expect(clickEvent.defaultPrevented).toBe(true);
+	expect(openInternalLink).toHaveBeenCalledWith(linkpath, false);
+	expect(openUrl).not.toHaveBeenCalled();
+
+	openInternalLink.mockClear();
+	const middleClick = createAnchorEvent(href, undefined, { type: 'auxclick', button: 1 });
+	expect(handlePreviewLinkActivation(middleClick, openUrl, openInternalLink)).toBe(true);
+	expect(openInternalLink).toHaveBeenCalledWith(linkpath, true);
+
+	openInternalLink.mockClear();
+	const modClick = createAnchorEvent(href, undefined, { metaKey: true });
+	expect(handlePreviewLinkActivation(modClick, openUrl, openInternalLink)).toBe(true);
+	expect(openInternalLink).toHaveBeenCalledWith(linkpath, true);
+});
+
+test('handlePreviewLinkActivation ignores internal links without a handler', () => {
+	const openUrl = jest.fn<(url: string) => boolean>(() => true);
+	const event = createAnchorEvent(buildObsidianOpenHref('Note'));
+	expect(handlePreviewLinkActivation(event, openUrl)).toBe(false);
+	expect(event.defaultPrevented).toBe(false);
+	expect(openUrl).not.toHaveBeenCalled();
+});
+
 function createAnchorEvent(
 	href: string,
 	baseHref?: string,
-	options: { type?: string; button?: number } = {},
+	options: { type?: string; button?: number; metaKey?: boolean } = {},
 ): MouseEvent {
 	const doc = document.implementation.createHTMLDocument('preview');
 	if (baseHref) {
@@ -112,12 +145,13 @@ function createNestedAnchorEvent(href: string): { event: MouseEvent; textEvent: 
 
 function createMouseEvent(
 	target: EventTarget,
-	options: { type?: string; button?: number } = {},
+	options: { type?: string; button?: number; metaKey?: boolean } = {},
 ): MouseEvent {
 	const event = new MouseEvent(options.type ?? 'click', {
 		bubbles: true,
 		button: options.button ?? 0,
 		cancelable: true,
+		metaKey: options.metaKey ?? false,
 	});
 	Object.defineProperty(event, 'target', { configurable: true, value: target });
 	return event;

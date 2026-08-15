@@ -1,4 +1,4 @@
-import { ItemView, setIcon, type WorkspaceLeaf, type MarkdownView, type TFile } from 'obsidian';
+import { ItemView, Notice, setIcon, type WorkspaceLeaf, type MarkdownView, type TFile } from 'obsidian';
 import type { Marp } from '@marp-team/marp-core'
 import { browser, type MarpCoreBrowser } from '@marp-team/marp-core/browser'
 
@@ -52,6 +52,18 @@ body {
 }
 [data-marpit-fragment] { visibility: hidden; }
 [data-marpit-fragment][data-marp-extended-revealed="true"] { visibility: visible; }
+/* Keep preview links on the slide theme palette instead of browser default blue.
+   :where() keeps specificity at zero so theme-defined link colors still win. */
+:where(section) a[href] {
+	color: inherit;
+	cursor: pointer;
+	text-decoration: underline;
+	text-decoration-color: color-mix(in srgb, currentColor 40%, transparent);
+	text-underline-offset: 0.15em;
+}
+:where(section) a[href]:hover {
+	text-decoration-color: currentColor;
+}
 section .mermaid-diagram-container.mermaid-diagram {
 	align-items: center;
 	box-sizing: border-box;
@@ -760,7 +772,9 @@ export class MarpPreviewView extends ItemView  {
         this.previewIframeLinkDetach = undefined;
 
         const handleActivation = (event: Event) => {
-            handlePreviewLinkActivation(event);
+            handlePreviewLinkActivation(event, undefined, (linkpath, newLeaf) => (
+                this.openInternalPreviewLink(linkpath, newLeaf)
+            ));
         };
         const options: AddEventListenerOptions = { capture: true };
         doc.addEventListener('click', handleActivation, options);
@@ -769,6 +783,18 @@ export class MarpPreviewView extends ItemView  {
             doc.removeEventListener('click', handleActivation, options);
             doc.removeEventListener('auxclick', handleActivation, options);
         };
+    }
+
+    private openInternalPreviewLink(linkpath: string, newLeaf: boolean): boolean {
+        const sourcePath = this.file?.path ?? '';
+        const target = this.app.metadataCache.getFirstLinkpathDest(linkpath, sourcePath);
+        if (!target) {
+            new Notice(`Marp preview: note not found for [[${linkpath}]]`, 5000);
+            return false;
+        }
+
+        void this.app.workspace.openLinkText(linkpath, sourcePath, newLeaf);
+        return true;
     }
 
     private registerPreviewIframeZoomGesture(): void {
@@ -868,6 +894,7 @@ export class MarpPreviewView extends ItemView  {
                 compileMarkdownForMarp(markdownText, sourceFile, this.app, filePath, {
                     renderMermaidInline: true,
                     mermaidOptions: { renderOptions: mermaidRenderOptions },
+                    noteWikiLinkMode: 'preview',
                 })
             ));
             if (displayRevision !== this.displaySlidesRevision) {

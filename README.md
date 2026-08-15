@@ -17,6 +17,7 @@ Marp Extended is an Obsidian plugin for creating, previewing, presenting, and ex
 - Use bundled Marp theme CSS installed into `.marp-extended/themes/` on first load, plus custom theme CSS from your vault.
 - Add custom Marp themes by pasting CSS in plugin settings.
 - Convert Obsidian image wiki-links to standard Markdown image links for preview/export.
+- Convert note wiki-links (`[[path|alias]]`) to clickable internal links in the preview sidebar; exports keep only the display text.
 - Built-in Mermaid diagrams rendered with `beautiful-mermaid` and official Mermaid, featuring an interactive zooming and panning frame in the editor Live Preview (can be toggled in settings).
 - Use standard Marpit fragments and presenter comments in preview, with fragment commands and a notes panel.
 - Add theme-independent Marp Extended comment markers for slide metadata, semantic text, callouts, 1–6 columns, and configurable card grids.
@@ -54,6 +55,14 @@ These are converted to standard Markdown image links / Marp image directives. Pa
 ```
 
 When possible, the plugin resolves the image through Obsidian's link resolver and emits a path Marp can read. If the image cannot be resolved, the plugin falls back to treating the wiki-link target as a path relative to the current note.
+
+Note wiki-links are also recognized:
+
+```md
+基于 [[sources/transcripts/聊聊朱镕基那个时代和经济政策|来源笔记]] · 再快一点
+```
+
+The slide shows the alias (`来源笔记`; without an alias, the raw link path). In the preview sidebar the text is clickable and opens the note inside Obsidian (Cmd/Ctrl-click or middle-click opens a new tab; unresolved targets only show a notice). In HTML/PDF/PPTX exports the link is dropped and only the display text remains. Wiki-link-like text inside fenced code blocks (for example Mermaid `A[[subroutine]]` shapes) is left untouched.
 
 Other Obsidian-only extensions are not converted automatically. If Marp does not support an Obsidian syntax directly, write it in standard Markdown or Marp syntax.
 

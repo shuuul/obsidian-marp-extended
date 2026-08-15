@@ -1,6 +1,10 @@
+import { getInternalLinkpathFromHref } from './wikiLinks';
+
 const HTTP_PROTOCOL = 'http:';
 const HTTPS_PROTOCOL = 'https:';
 const ABSOLUTE_SCHEME_PATTERN = /^[a-zA-Z][a-zA-Z\d+\-.]*:/;
+
+export type OpenInternalPreviewLink = (linkpath: string, newLeaf: boolean) => boolean;
 
 type ElectronShell = {
 	openExternal?: (url: string) => unknown;
@@ -53,6 +57,7 @@ export function openExternalPreviewUrl(url: string, options: OpenExternalPreview
 export function handlePreviewLinkActivation(
 	event: Event,
 	openUrl: (url: string) => boolean = openExternalPreviewUrl,
+	openInternalLink?: OpenInternalPreviewLink,
 ): boolean {
 	if (event.defaultPrevented || !shouldHandlePreviewLinkEvent(event)) {
 		return false;
@@ -66,6 +71,16 @@ export function handlePreviewLinkActivation(
 	const href = anchor.getAttribute('href');
 	if (!href) {
 		return false;
+	}
+
+	const internalLinkpath = getInternalLinkpathFromHref(href);
+	if (internalLinkpath) {
+		if (!openInternalLink) {
+			return false;
+		}
+		event.preventDefault();
+		event.stopPropagation();
+		return openInternalLink(internalLinkpath, shouldOpenInNewLeaf(event));
 	}
 
 	const url = getExternalPreviewUrl(href, anchor.baseURI || anchor.ownerDocument?.baseURI);
@@ -103,6 +118,15 @@ function shouldHandlePreviewLinkEvent(event: Event): boolean {
 	}
 
 	return event.type === 'click' && button === 0;
+}
+
+function shouldOpenInNewLeaf(event: Event): boolean {
+	if (event.type === 'auxclick') {
+		return true;
+	}
+
+	const mouseEvent = event as Partial<MouseEvent>;
+	return mouseEvent.metaKey === true || mouseEvent.ctrlKey === true;
 }
 
 function getMouseButton(event: Event): number {

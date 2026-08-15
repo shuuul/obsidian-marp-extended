@@ -2,10 +2,17 @@ import type { App, TFile } from 'obsidian';
 import { FilePath } from './filePath';
 import { compileMarpExtendedCommentBlocks } from './marpExtendedDsl';
 import { renderMermaidFences, type MermaidPluginOptions } from './mermaid';
+import { convertNoteWikiLinks, type NoteWikiLinkMode } from './wikiLinks';
 
 export type CompileMarkdownForMarpOptions = {
 	renderMermaidInline?: boolean;
 	mermaidOptions?: MermaidPluginOptions;
+	/**
+	 * How note wiki-links ([[path|alias]]) are compiled.
+	 * 'preview' keeps them clickable via obsidian:// hrefs; 'export' (default)
+	 * reduces them to plain display text.
+	 */
+	noteWikiLinkMode?: NoteWikiLinkMode;
 };
 
 export async function compileMarkdownForMarp(
@@ -16,7 +23,8 @@ export async function compileMarkdownForMarp(
 	options: CompileMarkdownForMarpOptions = {},
 ): Promise<string> {
 	const compiled = compileMarpExtendedCommentBlocks(markdown);
-	const converted = filePath.convertImageWikiLinks(compiled, file, app);
+	const convertedImages = filePath.convertImageWikiLinks(compiled, file, app);
+	const converted = convertNoteWikiLinks(convertedImages, options.noteWikiLinkMode ?? 'export');
 
 	if (options.renderMermaidInline === true) {
 		return renderMermaidFences(converted, options.mermaidOptions);

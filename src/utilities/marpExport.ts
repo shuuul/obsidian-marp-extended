@@ -608,6 +608,7 @@ export class MarpExport {
         const processedMarkdown = await compileMarkdownForMarp(originalContent, file, this.app, filesTool, {
             renderMermaidInline: true,
             mermaidOptions: { renderOptions: mermaidRenderOptions },
+            noteWikiLinkMode: 'export',
         });
         const processedContent = insertMarkdownAfterFrontmatter(
             processedMarkdown,
