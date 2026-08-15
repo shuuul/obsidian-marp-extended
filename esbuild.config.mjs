@@ -223,7 +223,7 @@ if (prod) {
 		);
 		console.log("Wrote metafile.json — open at https://esbuild.github.io/analyze/");
 	}
-	process.exit(0);
+	await context.dispose();
 } else {
 	// Shared runtime edits are inputs to the main bundle. Its onStart hook rebuilds
 	// the standalone artifact before refreshing the embedded payload.
