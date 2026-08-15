@@ -1,4 +1,4 @@
-import { getInternalLinkpathFromHref } from './wikiLinks';
+import { getInternalLinkpathFromHref } from '@marp-extended/wiki-links';
 
 const HTTP_PROTOCOL = 'http:';
 const HTTPS_PROTOCOL = 'https:';

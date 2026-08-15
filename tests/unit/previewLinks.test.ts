@@ -8,7 +8,7 @@ import {
 	openExternalPreviewUrl,
 	type OpenInternalPreviewLink,
 } from '@/utilities/previewLinks';
-import { buildObsidianOpenHref } from '@/utilities/wikiLinks';
+import { buildObsidianOpenHref } from '@marp-extended/wiki-links';
 
 const YOUTUBE_URL = 'https://www.youtube.com/watch?v=mGhvK8xJP1w';
 

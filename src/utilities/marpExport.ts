@@ -631,7 +631,10 @@ export class MarpExport {
         const mermaidRenderOptions = parseMermaidRenderOptionsFromCss(mermaidThemeCss);
         const processedMarkdown = await compileMarkdownForMarp(originalContent, file, this.app, filesTool, {
             renderMermaidInline: true,
-            mermaidOptions: { renderOptions: mermaidRenderOptions },
+            mermaidOptions: {
+                renderOptions: mermaidRenderOptions,
+                autoFit: { enabled: this.settings.MERMAID_AUTO_FIT },
+            },
             noteWikiLinkMode: 'export',
         });
         const processedContent = insertMarkdownAfterFrontmatter(

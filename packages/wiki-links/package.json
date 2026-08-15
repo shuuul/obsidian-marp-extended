@@ -1,0 +1,13 @@
+{
+	"name": "@marp-extended/wiki-links",
+	"version": "0.1.0",
+	"private": true,
+	"type": "module",
+	"description": "Obsidian note wiki-link ([[path|alias]]) conversion for Marp preview and export.",
+	"exports": {
+		".": "./src/index.ts"
+	},
+	"dependencies": {
+		"@marp-extended/code-fence-scanner": "0.1.0"
+	}
+}

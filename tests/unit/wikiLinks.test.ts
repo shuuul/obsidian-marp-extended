@@ -4,7 +4,7 @@ import {
 	buildObsidianOpenHref,
 	convertNoteWikiLinks,
 	getInternalLinkpathFromHref,
-} from '@/utilities/wikiLinks';
+} from '@marp-extended/wiki-links';
 
 test('preview mode renders the alias as an obsidian:// link', () => {
 	const markdown = '基于 [[sources/transcripts/聊聊朱镕基那个时代和经济政策|来源笔记]] · 再快一点';

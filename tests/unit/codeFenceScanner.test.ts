@@ -5,7 +5,7 @@ import {
 	mapOutsideCodeFences,
 	mapOutsideInlineCode,
 	openingCodeFence,
-} from '@/utilities/codeFenceScanner';
+} from '@marp-extended/code-fence-scanner';
 
 const MARKER = '[[MARK]]';
 

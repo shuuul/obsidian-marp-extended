@@ -1,0 +1,13 @@
+{
+	"name": "@marp-extended/marp-dsl",
+	"version": "0.1.0",
+	"private": true,
+	"type": "module",
+	"description": "Compiler for the %%marp-*%% comment-block DSL used by Marp Extended slides.",
+	"exports": {
+		".": "./src/index.ts"
+	},
+	"dependencies": {
+		"@marp-extended/code-fence-scanner": "0.1.0"
+	}
+}

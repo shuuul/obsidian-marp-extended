@@ -4,6 +4,7 @@ export interface MarpExtendedSettings {
 	CHROME_PATH: string;
 	MERMAID_EDITOR_RENDER: boolean;
 	MERMAID_EDITOR_THEME: string;
+	MERMAID_AUTO_FIT: boolean;
 }
 
 export const DEFAULT_SETTINGS: MarpExtendedSettings = {
@@ -12,4 +13,5 @@ export const DEFAULT_SETTINGS: MarpExtendedSettings = {
 	CHROME_PATH: '',
 	MERMAID_EDITOR_RENDER: true,
 	MERMAID_EDITOR_THEME: 'kami',
+	MERMAID_AUTO_FIT: true,
 }

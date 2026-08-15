@@ -1,4 +1,4 @@
-import { closingCodeFence, openingCodeFence, type CodeFence } from '@/utilities/codeFenceScanner';
+import { closingCodeFence, openingCodeFence, type CodeFence } from '@marp-extended/code-fence-scanner';
 
 const SLIDE_SEPARATOR_PATTERN = /^ {0,3}---\s*$/;
 

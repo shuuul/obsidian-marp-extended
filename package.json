@@ -3,6 +3,9 @@
 	"version": "0.10.0-beta.1",
 	"description": "Create markdown-based Marp presentations in Obsidian with extended Marp support",
 	"main": "main.js",
+	"workspaces": [
+		"packages/*"
+	],
 	"scripts": {
 		"postinstall": "node scripts/postinstall.mjs",
 		"dev": "node esbuild.config.mjs",
@@ -15,7 +18,7 @@
 		"version": "node version-bump.mjs && git add manifest.json versions.json",
 		"version:beta": "node scripts/prepare-beta-release.cjs",
 		"typecheck": "node node_modules/typescript-native/bin/tsc --noEmit --skipLibCheck",
-		"lint": "eslint \"src/**/*.ts\"",
+		"lint": "eslint \"src/**/*.ts\" \"packages/**/*.ts\"",
 		"lint:fix": "npm run lint -- --fix",
 		"check:specs": "node scripts/check-specs.mjs",
 		"scan:release": "node scripts/scan-release-assets.mjs",

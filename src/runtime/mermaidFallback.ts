@@ -1,4 +1,5 @@
-import { renderMermaidSVG, type RenderOptions } from 'beautiful-mermaid';
+import type { RenderOptions } from 'beautiful-mermaid';
+import { renderMermaidAutoFitSVG, type MermaidAutoFitOptions } from '@marp-extended/mermaid-autofit';
 import {
 	BEAUTIFUL_MERMAID_SUPPORTED_TYPES,
 	DEFAULT_BEAUTIFUL_MERMAID_RENDER_OPTIONS,
@@ -15,6 +16,7 @@ type MarkdownRenderer = {
 export type MermaidFallbackOptions = {
 	containerClass?: string;
 	renderOptions?: RenderOptions;
+	autoFit?: MermaidAutoFitOptions;
 };
 
 function escape(value: string): string {
@@ -29,7 +31,7 @@ export function renderMermaidFallbackFigure(source: string, alt: string, options
 			? `Diagram type "${type}" is not supported by beautiful-mermaid; use async pre-render for official Mermaid fallback.`
 			: 'Unable to detect Mermaid diagram type for beautiful-mermaid rendering.');
 	}
-	const svg = renderMermaidSVG(source, { ...DEFAULT_BEAUTIFUL_MERMAID_RENDER_OPTIONS, ...(options.renderOptions ?? {}) });
+	const svg = renderMermaidAutoFitSVG(source, { ...DEFAULT_BEAUTIFUL_MERMAID_RENDER_OPTIONS, ...(options.renderOptions ?? {}) }, options.autoFit);
 	const classes = `${options.containerClass ?? 'mermaid-diagram-container'} mermaid-diagram mermaid-diagram-svg`;
 	return `<figure class="${escape(classes)}" data-mermaid-renderer="beautiful-mermaid">${svg}${alt ? `<figcaption>${escape(alt)}</figcaption>` : ''}</figure>`;
 }

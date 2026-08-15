@@ -23,6 +23,7 @@ Copy [000-template.md](000-template.md) to start a spec.
 | [002-marp-core-v5-migration.md](archive/002-marp-core-v5-migration.md) | 2026-08-09 | Preview on Marp Core 5.0.0 RC (Shiki+MathJax), CLI pin 4.5.0, custom Mermaid kept, Kami code styling, assets themes, docs/skills sync. |
 | [003-marp-extended-language-and-runtime.md](archive/003-marp-extended-language-and-runtime.md) | 2026-08-09 | Canonical Extended language, shared preview/export Core 5 engine, fragments, and presenter notes. |
 | [004-link-hardening-and-architecture-cleanup.md](archive/004-link-hardening-and-architecture-cleanup.md) | 2026-08-15 | Fixed subpath/inline-code/parens/fence link defects; unified fence scanning, Mermaid shared module, and theme-manager base; debounced preview refreshes with cached theme CSS/engine; cached CLI version checks. |
+| [005-mermaid-autofit-and-packages.md](archive/005-mermaid-autofit-and-packages.md) | 2026-08-15 | packages/ workspace with mermaid-autofit zigzag auto-layout for linear LR/TD Mermaid chains behind MERMAID_AUTO_FIT; extracted code-fence-scanner, marp-dsl, wiki-links packages. |
 
 ## Numbering and files
 

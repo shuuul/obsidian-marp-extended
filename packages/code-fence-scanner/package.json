@@ -1,0 +1,10 @@
+{
+	"name": "@marp-extended/code-fence-scanner",
+	"version": "0.1.0",
+	"private": true,
+	"type": "module",
+	"description": "CommonMark-style code fence and inline code scanning primitives shared by Marp Extended packages.",
+	"exports": {
+		".": "./src/index.ts"
+	}
+}

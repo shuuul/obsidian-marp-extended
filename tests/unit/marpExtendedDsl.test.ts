@@ -1,6 +1,6 @@
 import { expect, test } from '@jest/globals';
 
-import { compileMarpExtendedCommentBlocks } from '@/utilities/marpExtendedDsl';
+import { compileMarpExtendedCommentBlocks } from '@marp-extended/marp-dsl';
 
 test('compiles slide metadata markers into Marp spot directives', () => {
 	const markdown = [

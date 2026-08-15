@@ -963,7 +963,10 @@ export class MarpPreviewView extends ItemView  {
             const processedMarkdown = await this.measurePreviewStepAsync('compileMarkdownForMarp', () => (
                 compileMarkdownForMarp(markdownText, sourceFile, this.app, filePath, {
                     renderMermaidInline: true,
-                    mermaidOptions: { renderOptions: mermaidRenderOptions },
+                    mermaidOptions: {
+                        renderOptions: mermaidRenderOptions,
+                        autoFit: { enabled: this.settings.MERMAID_AUTO_FIT },
+                    },
                     noteWikiLinkMode: 'preview',
                 })
             ));

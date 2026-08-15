@@ -1,4 +1,4 @@
-import { closingCodeFence, openingCodeFence, type CodeFence } from '@/utilities/codeFenceScanner';
+import { closingCodeFence, openingCodeFence, type CodeFence } from '@marp-extended/code-fence-scanner';
 
 type MarkerAttributes = {
 	positional: string[];

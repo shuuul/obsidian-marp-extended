@@ -8,6 +8,18 @@
       ],
       "@test/*": [
         "./tests/*"
+      ],
+      "@marp-extended/code-fence-scanner": [
+        "./packages/code-fence-scanner/src/index.ts"
+      ],
+      "@marp-extended/marp-dsl": [
+        "./packages/marp-dsl/src/index.ts"
+      ],
+      "@marp-extended/wiki-links": [
+        "./packages/wiki-links/src/index.ts"
+      ],
+      "@marp-extended/mermaid-autofit": [
+        "./packages/mermaid-autofit/src/index.ts"
       ]
     },
     "inlineSourceMap": true,

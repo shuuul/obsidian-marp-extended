@@ -19,10 +19,7 @@ src/editor/mermaidEditorExtension.ts # Live Preview Mermaid decorations
 src/utilities/settings.ts           # Settings interface and defaults
 src/utilities/filePath.ts           # Vault/resource path resolution and image wiki-link conversion
 src/utilities/marpExport.ts         # Marp CLI export orchestration
-src/utilities/marpExtendedDsl.ts    # %%marp-*%% marker compiler
 src/utilities/marpMarkdown.ts       # Shared preview/export Markdown compile path
-src/utilities/codeFenceScanner.ts   # Shared code-fence / inline-code scanning primitives
-src/utilities/wikiLinks.ts          # Note wiki-link conversion (preview/export modes)
 src/utilities/previewLinks.ts       # Preview iframe link activation (internal/external)
 src/utilities/mermaid.ts            # Mermaid fence rendering for preview/export
 src/utilities/themeManager.ts       # Slide theme manager (thin VaultThemeManager subclass)
@@ -35,9 +32,13 @@ src/runtime/engineArtifact.ts       # Embedded engine integrity/materialization
 src/runtime/mermaidFallback.ts      # Engine-side Mermaid fence fallback
 src/runtime/mermaidShared.ts        # Shared Mermaid constants and fence-info parsing
 src/shims/marp-shiki.cjs            # Curated Shiki language subset for Core 5
+packages/code-fence-scanner/        # @marp-extended/code-fence-scanner: fence/inline-code scanning primitives
+packages/marp-dsl/                  # @marp-extended/marp-dsl: %%marp-*%% marker compiler
+packages/wiki-links/                # @marp-extended/wiki-links: note wiki-link conversion (preview/export)
+packages/mermaid-autofit/           # @marp-extended/mermaid-autofit: zigzag auto-layout for linear LR/TD chains
 specs/                              # Tracked execution specs (Draft/Active) + archive/
 scripts/check-specs.mjs             # Spec tree validator
-tests/                              # Jest tests and Obsidian mocks
+tests/                              # Jest tests (unit + integration) and Obsidian mocks
 assets/themes/                      # Packaged slide theme CSS sources
 assets/mermaid-themes/              # Packaged Mermaid theme CSS sources
 docs/                               # Optional user-facing notes (not a full docs site)
@@ -223,9 +224,11 @@ See `specs/README.md` for the full lifecycle.
 
 ## Testing guidance
 
-- Tests live under `tests/unit/` and use `tests/__mocks__/obsidian.ts`.
+- Unit tests live under `tests/unit/`; integration tests that exercise the real beautiful-mermaid renderer live under `tests/integration/` (separate Jest project, no beautiful-mermaid mock).
+- Tests use `tests/__mocks__/obsidian.ts`; the unit project also maps `beautiful-mermaid` to `tests/__mocks__/beautiful-mermaid.ts`.
+- Workspace packages under `packages/` are imported by package name (`@marp-extended/...`) in both source and tests.
 - Use `npm run test*` scripts so tests go through `scripts/run-jest.js`.
-- Current coverage is focused on `FilePath` and the specs validator; add tests when changing path handling, wiki-link conversion, export argv construction, frontmatter/preview sync, or `scripts/check-specs.mjs`.
+- Current coverage is focused on `FilePath`, the specs validator, and `mermaid-autofit`; add tests when changing path handling, wiki-link conversion, export argv construction, frontmatter/preview sync, mermaid auto-fit, or `scripts/check-specs.mjs`.
 - For path-related changes, consider relative and absolute Obsidian link formats plus Windows-style paths.
 
 ## Gotchas

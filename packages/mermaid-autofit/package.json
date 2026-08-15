@@ -1,0 +1,13 @@
+{
+	"name": "@marp-extended/mermaid-autofit",
+	"version": "0.1.0",
+	"private": true,
+	"type": "module",
+	"description": "Auto-fit wrapper around beautiful-mermaid: re-layouts long linear LR/TD flowchart chains as multi-row/column zigzag diagrams so slide scaling keeps text readable.",
+	"exports": {
+		".": "./src/index.ts"
+	},
+	"dependencies": {
+		"beautiful-mermaid": "^1.1.3"
+	}
+}

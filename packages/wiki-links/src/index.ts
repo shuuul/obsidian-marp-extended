@@ -1,4 +1,4 @@
-import { mapOutsideCodeFences, mapOutsideInlineCode } from '@/utilities/codeFenceScanner';
+import { mapOutsideCodeFences, mapOutsideInlineCode } from '@marp-extended/code-fence-scanner';
 
 const NOTE_WIKI_LINK_REGEX = /(?<!!)\[\[([^\]]+)\]\]/g;
 const OBSIDIAN_OPEN_PROTOCOL = 'obsidian:';

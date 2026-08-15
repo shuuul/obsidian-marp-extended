@@ -9,6 +9,7 @@ const settings: MarpExtendedSettings = {
 	CHROME_PATH: '',
 	MERMAID_EDITOR_RENDER: true,
 	MERMAID_EDITOR_THEME: 'kami',
+	MERMAID_AUTO_FIT: true,
 };
 
 test('findMermaidFenceRanges returns bracket-caption alt for mermaid fences', () => {

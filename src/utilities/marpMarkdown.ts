@@ -1,8 +1,8 @@
 import type { App, TFile } from 'obsidian';
 import { FilePath } from './filePath';
-import { compileMarpExtendedCommentBlocks } from './marpExtendedDsl';
+import { compileMarpExtendedCommentBlocks } from '@marp-extended/marp-dsl';
 import { renderMermaidFences, type MermaidPluginOptions } from './mermaid';
-import { convertNoteWikiLinks, type NoteWikiLinkMode } from './wikiLinks';
+import { convertNoteWikiLinks, type NoteWikiLinkMode } from '@marp-extended/wiki-links';
 
 export type CompileMarkdownForMarpOptions = {
 	renderMermaidInline?: boolean;

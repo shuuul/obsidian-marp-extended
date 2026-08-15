@@ -1,12 +1,13 @@
 import { loadMermaid } from 'obsidian';
-import { renderMermaidSVG, type RenderOptions } from 'beautiful-mermaid';
+import type { RenderOptions } from 'beautiful-mermaid';
+import { renderMermaidAutoFitSVG, type MermaidAutoFitOptions } from '@marp-extended/mermaid-autofit';
 import { mermaidFencePlugin as pureMermaidFencePlugin } from '../runtime/mermaidFallback';
 import {
 	BEAUTIFUL_MERMAID_SUPPORTED_TYPES,
 	DEFAULT_BEAUTIFUL_MERMAID_RENDER_OPTIONS,
 	parseMermaidFenceInfo,
 } from '../runtime/mermaidShared';
-import { closingCodeFence, openingCodeFence, type CodeFence } from './codeFenceScanner';
+import { closingCodeFence, openingCodeFence, type CodeFence } from '@marp-extended/code-fence-scanner';
 
 type MarpMarkdownRenderer = {
 	utils: {
@@ -36,6 +37,7 @@ type MarpFenceToken = {
 export type MermaidPluginOptions = {
 	containerClass?: string;
 	renderOptions?: RenderOptions;
+	autoFit?: MermaidAutoFitOptions;
 };
 
 export type MermaidRendererName = 'beautiful-mermaid' | 'mermaid';
@@ -121,17 +123,20 @@ function mergeRenderOptions(renderOptions: RenderOptions | undefined): RenderOpt
 	};
 }
 
-const MERMAID_FIGURE_CACHE_VERSION = 4;
+const MERMAID_FIGURE_CACHE_VERSION = 5;
 
 function getMermaidFigureCacheKey(
 	source: string,
 	alt: string,
 	containerClass: string,
 	renderOptions: RenderOptions | undefined,
+	autoFit: MermaidAutoFitOptions | undefined,
 ): string {
 	const normalizedRenderOptions = Object.entries(renderOptions ?? {})
 		.sort(([left], [right]) => left.localeCompare(right));
-	return JSON.stringify([MERMAID_FIGURE_CACHE_VERSION, source, alt, containerClass, normalizedRenderOptions]);
+	const normalizedAutoFit = Object.entries(autoFit ?? {})
+		.sort(([left], [right]) => left.localeCompare(right));
+	return JSON.stringify([MERMAID_FIGURE_CACHE_VERSION, source, alt, containerClass, normalizedRenderOptions, normalizedAutoFit]);
 }
 
 function getCachedMermaidFigure(cacheKey: string): string | null {
@@ -214,8 +219,8 @@ function buildMermaidFigure(
 	return `<figure class="${classAttribute}" data-mermaid-renderer="${renderer}">${svg}${caption}</figure>`;
 }
 
-function renderBeautifulMermaidSvg(source: string, renderOptions: RenderOptions): string {
-	return measureMermaidStep('renderSVG', () => renderMermaidSVG(source, renderOptions));
+function renderBeautifulMermaidSvg(source: string, renderOptions: RenderOptions, autoFit: MermaidAutoFitOptions | undefined): string {
+	return measureMermaidStep('renderSVG', () => renderMermaidAutoFitSVG(source, renderOptions, autoFit));
 }
 
 /**
@@ -628,7 +633,7 @@ export async function renderMermaidFigure(
 	options: MermaidPluginOptions = {},
 ): Promise<string> {
 	const containerClass = options.containerClass ?? DEFAULT_CONTAINER_CLASS;
-	const cacheKey = getMermaidFigureCacheKey(source, alt, containerClass, options.renderOptions);
+	const cacheKey = getMermaidFigureCacheKey(source, alt, containerClass, options.renderOptions, options.autoFit);
 	const cachedFigure = getCachedMermaidFigure(cacheKey);
 	if (cachedFigure != null) {
 		return cachedFigure;
@@ -641,7 +646,7 @@ export async function renderMermaidFigure(
 
 	if (isBeautifulMermaidSupported(diagramType)) {
 		try {
-			svg = renderBeautifulMermaidSvg(source, renderOptions);
+			svg = renderBeautifulMermaidSvg(source, renderOptions, options.autoFit);
 			renderer = 'beautiful-mermaid';
 		} catch {
 			svg = await renderOfficialMermaidSvg(source, renderOptions);

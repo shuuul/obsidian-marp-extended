@@ -7,7 +7,7 @@ import {
 	WidgetType,
 } from '@codemirror/view';
 
-import { closingCodeFence, openingCodeFence, type CodeFence } from '../utilities/codeFenceScanner';
+import { closingCodeFence, openingCodeFence, type CodeFence } from '@marp-extended/code-fence-scanner';
 import { parseMermaidFenceInfo } from '../runtime/mermaidShared';
 import type { MarpExtendedSettings } from '../utilities/settings';
 import { renderMermaidFigure } from '../utilities/mermaid';
@@ -251,6 +251,7 @@ class MermaidWidget extends WidgetType {
 		private readonly alt: string,
 		private readonly themeName: string,
 		private readonly sourceFrom: number,
+		private readonly autoFitEnabled: boolean,
 	) {
 		super();
 	}
@@ -259,7 +260,8 @@ class MermaidWidget extends WidgetType {
 		return this.source === other.source
 			&& this.alt === other.alt
 			&& this.themeName === other.themeName
-			&& this.sourceFrom === other.sourceFrom;
+			&& this.sourceFrom === other.sourceFrom
+			&& this.autoFitEnabled === other.autoFitEnabled;
 	}
 
 	toDOM(view: EditorView): HTMLElement {
@@ -308,7 +310,7 @@ class MermaidWidget extends WidgetType {
 
 				style.textContent = css;
 				const renderOptions = parseMermaidRenderOptionsFromCss(css);
-				const figureHtml = await renderMermaidFigure(this.source, this.alt, { renderOptions });
+				const figureHtml = await renderMermaidFigure(this.source, this.alt, { renderOptions, autoFit: { enabled: this.autoFitEnabled } });
 				if (renderToken !== this.renderToken || !section.isConnected) {
 					return;
 				}
@@ -357,7 +359,7 @@ function buildDecorations(state: EditorState, app: App, settings: MarpExtendedSe
 
 		decorations.push(
 			Decoration.replace({
-				widget: new MermaidWidget(app, range.source, range.alt, themeName, range.sourceFrom),
+				widget: new MermaidWidget(app, range.source, range.alt, themeName, range.sourceFrom, settings.MERMAID_AUTO_FIT),
 				block: true,
 			}).range(range.from, range.to),
 		);

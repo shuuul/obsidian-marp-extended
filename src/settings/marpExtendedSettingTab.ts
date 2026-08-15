@@ -119,6 +119,17 @@ export class MarpExtendedSettingTab extends PluginSettingTab {
 						button.setDisabled(false);
 					}
 				}));
+		new Setting(containerEl)
+			.setName('Auto-fit wide Mermaid flowcharts')
+			.setDesc('Re-layout long linear left-to-right or top-to-bottom flowcharts as multi-row/column zigzag diagrams in preview, export, and the editor, so slide scaling keeps text readable.')
+			.addToggle(toggle => toggle
+				.setValue(this.plugin.settings.MERMAID_AUTO_FIT)
+				.onChange(async (value) => {
+					this.plugin.settings.MERMAID_AUTO_FIT = value;
+					await this.plugin.saveSettings();
+					this.plugin.refreshEditorMermaidRendering();
+				}));
+
 		this.displayMermaidEditorSection(containerEl);
 		this.displayThemesSection(containerEl);
 		this.displayMermaidThemesSection(containerEl);
