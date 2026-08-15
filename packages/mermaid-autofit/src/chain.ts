@@ -30,6 +30,17 @@ const REEMITTABLE_SHAPES = new Set([
 
 const HEADER_PATTERN = /^\s*(?:flowchart|graph)\s+(LR|RL|TD|TB|BT)\b/m;
 
+/** Foldable flow: LR stays LR; TD and its TB alias both fold into columns. */
+function normalizeFoldDirection(raw: string): 'LR' | 'TD' | null {
+	if (raw === 'LR') {
+		return 'LR';
+	}
+	if (raw === 'TD' || raw === 'TB') {
+		return 'TD';
+	}
+	return null;
+}
+
 /**
  * Detect whether the source is a pure linear `flowchart LR`/`TD` chain: every
  * statement is a simple `-->` edge, the nodes form a single path covering all
@@ -37,15 +48,16 @@ const HEADER_PATTERN = /^\s*(?:flowchart|graph)\s+(LR|RL|TD|TB|BT)\b/m;
  * returns null so callers fall back to rendering the source unchanged.
  *
  * The raw header is checked in addition to the parsed direction because
- * beautiful-mermaid normalizes RL→LR and BT→TD; re-emitting such a chain with
- * the normalized direction would mirror the author's intended layout.
+ * beautiful-mermaid keeps RL/BT as distinct directions; re-emitting those
+ * with a normalized LR/TD would mirror the author's intended layout. `TB`
+ * is the documented alias of `TD` and is accepted as a foldable column chain.
  */
 export function detectLinearFlowchartChain(source: string, minChainLength = 5): LinearChain | null {
 	const header = source.match(HEADER_PATTERN);
-	if (!header || (header[1] !== 'LR' && header[1] !== 'TD')) {
+	const direction = header ? normalizeFoldDirection(header[1]) : null;
+	if (!direction) {
 		return null;
 	}
-	const direction = header[1];
 
 	let graph: MermaidGraph;
 	try {
@@ -54,7 +66,7 @@ export function detectLinearFlowchartChain(source: string, minChainLength = 5): 
 		return null;
 	}
 
-	if (graph.direction !== direction) {
+	if (normalizeFoldDirection(graph.direction) !== direction) {
 		return null;
 	}
 	if (graph.subgraphs.length > 0) {

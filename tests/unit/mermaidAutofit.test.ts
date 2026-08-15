@@ -57,6 +57,12 @@ test('detects a linear TD chain with its direction', () => {
 	expect(chain?.nodes.map((node) => node.id)).toEqual(['A', 'B', 'C', 'D', 'E']);
 });
 
+test('treats flowchart TB as a foldable TD chain', () => {
+	const chain = detectLinearFlowchartChain(FIVE_NODE_TD_CHAIN.replace('flowchart TD', 'flowchart TB'));
+	expect(chain?.direction).toBe('TD');
+	expect(chain?.nodes.map((node) => node.id)).toEqual(['A', 'B', 'C', 'D', 'E']);
+});
+
 test('rejects raw RL/BT directions (normalized by the parser but mirrored visually)', () => {
 	expect(detectLinearFlowchartChain(EIGHT_NODE_CHAIN.replace('flowchart LR', 'flowchart RL'))).toBeNull();
 	expect(detectLinearFlowchartChain(FIVE_NODE_TD_CHAIN.replace('flowchart TD', 'flowchart BT'))).toBeNull();

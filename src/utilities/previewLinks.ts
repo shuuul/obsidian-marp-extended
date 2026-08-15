@@ -40,18 +40,30 @@ export function getExternalPreviewUrl(href: string, baseHref?: string): string |
 }
 
 export function openExternalPreviewUrl(url: string, options: OpenExternalPreviewUrlOptions = {}): boolean {
+	const openWindow = options.openWindow ?? ((href, target, features) => window.open(href, target, features));
+	const openInWindow = (): boolean => openWindow(url, '_blank', 'noopener,noreferrer') != null;
+
 	const openExternal = options.openExternal ?? getElectronOpenExternal();
 	if (openExternal) {
 		try {
-			void openExternal(url);
+			const result = openExternal(url);
+			if (isThenable(result)) {
+				// Electron's openExternal reports launch failures by rejecting.
+				void Promise.resolve(result).catch(() => {
+					openInWindow();
+				});
+			}
 			return true;
 		} catch {
 			// Fall through to window.open when Electron cannot launch the URL.
 		}
 	}
 
-	const openWindow = options.openWindow ?? ((href, target, features) => window.open(href, target, features));
-	return openWindow(url, '_blank', 'noopener,noreferrer') != null;
+	return openInWindow();
+}
+
+function isThenable(value: unknown): value is PromiseLike<unknown> {
+	return typeof value === 'object' && value !== null && typeof (value as PromiseLike<unknown>).then === 'function';
 }
 
 export function handlePreviewLinkActivation(

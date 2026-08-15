@@ -5,9 +5,12 @@
 ### Bug Fixes
 
 * **preview:** open sidebar http(s) links in the system browser instead of navigating inside Obsidian
+* **preview:** fall back to `window.open` when Electron's `openExternal` rejects asynchronously
 * **preview:** resolve note wiki-links with heading/block subpaths instead of reporting "note not found"
 * **preview:** keep wiki-link-like text inside inline code spans and long/nested code fences untouched
+* **preview:** keep scanning after an unmatched inline backtick so later code spans still protect wiki-link-like text
 * **preview:** keep note wiki-links well-formed when note names contain unbalanced parentheses
+* **settings:** refresh the open slide preview when the Mermaid auto-fit toggle changes
 
 ### Performance Improvements
 
@@ -34,6 +37,7 @@
 * **themes:** move packaged theme sources to `assets/` and add `npm run sync:themes`
 * **bundle:** ship a curated Shiki language subset for slide decks (esbuild `#marp-shiki` shim)
 * **theme:** align bilingual Kami code blocks with upstream Kami code-card + Pygments token palette
+* **mermaid:** auto-fit long linear `flowchart LR`/`TD`/`TB` chains into compact zigzag bands in preview, export, and the editor (`MERMAID_AUTO_FIT`, default on)
 
 ### BREAKING CHANGES
 

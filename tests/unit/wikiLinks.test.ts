@@ -78,6 +78,15 @@ test('inline code spans keep their wikilink-like syntax in both modes', () => {
 	expect(convertNoteWikiLinks(markdown, 'export')).toBe('`[[x]]` and alias');
 });
 
+test('a later inline code span still protects wiki-links after an unmatched backtick', () => {
+	const markdown = 'stray ` then ``[[x]]`` and [[Note|alias]]';
+
+	expect(convertNoteWikiLinks(markdown, 'preview')).toBe(
+		'stray ` then ``[[x]]`` and [alias](<obsidian://open?file=Note>)',
+	);
+	expect(convertNoteWikiLinks(markdown, 'export')).toBe('stray ` then ``[[x]]`` and alias');
+});
+
 test('long fences stay closed until a matching-length fence', () => {
 	const markdown = ['````text', '```', '[[x]]', '````'].join('\n');
 

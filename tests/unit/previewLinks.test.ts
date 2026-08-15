@@ -41,6 +41,18 @@ test('openExternalPreviewUrl prefers Electron and falls back to window.open', ()
 	expect(openWindow).toHaveBeenCalledWith(YOUTUBE_URL, '_blank', 'noopener,noreferrer');
 });
 
+test('openExternalPreviewUrl falls back to window.open when Electron rejects asynchronously', async () => {
+	const openWindow = jest.fn<(url: string, target?: string, features?: string) => Window | null>(
+		() => ({} as Window),
+	);
+	const openExternal = jest.fn<(url: string) => Promise<void>>(() => Promise.reject(new Error('cannot launch')));
+
+	expect(openExternalPreviewUrl(YOUTUBE_URL, { openExternal, openWindow })).toBe(true);
+	expect(openExternal).toHaveBeenCalledWith(YOUTUBE_URL);
+	await Promise.resolve();
+	expect(openWindow).toHaveBeenCalledWith(YOUTUBE_URL, '_blank', 'noopener,noreferrer');
+});
+
 test('handlePreviewLinkActivation opens YouTube links and leaves vault links alone', () => {
 	const openUrl = jest.fn<(url: string) => boolean>(() => true);
 	const externalEvent = createAnchorEvent(YOUTUBE_URL);

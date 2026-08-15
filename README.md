@@ -19,6 +19,7 @@ Marp Extended is an Obsidian plugin for creating, previewing, presenting, and ex
 - Convert Obsidian image wiki-links to standard Markdown image links for preview/export.
 - Convert note wiki-links (`[[path|alias]]`) to clickable internal links in the preview sidebar; exports keep only the display text.
 - Built-in Mermaid diagrams rendered with `beautiful-mermaid` and official Mermaid, featuring an interactive zooming and panning frame in the editor Live Preview (can be toggled in settings).
+- Auto-fit long linear `flowchart LR` / `TD` / `TB` chains into compact zigzag bands so slide scaling keeps node text readable. Turn this off in **Settings → Auto-fit wide Mermaid flowcharts**.
 - Use standard Marpit fragments and presenter comments in preview, with fragment commands and a notes panel.
 - Add theme-independent Marp Extended comment markers for slide metadata, semantic text, callouts, 1–6 columns, and configurable card grids.
 - Keep preview and managed exports on the same shipped Marp Core 5 semantic engine.

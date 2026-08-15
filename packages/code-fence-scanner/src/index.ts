@@ -117,8 +117,10 @@ export function mapOutsideInlineCode(text: string, transform: (segment: string) 
 		}
 
 		if (closingEnd < 0) {
-			// No matching run: the rest of the segment is plain text.
-			break;
+			// No matching run: treat this opener as literal text and keep
+			// scanning so a later matched pair can still form a code span.
+			cursor = contentStart;
+			continue;
 		}
 
 		if (opening.index > plainStart) {

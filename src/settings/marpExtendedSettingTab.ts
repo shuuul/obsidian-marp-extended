@@ -128,6 +128,7 @@ export class MarpExtendedSettingTab extends PluginSettingTab {
 					this.plugin.settings.MERMAID_AUTO_FIT = value;
 					await this.plugin.saveSettings();
 					this.plugin.refreshEditorMermaidRendering();
+					this.plugin.refreshActivePreview();
 				}));
 
 		this.displayMermaidEditorSection(containerEl);

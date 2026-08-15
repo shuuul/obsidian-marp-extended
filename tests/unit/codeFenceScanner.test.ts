@@ -83,6 +83,12 @@ test('mapOutsideInlineCode treats unmatched runs as literal text', () => {
 	expect(result).toBe(`before \`unmatched ${MARKER}`);
 });
 
+test('mapOutsideInlineCode keeps scanning after an unmatched run', () => {
+	const text = 'stray ` then ``[[x]]`` and [[y]]';
+	const result = mapOutsideInlineCode(text, (segment) => segment.replace(/\[\[[^\]]*\]\]/g, MARKER));
+	expect(result).toBe(`stray \` then \`\`[[x]]\`\` and ${MARKER}`);
+});
+
 test('mapOutsideInlineCode matches runs by exact length', () => {
 	const text = '``a ` [[x]] `` tail';
 	const result = mapOutsideInlineCode(text, (segment) => segment.replace(/\[\[[^\]]*\]\]/g, MARKER));
