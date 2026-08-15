@@ -2,7 +2,7 @@
 	"id": "marp-extended",
 	"name": "Marp Extended",
 	"version": "0.10.0",
-	"minAppVersion": "1.7.2",
+	"minAppVersion": "1.12.0",
 	"description": "Create markdown-based Marp presentations with extended Marp support.",
 	"author": "shuuul",
 	"authorUrl": "https://github.com/shuuul",

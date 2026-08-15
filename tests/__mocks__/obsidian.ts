@@ -81,6 +81,16 @@ export const Modal = jest.fn().mockImplementation(() => ({
   close: jest.fn(),
 }));
 
+export class PluginSettingTab {
+	app: Record<string, unknown>;
+	containerEl: HTMLDivElement;
+
+	constructor(app: Record<string, unknown>, _plugin: unknown) {
+		this.app = app;
+		this.containerEl = {} as HTMLDivElement;
+	}
+}
+
 export function setIcon(element: HTMLElement, icon: string): void {
 	element.setAttribute('data-icon', icon);
 }

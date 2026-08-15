@@ -1,9 +1,10 @@
-import { Modal, Notice, PluginSettingTab, Setting, type App } from 'obsidian';
+import { Modal, Notice, PluginSettingTab, Setting, type App, type SettingDefinitionItem } from 'obsidian';
 
 import type MarpExtended from '../main';
 import { MarpExport } from '../utilities/marpExport';
 import { MermaidThemeManager } from '../utilities/mermaidThemeManager';
 import { ThemeManager } from '../utilities/themeManager';
+import type { MarpExtendedSettings } from '../utilities/settings';
 import type { InstalledThemeEntry } from '../utilities/vaultThemeManager';
 import { VaultThemeManager } from '../utilities/vaultThemeManager';
 
@@ -15,6 +16,82 @@ export class MarpExtendedSettingTab extends PluginSettingTab {
 		this.plugin = plugin;
 	}
 
+	getSettingDefinitions(): SettingDefinitionItem<keyof MarpExtendedSettings>[] {
+		const themeConfig = this.getThemeSectionConfig();
+		const mermaidThemeConfig = this.getMermaidThemeSectionConfig();
+
+		return [
+			{
+				type: 'group',
+				heading: 'Export and preview',
+				items: [
+					{
+						name: 'Marp CLI path',
+						desc: 'Optional. Export uses this executable first. Leave empty to auto-detect marp from PATH and common Homebrew locations.',
+						aliases: ['marp executable', 'export command'],
+						render: setting => this.renderMarpCliPathControl(setting),
+					},
+					{
+						name: 'Use npx fallback',
+						desc: 'If Marp CLI is not found and no path is set, run a pinned @marp-team/marp-cli@4.5.0 through npx when Marp CLI is not found or when a browser-backed export fails without an explicit CLI path. This requires Node.js/npm and may download the package on first use.',
+						aliases: ['npm', 'marp cli fallback'],
+						render: setting => this.renderNpxFallbackControl(setting),
+					},
+					{
+						name: 'Chrome path',
+						desc: 'Optional. Leave empty to let Marp CLI automatically find Google Chrome, Chromium, or Microsoft Edge. Set this only if export auto-detection fails.',
+						aliases: ['chromium', 'edge', 'browser path'],
+						render: setting => this.renderChromePathControl(setting),
+					},
+					{
+						name: 'Auto-fit wide Mermaid flowcharts',
+						desc: 'Re-layout long linear left-to-right or top-to-bottom flowcharts as multi-row/column zigzag diagrams in preview, export, and the editor, so slide scaling keeps text readable.',
+						aliases: ['mermaid zigzag', 'flowchart layout'],
+						render: setting => this.renderMermaidAutoFitControl(setting),
+					},
+				],
+			},
+			{
+				type: 'group',
+				heading: 'Mermaid in editor',
+				items: [
+					{
+						name: 'Modify editor tab Mermaid rendering',
+						desc: 'Replace Mermaid code blocks in Live Preview with Marp Extended styled, zoomable diagrams. Turn this off to use Obsidian\'s native rendering.',
+						aliases: ['live preview mermaid', 'native rendering'],
+						render: setting => this.renderMermaidEditorControl(setting),
+					},
+					{
+						name: 'Editor Mermaid theme',
+						desc: 'Theme used for Mermaid diagrams rendered inside the Obsidian editor. Default: kami.',
+						aliases: ['diagram theme', 'kami'],
+						render: setting => this.renderMermaidEditorThemeControl(setting),
+					},
+				],
+			},
+			{
+				type: 'group',
+				heading: themeConfig.heading,
+				items: [{
+					name: themeConfig.installedName,
+					desc: themeConfig.installedDesc,
+					aliases: ['marp css', 'slide theme'],
+					render: setting => this.renderThemeSectionControl(setting, themeConfig),
+				}],
+			},
+			{
+				type: 'group',
+				heading: mermaidThemeConfig.heading,
+				items: [{
+					name: mermaidThemeConfig.installedName,
+					desc: mermaidThemeConfig.installedDesc,
+					aliases: ['mermaid css', 'diagram themes'],
+					render: setting => this.renderThemeSectionControl(setting, mermaidThemeConfig),
+				}],
+			},
+		];
+	}
+
 	display(): void {
 		const {containerEl} = this;
 
@@ -24,11 +101,30 @@ export class MarpExtendedSettingTab extends PluginSettingTab {
 			.setName('Export and preview')
 			.setHeading();
 
-		let marpCliPathText: { setValue(value: string): void } | null = null;
-		new Setting(containerEl)
+		this.renderMarpCliPathControl(new Setting(containerEl)
 			.setName('Marp CLI path')
-			.setDesc('Optional. Export uses this executable first. Leave empty to auto-detect marp from PATH and common Homebrew locations.')
-			.addText(text => {
+			.setDesc('Optional. Export uses this executable first. Leave empty to auto-detect marp from PATH and common Homebrew locations.'));
+
+		this.renderNpxFallbackControl(new Setting(containerEl)
+			.setName('Use npx fallback')
+			.setDesc('If Marp CLI is not found and no path is set, run a pinned @marp-team/marp-cli@4.5.0 through npx when Marp CLI is not found or when a browser-backed export fails without an explicit CLI path. This requires Node.js/npm and may download the package on first use.'));
+
+		this.renderChromePathControl(new Setting(containerEl)
+			.setName('Chrome path')
+			.setDesc('Optional. Leave empty to let Marp CLI automatically find Google Chrome, Chromium, or Microsoft Edge. Set this only if export auto-detection fails.'));
+
+		this.renderMermaidAutoFitControl(new Setting(containerEl)
+			.setName('Auto-fit wide Mermaid flowcharts')
+			.setDesc('Re-layout long linear left-to-right or top-to-bottom flowcharts as multi-row/column zigzag diagrams in preview, export, and the editor, so slide scaling keeps text readable.'));
+
+		this.displayMermaidEditorSection(containerEl);
+		this.displayThemesSection(containerEl);
+		this.displayMermaidThemesSection(containerEl);
+	}
+
+	private renderMarpCliPathControl(setting: Setting): void {
+		let marpCliPathText: { setValue(value: string): void } | null = null;
+		setting.addText(text => {
 				marpCliPathText = text;
 				text
 					.setPlaceholder('marp or /opt/homebrew/bin/marp')
@@ -73,22 +169,20 @@ export class MarpExtendedSettingTab extends PluginSettingTab {
 						button.setDisabled(false);
 					}
 				}));
+	}
 
-		new Setting(containerEl)
-			.setName('Use npx fallback')
-			.setDesc('If Marp CLI is not found and no path is set, run a pinned @marp-team/marp-cli@4.5.0 through npx when Marp CLI is not found or when a browser-backed export fails without an explicit CLI path. This requires Node.js/npm and may download the package on first use.')
-			.addToggle(toggle => toggle
+	private renderNpxFallbackControl(setting: Setting): void {
+		setting.addToggle(toggle => toggle
 				.setValue(this.plugin.settings.MARP_CLI_USE_NPX)
 				.onChange(async (value) => {
 					this.plugin.settings.MARP_CLI_USE_NPX = value;
 					await this.plugin.saveSettings();
 				}));
+	}
 
+	private renderChromePathControl(setting: Setting): void {
 		let chromePathText: { setValue(value: string): void } | null = null;
-		new Setting(containerEl)
-			.setName('Chrome path')
-			.setDesc('Optional. Leave empty to let Marp CLI automatically find Google Chrome, Chromium, or Microsoft Edge. Set this only if export auto-detection fails.')
-			.addText(text => {
+		setting.addText(text => {
 				chromePathText = text;
 				text
 					.setPlaceholder('Enter CHROME_PATH')
@@ -119,10 +213,10 @@ export class MarpExtendedSettingTab extends PluginSettingTab {
 						button.setDisabled(false);
 					}
 				}));
-		new Setting(containerEl)
-			.setName('Auto-fit wide Mermaid flowcharts')
-			.setDesc('Re-layout long linear left-to-right or top-to-bottom flowcharts as multi-row/column zigzag diagrams in preview, export, and the editor, so slide scaling keeps text readable.')
-			.addToggle(toggle => toggle
+	}
+
+	private renderMermaidAutoFitControl(setting: Setting): void {
+		setting.addToggle(toggle => toggle
 				.setValue(this.plugin.settings.MERMAID_AUTO_FIT)
 				.onChange(async (value) => {
 					this.plugin.settings.MERMAID_AUTO_FIT = value;
@@ -130,10 +224,6 @@ export class MarpExtendedSettingTab extends PluginSettingTab {
 					this.plugin.refreshEditorMermaidRendering();
 					this.plugin.refreshActivePreview();
 				}));
-
-		this.displayMermaidEditorSection(containerEl);
-		this.displayThemesSection(containerEl);
-		this.displayMermaidThemesSection(containerEl);
 	}
 
 	private displayMermaidEditorSection(containerEl: HTMLElement): void {
@@ -141,21 +231,27 @@ export class MarpExtendedSettingTab extends PluginSettingTab {
 			.setName('Mermaid in editor')
 			.setHeading();
 
-		new Setting(containerEl)
+		this.renderMermaidEditorControl(new Setting(containerEl)
 			.setName('Modify editor tab Mermaid rendering')
-			.setDesc('Replace Mermaid code blocks in Live Preview with Marp Extended styled, zoomable diagrams. Turn this off to use Obsidian\'s native rendering.')
-			.addToggle(toggle => toggle
+			.setDesc('Replace Mermaid code blocks in Live Preview with Marp Extended styled, zoomable diagrams. Turn this off to use Obsidian\'s native rendering.'));
+
+		this.renderMermaidEditorThemeControl(new Setting(containerEl)
+			.setName('Editor Mermaid theme')
+			.setDesc('Theme used for Mermaid diagrams rendered inside the Obsidian editor. Default: kami.'));
+	}
+
+	private renderMermaidEditorControl(setting: Setting): void {
+		setting.addToggle(toggle => toggle
 				.setValue(this.plugin.settings.MERMAID_EDITOR_RENDER)
 				.onChange(async (value) => {
 					this.plugin.settings.MERMAID_EDITOR_RENDER = value;
 					await this.plugin.saveSettings();
 					this.plugin.refreshEditorMermaidRendering();
 				}));
+	}
 
-		new Setting(containerEl)
-			.setName('Editor Mermaid theme')
-			.setDesc('Theme used for Mermaid diagrams rendered inside the Obsidian editor. Default: kami.')
-			.addDropdown(dropdown => {
+	private renderMermaidEditorThemeControl(setting: Setting): void {
+		setting.addDropdown(dropdown => {
 				const currentTheme = this.plugin.settings.MERMAID_EDITOR_THEME || 'kami';
 				const optionNames = new Set<string>();
 				const addOption = (name: string) => {
@@ -187,13 +283,17 @@ export class MarpExtendedSettingTab extends PluginSettingTab {
 	}
 
 	private displayThemesSection(containerEl: HTMLElement): void {
-		const themeManager = new ThemeManager(this.app);
-		this.displayThemeSection(containerEl, {
-			manager: themeManager,
+		this.displayThemeSection(containerEl, this.getThemeSectionConfig());
+	}
+
+	private getThemeSectionConfig(): ThemeSectionConfig {
+		const manager = new ThemeManager(this.app);
+		return {
+			manager,
 			refreshPreview: true,
 			heading: 'Themes',
 			installedName: 'Installed themes',
-			installedDesc: `Bundled default themes are installed as managed CSS files in ${themeManager.getDefaultThemeDirectory()} from the current plugin package. Fork a default theme before editing it. Use @theme names in Marp frontmatter.`,
+			installedDesc: `Bundled default themes are installed as managed CSS files in ${manager.getDefaultThemeDirectory()} from the current plugin package. Fork a default theme before editing it. Use @theme names in Marp frontmatter.`,
 			emptyText: 'No themes installed yet. Marp Extended will install bundled default themes on startup, or you can add CSS manually.',
 			forkTooltip: 'Fork bundled default theme',
 			editTooltip: 'Edit custom theme CSS',
@@ -217,17 +317,21 @@ export class MarpExtendedSettingTab extends PluginSettingTab {
 				addSaveButtonText: 'Save theme',
 				saveErrorPrefix: 'Theme save failed',
 			},
-		});
+		};
 	}
 
 	private displayMermaidThemesSection(containerEl: HTMLElement): void {
-		const mermaidThemeManager = new MermaidThemeManager(this.app);
-		this.displayThemeSection(containerEl, {
-			manager: mermaidThemeManager,
+		this.displayThemeSection(containerEl, this.getMermaidThemeSectionConfig());
+	}
+
+	private getMermaidThemeSectionConfig(): ThemeSectionConfig {
+		const manager = new MermaidThemeManager(this.app);
+		return {
+			manager,
 			refreshPreview: false,
 			heading: 'Mermaid theme library',
 			installedName: 'Installed Mermaid themes',
-			installedDesc: `Bundled Mermaid themes are installed as managed CSS files in ${mermaidThemeManager.getDefaultThemeDirectory()} from the current plugin package. Fork a default before editing it. Use their names in the mermaidTheme frontmatter property.`,
+			installedDesc: `Bundled Mermaid themes are installed as managed CSS files in ${manager.getDefaultThemeDirectory()} from the current plugin package. Fork a default before editing it. Use their names in the mermaidTheme frontmatter property.`,
 			emptyText: 'No Mermaid themes installed yet. Marp Extended will install bundled defaults on startup, or you can add CSS manually.',
 			forkTooltip: 'Fork bundled Mermaid theme',
 			editTooltip: 'Edit custom Mermaid theme CSS',
@@ -252,7 +356,7 @@ export class MarpExtendedSettingTab extends PluginSettingTab {
 				addSaveButtonText: 'Save Mermaid theme',
 				saveErrorPrefix: 'Could not save Mermaid theme',
 			},
-		});
+		};
 	}
 
 	private displayThemeSection(containerEl: HTMLElement, config: ThemeSectionConfig): void {
@@ -260,12 +364,16 @@ export class MarpExtendedSettingTab extends PluginSettingTab {
 			.setName(config.heading)
 			.setHeading();
 
-		let themeListEl: HTMLElement;
-
-		new Setting(containerEl)
+		this.renderThemeSectionControl(new Setting(containerEl)
 			.setName(config.installedName)
-			.setDesc(config.installedDesc)
-			.addButton(button => button
+			.setDesc(config.installedDesc), config);
+	}
+
+	private renderThemeSectionControl(setting: Setting, config: ThemeSectionConfig): void {
+		const themeListEl = setting.settingEl.ownerDocument.win.createDiv({ cls: 'marp-extended-theme-list' });
+		setting.settingEl.insertAdjacentElement('afterend', themeListEl);
+
+		setting.addButton(button => button
 				.setButtonText('Add CSS theme')
 				.setCta()
 				.onClick(() => {
@@ -275,8 +383,6 @@ export class MarpExtendedSettingTab extends PluginSettingTab {
 						await this.renderThemeList(themeListEl, config);
 					}, config.modalText).open();
 				}));
-
-		themeListEl = containerEl.createDiv({ cls: 'marp-extended-theme-list' });
 		void this.renderThemeList(themeListEl, config);
 	}
 
