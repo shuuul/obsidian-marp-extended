@@ -1,4 +1,4 @@
-import { ItemView, Notice, setIcon, type WorkspaceLeaf, type MarkdownView, type TFile } from 'obsidian';
+import { ItemView, Notice, parseLinktext, setIcon, type WorkspaceLeaf, type MarkdownView, type TFile } from 'obsidian';
 import type { Marp } from '@marp-team/marp-core'
 import { browser, type MarpCoreBrowser } from '@marp-team/marp-core/browser'
 
@@ -107,15 +107,72 @@ section .mermaid-diagram-container.mermaid-diagram figcaption {
 }
 `;
 
+type PreviewDetachKey = 'iframeZoom' | 'iframeLink' | 'scroll';
+type PreviewFrameKey = 'zoomApply' | 'scroll';
+
+/**
+ * Owns the detachable listeners, animation-frame handles, and the resize
+ * observer accumulated while a preview session is open, so onClose can tear
+ * everything down with a single dispose().
+ */
+class PreviewSessionResources {
+    private detaches = new Map<PreviewDetachKey, () => void>();
+    private frames = new Map<PreviewFrameKey, number>();
+    private observer: ResizeObserver | undefined;
+
+    setDetach(key: PreviewDetachKey, detach: (() => void) | undefined): void {
+        this.detaches.get(key)?.();
+        if (detach) {
+            this.detaches.set(key, detach);
+        } else {
+            this.detaches.delete(key);
+        }
+    }
+
+    getFrame(key: PreviewFrameKey): number | undefined {
+        return this.frames.get(key);
+    }
+
+    setFrame(key: PreviewFrameKey, frame: number | undefined): void {
+        const existing = this.frames.get(key);
+        if (existing !== undefined) {
+            // Cancelling an already-fired frame id is a harmless no-op.
+            window.cancelAnimationFrame(existing);
+        }
+        if (frame !== undefined) {
+            this.frames.set(key, frame);
+        } else {
+            this.frames.delete(key);
+        }
+    }
+
+    setObserver(observer: ResizeObserver | undefined): void {
+        if (observer !== this.observer) {
+            this.observer?.disconnect();
+        }
+        this.observer = observer;
+    }
+
+    dispose(): void {
+        this.setObserver(undefined);
+        for (const frame of this.frames.values()) {
+            window.cancelAnimationFrame(frame);
+        }
+        this.frames.clear();
+        for (const detach of this.detaches.values()) {
+            detach();
+        }
+        this.detaches.clear();
+    }
+}
+
 export class MarpPreviewView extends ItemView  {
     private marpBrowser: MarpCoreBrowser | undefined;
     private previewContainerEl: HTMLElement | undefined;
     private previewIframeEl: HTMLIFrameElement | undefined;
     private previewSlideEls: HTMLElement[] = [];
     private previewMaxSlideWidth = 0;
-    private previewResizeObserver: ResizeObserver | undefined;
-    private previewIframeZoomDetach: (() => void) | undefined;
-    private previewIframeLinkDetach: (() => void) | undefined;
+    private readonly session = new PreviewSessionResources();
     private previewZoom = PREVIEW_ZOOM_RESET;
     private previewZoomFitScale = PREVIEW_ZOOM_RESET;
     private zoomLabelEl: HTMLElement | undefined;
@@ -128,11 +185,11 @@ export class MarpPreviewView extends ItemView  {
     private presenterNotesVisible = false;
     private notesToggleButtonEl: HTMLButtonElement | undefined;
     private presenterNotesEl: HTMLElement | undefined;
-    private previewScrollDetach: (() => void) | undefined;
-    private previewScrollFrame: number | undefined;
     private previewCommitQueue: Promise<void> = Promise.resolve();
     private displaySlidesRevision = 0;
     private previewProfileMeasureCounter = 0;
+    private cachedThemeCss: string[] | undefined;
+    private cachedMarp: Marp | undefined;
     private themeAssetCache: ThemeAssetCache;
     private settings : MarpExtendedSettings;
     private pluginDir: string | undefined;
@@ -159,6 +216,39 @@ export class MarpPreviewView extends ItemView  {
         return themeManager.loadThemeCss();
     }
 
+    /**
+     * Clears the cached theme CSS and Marp engine so the next render rebuilds
+     * them from the current theme files. Called when theme-related settings
+     * change and whenever the view opens.
+     */
+    invalidatePreviewCaches(): void {
+        this.cachedMarp = undefined;
+        this.cachedThemeCss = undefined;
+    }
+
+    private async getThemeCss(): Promise<string[]> {
+        if (this.cachedThemeCss) {
+            return this.cachedThemeCss;
+        }
+        return this.loadThemeCss();
+    }
+
+    private getMarpEngine(themeCss: string[]): Marp {
+        if (this.cachedMarp && this.cachedThemeCss === themeCss) {
+            return this.cachedMarp;
+        }
+
+        // themeSet.add() mutates the engine, so themes are only ever added to a
+        // freshly constructed instance; a cached engine is never re-registered.
+        const marp = this.createMarp();
+        themeCss.forEach((content) => {
+            marp.themeSet.add(content);
+        });
+        this.cachedThemeCss = themeCss;
+        this.cachedMarp = marp;
+        return marp;
+    }
+
     getViewType() {
         return MARP_PREVIEW_VIEW;
     }
@@ -174,6 +264,7 @@ export class MarpPreviewView extends ItemView  {
     async onOpen() {
         // console.log("marp slide onopen");
 
+        this.invalidatePreviewCaches();
         this.contentEl.empty();
         this.contentEl.addClass('marp-extended-preview-root');
         this.addPreviewToolbar(this.contentEl);
@@ -198,20 +289,7 @@ export class MarpPreviewView extends ItemView  {
 
     async onClose() {
         this.displaySlidesRevision += 1;
-        this.previewResizeObserver?.disconnect();
-        this.previewResizeObserver = undefined;
-        if (this.previewZoomApplyFrame !== undefined) {
-            window.cancelAnimationFrame(this.previewZoomApplyFrame);
-            this.previewZoomApplyFrame = undefined;
-        }
-        this.previewIframeZoomDetach?.();
-        this.previewIframeZoomDetach = undefined;
-        this.previewIframeLinkDetach?.();
-        this.previewIframeLinkDetach = undefined;
-        this.previewScrollDetach?.();
-        this.previewScrollDetach = undefined;
-        if (this.previewScrollFrame !== undefined) window.cancelAnimationFrame(this.previewScrollFrame);
-        this.previewScrollFrame = undefined;
+        this.session.dispose();
         this.previewSlideEls = [];
         this.previewMaxSlideWidth = 0;
         marpBrowserPolyfillReady = false;
@@ -440,16 +518,14 @@ export class MarpPreviewView extends ItemView  {
         this.zoomLabelEl.setAttribute('aria-label', `Preview zoom ${formattedZoom}`);
     }
 
-    private previewZoomApplyFrame: number | undefined;
-
     private schedulePreviewZoomApply(): void {
-        if (this.previewZoomApplyFrame !== undefined) {
+        if (this.session.getFrame('zoomApply') !== undefined) {
             return;
         }
-        this.previewZoomApplyFrame = window.requestAnimationFrame(() => {
-            this.previewZoomApplyFrame = undefined;
+        this.session.setFrame('zoomApply', window.requestAnimationFrame(() => {
+            this.session.setFrame('zoomApply', undefined);
             this.applyPreviewZoom();
-        });
+        }));
     }
 
 
@@ -633,9 +709,9 @@ export class MarpPreviewView extends ItemView  {
         const container = this.previewContainerEl;
         if (!container) return;
         const onScroll = () => {
-            if (this.previewScrollFrame !== undefined) return;
-            this.previewScrollFrame = window.requestAnimationFrame(() => {
-                this.previewScrollFrame = undefined;
+            if (this.session.getFrame('scroll') !== undefined) return;
+            this.session.setFrame('scroll', window.requestAnimationFrame(() => {
+                this.session.setFrame('scroll', undefined);
                 const containerTop = container.getBoundingClientRect().top;
                 const iframeTop = this.previewIframeEl?.getBoundingClientRect().top ?? containerTop;
                 let nearest = 0;
@@ -648,10 +724,10 @@ export class MarpPreviewView extends ItemView  {
                     this.activeSlideIndex = nearest;
                     this.applyPreviewState();
                 }
-            });
+            }));
         };
         container.addEventListener('scroll', onScroll, { passive: true });
-        this.previewScrollDetach = () => container.removeEventListener('scroll', onScroll);
+        this.session.setDetach('scroll', () => container.removeEventListener('scroll', onScroll));
     }
 
     private isPreviewProfilingEnabled(): boolean {
@@ -768,9 +844,6 @@ export class MarpPreviewView extends ItemView  {
             return;
         }
 
-        this.previewIframeLinkDetach?.();
-        this.previewIframeLinkDetach = undefined;
-
         const handleActivation = (event: Event) => {
             handlePreviewLinkActivation(event, undefined, (linkpath, newLeaf) => (
                 this.openInternalPreviewLink(linkpath, newLeaf)
@@ -779,15 +852,18 @@ export class MarpPreviewView extends ItemView  {
         const options: AddEventListenerOptions = { capture: true };
         doc.addEventListener('click', handleActivation, options);
         doc.addEventListener('auxclick', handleActivation, options);
-        this.previewIframeLinkDetach = () => {
+        this.session.setDetach('iframeLink', () => {
             doc.removeEventListener('click', handleActivation, options);
             doc.removeEventListener('auxclick', handleActivation, options);
-        };
+        });
     }
 
     private openInternalPreviewLink(linkpath: string, newLeaf: boolean): boolean {
         const sourcePath = this.file?.path ?? '';
-        const target = this.app.metadataCache.getFirstLinkpathDest(linkpath, sourcePath);
+        // getFirstLinkpathDest expects a plain linkpath: strip any #heading or
+        // #^block subpath before the existence check, then hand the full
+        // linktext to openLinkText so heading/block navigation still works.
+        const target = this.app.metadataCache.getFirstLinkpathDest(parseLinktext(linkpath).path, sourcePath);
         if (!target) {
             new Notice(`Marp preview: note not found for [[${linkpath}]]`, 5000);
             return false;
@@ -804,9 +880,6 @@ export class MarpPreviewView extends ItemView  {
             return;
         }
 
-        this.previewIframeZoomDetach?.();
-        this.previewIframeZoomDetach = undefined;
-
         const handleWheel = (event: WheelEvent) => {
             if (!isPreviewZoomWheel(event)) {
                 return;
@@ -821,9 +894,9 @@ export class MarpPreviewView extends ItemView  {
         };
         const options: AddEventListenerOptions = { passive: false };
         contentWindow.addEventListener('wheel', handleWheel, options);
-        this.previewIframeZoomDetach = () => {
+        this.session.setDetach('iframeZoom', () => {
             contentWindow.removeEventListener('wheel', handleWheel, options);
-        };
+        });
     }
 
     private registerPreviewZoomResizeObserver(): void {
@@ -831,11 +904,11 @@ export class MarpPreviewView extends ItemView  {
             return;
         }
 
-        this.previewResizeObserver?.disconnect();
-        this.previewResizeObserver = new ResizeObserver(() => {
+        const observer = new ResizeObserver(() => {
             this.schedulePreviewZoomApply();
         });
-        this.previewResizeObserver.observe(this.previewContainerEl);
+        observer.observe(this.previewContainerEl);
+        this.session.setObserver(observer);
     }
 
     addActions() {
@@ -874,14 +947,11 @@ export class MarpPreviewView extends ItemView  {
             const filePath = new FilePath(this.settings);
             const previewBaseUrl = filePath.getPreviewBaseUrl(sourceFile);
             const markdownText = markdownOverride ?? view.getViewData();
-            const themeCss = await this.measurePreviewStepAsync('loadThemeCss', () => this.loadThemeCss());
+            const themeCss = await this.measurePreviewStepAsync('loadThemeCss', () => this.getThemeCss());
             if (displayRevision !== this.displaySlidesRevision) {
                 return;
             }
-            const marp = this.createMarp();
-            themeCss.forEach((content) => {
-                marp.themeSet.add(content);
-            });
+            const marp = this.getMarpEngine(themeCss);
             const mermaidThemeCss = await this.measurePreviewStepAsync('loadMermaidThemeCss', () => (
                 loadMermaidThemeCssForFile(this.app, sourceFile, markdownText)
             ));

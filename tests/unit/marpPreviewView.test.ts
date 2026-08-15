@@ -1,6 +1,6 @@
 /** @jest-environment jsdom */
 
-import { ItemView, type MarkdownView, type TFile } from 'obsidian';
+import { ItemView, Notice, type MarkdownView, type TFile } from 'obsidian';
 import type { Marp } from '@marp-team/marp-core';
 import { expect, jest, test, beforeEach } from '@jest/globals';
 
@@ -342,6 +342,64 @@ test('serializes preview commits so stale iframe loads cannot initialize newer s
 	expect(access.fragmentTotals).toEqual([2]);
 	expect(access.presenterComments).toEqual([['current note']]);
 	expect(renderSpy).toHaveBeenLastCalledWith('<html>current</html>');
+});
+
+test('internal preview links strip subpaths for lookup but open the full linktext', () => {
+	const openLinkText = jest.fn(async (_linktext: string, _sourcePath?: string, _newLeaf?: boolean) => undefined);
+	const getFirstLinkpathDest = jest.fn((linkpath: string, _sourcePath?: string) => (
+		linkpath === 'Note' ? { path: 'Note.md' } : null
+	));
+	const view = createPreviewView({
+		metadataCache: { getFirstLinkpathDest },
+		workspace: { openLinkText },
+	});
+	const access = marpPreviewViewTestAccess(view);
+	access.file = { path: 'slides/deck.md' } as unknown as TFile;
+
+	expect(access.openInternalPreviewLink('Note#Section', false)).toBe(true);
+	expect(getFirstLinkpathDest).toHaveBeenCalledWith('Note', 'slides/deck.md');
+	expect(openLinkText).toHaveBeenCalledWith('Note#Section', 'slides/deck.md', false);
+
+	getFirstLinkpathDest.mockReturnValue(null);
+	expect(access.openInternalPreviewLink('Missing#heading', true)).toBe(false);
+	expect(Notice).toHaveBeenCalledWith('Marp preview: note not found for [[Missing#heading]]', 5000);
+	expect(openLinkText).toHaveBeenCalledTimes(1);
+});
+
+test('displaySlides caches theme CSS and engine until invalidatePreviewCaches', async () => {
+	const view = createPreviewView();
+	const access = marpPreviewViewTestAccess(view);
+	const sourceFile = {
+		path: 'slides/deck.md',
+		parent: { path: 'slides' },
+		vault: {
+			adapter: {
+				write: async () => undefined,
+				getResourcePath: (path: string) => `app://local/${path}`,
+			},
+			getConfig: () => 'relative',
+		},
+	} as unknown as TFile;
+	const markdownView = {
+		file: sourceFile,
+		getViewData: () => '---\nmarp: true\n---\n\n# Title',
+		app: { vault: sourceFile.vault },
+	} as unknown as MarkdownView;
+	jest.spyOn(access, 'renderPreviewDocument').mockImplementation(async () => undefined);
+	const createMarpSpy = jest.spyOn(access, 'createMarp');
+	const themeManagerMock = ThemeManager as jest.MockedClass<typeof ThemeManager>;
+
+	await view.displaySlides(markdownView);
+	await view.displaySlides(markdownView, '# Updated');
+
+	expect(themeManagerMock).toHaveBeenCalledTimes(1);
+	expect(createMarpSpy).toHaveBeenCalledTimes(1);
+
+	view.invalidatePreviewCaches();
+	await view.displaySlides(markdownView, '# After invalidation');
+
+	expect(themeManagerMock).toHaveBeenCalledTimes(2);
+	expect(createMarpSpy).toHaveBeenCalledTimes(2);
 });
 
 test('uses a fresh render-local engine when theme loads finish out of order', async () => {

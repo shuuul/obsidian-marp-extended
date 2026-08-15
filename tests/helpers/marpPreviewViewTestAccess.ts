@@ -1,4 +1,5 @@
 import type { Marp } from '@marp-team/marp-core';
+import type { TFile } from 'obsidian';
 
 export type MarpPreviewViewTestAccess = {
 	applyPreviewZoom(): void;
@@ -6,12 +7,15 @@ export type MarpPreviewViewTestAccess = {
 	commitPreviewRender(revision: number, html: string, comments: string[][]): Promise<void>;
 	createMarp(): Marp;
 	initializePreviewState(comments: string[][]): void;
+	invalidatePreviewCaches(): void;
 	loadPreviewSrcdoc(html: string): Promise<void>;
+	openInternalPreviewLink(linkpath: string, newLeaf: boolean): boolean;
 	registerPreviewIframeLinkHandler(): void;
 	registerPreviewScrollTracking(): void;
 	renderPreviewDocument(html: string): Promise<void>;
 	activeSlideIndex: number;
 	displaySlidesRevision: number;
+	file: TFile | null;
 	fragmentRevealCounts: number[];
 	fragmentTotals: number[];
 	presenterComments: string[][];

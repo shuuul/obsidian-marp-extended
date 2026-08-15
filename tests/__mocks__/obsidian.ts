@@ -122,6 +122,14 @@ export const normalizePath = jest.fn().mockImplementation((str: string) => {
   return normalize(str)
 })
 
+export function parseLinktext(linktext: string): { path: string; subpath: string } {
+  const subpathIndex = linktext.indexOf('#');
+  if (subpathIndex === -1) {
+    return { path: linktext, subpath: '' };
+  }
+  return { path: linktext.slice(0, subpathIndex), subpath: linktext.slice(subpathIndex) };
+}
+
 function normalize (path: string) {
   if (typeof path !== 'string') {
     console.log(path);
