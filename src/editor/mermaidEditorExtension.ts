@@ -244,6 +244,8 @@ function enhanceMermaidDiagram(section: HTMLElement, figure: HTMLElement, doc: D
 
 class MermaidWidget extends WidgetType {
 	private renderToken = 0;
+	private themeStyleSheet: CSSStyleSheet | null = null;
+	private themeStyleDocument: Document | null = null;
 
 	constructor(
 		private readonly app: App,
@@ -289,10 +291,6 @@ class MermaidWidget extends WidgetType {
 		});
 		root.appendChild(editButton);
 
-		const style = doc.createElement('style');
-		style.className = 'marp-extended-editor-mermaid-theme';
-		root.appendChild(style);
-
 		const section = win.createEl('section', { cls: 'marp-extended-editor-mermaid-scope' });
 		const placeholder = win.createDiv({
 			cls: 'marp-extended-editor-mermaid-loading',
@@ -308,7 +306,13 @@ class MermaidWidget extends WidgetType {
 					return;
 				}
 
-				style.textContent = css;
+				this.removeThemeStyleSheet();
+				const StyleSheet = (win as Window & { CSSStyleSheet: typeof CSSStyleSheet }).CSSStyleSheet;
+				const styleSheet = new StyleSheet();
+				styleSheet.replaceSync(css);
+				doc.adoptedStyleSheets = [...doc.adoptedStyleSheets, styleSheet];
+				this.themeStyleSheet = styleSheet;
+				this.themeStyleDocument = doc;
 				const renderOptions = parseMermaidRenderOptionsFromCss(css);
 				const figureHtml = await renderMermaidFigure(this.source, this.alt, { renderOptions, autoFit: { enabled: this.autoFitEnabled } });
 				if (renderToken !== this.renderToken || !section.isConnected) {
@@ -339,6 +343,20 @@ class MermaidWidget extends WidgetType {
 			});
 
 		return root;
+	}
+
+	destroy(): void {
+		this.renderToken++;
+		this.removeThemeStyleSheet();
+	}
+
+	private removeThemeStyleSheet(): void {
+		if (this.themeStyleSheet && this.themeStyleDocument) {
+			this.themeStyleDocument.adoptedStyleSheets = this.themeStyleDocument.adoptedStyleSheets
+				.filter(styleSheet => styleSheet !== this.themeStyleSheet);
+		}
+		this.themeStyleSheet = null;
+		this.themeStyleDocument = null;
 	}
 }
 
