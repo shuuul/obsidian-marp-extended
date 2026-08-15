@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+## [0.10.0](https://github.com/shuuul/obsidian-marp-extended/compare/0.9.0...0.10.0) (2026-08-15)
+
+
 ### Bug Fixes
 
 * **preview:** open sidebar http(s) links in the system browser instead of navigating inside Obsidian
