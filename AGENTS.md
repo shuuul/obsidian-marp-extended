@@ -20,6 +20,7 @@ src/utilities/settings.ts           # Settings interface and defaults
 src/utilities/filePath.ts           # Vault/resource path resolution and image wiki-link conversion
 src/utilities/marpExport.ts         # Marp CLI export orchestration
 src/utilities/marpMarkdown.ts       # Shared preview/export Markdown compile path
+src/utilities/marpPreparation.ts    # Shared preview/export preparation policy and ordered deck CSS
 src/utilities/previewLinks.ts       # Preview iframe link activation (internal/external)
 src/utilities/mermaid.ts            # Mermaid fence rendering for preview/export
 src/utilities/themeManager.ts       # Slide theme manager (thin VaultThemeManager subclass)

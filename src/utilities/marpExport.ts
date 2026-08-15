@@ -10,16 +10,13 @@ import {
 	MarpCLIError,
 	runMarpCli,
 } from '../runtime/marpCli';
-import { wrapBuiltinThemeScaleCss } from './builtinThemeScale';
 import { FilePath } from './filePath';
-import { compileMarkdownForMarp } from './marpMarkdown';
-import { MARP_EXTENDED_STRUCTURAL_CSS } from './marpExtendedStructuralCss';
+import { insertMarkdownAfterFrontmatter } from './mermaidTheme';
 import {
-	insertMarkdownAfterFrontmatter,
-	loadMermaidThemeCssForFile,
-	parseMermaidRenderOptionsFromCss,
-	wrapMermaidThemeCss,
-} from './mermaidTheme';
+	loadMarpPreparationContext,
+	prepareMarpDeck,
+	serializeMarpDeckStyles,
+} from './marpPreparation';
 import { MarpExtendedSettings } from './settings';
 
 export { MarpCLIError };
@@ -188,19 +185,14 @@ export class MarpExport {
 		}
 
 		const originalContent = await this.app.vault.cachedRead(file);
-		const mermaidThemeCss = await loadMermaidThemeCssForFile(this.app, file, originalContent);
-		const mermaidRenderOptions = parseMermaidRenderOptionsFromCss(mermaidThemeCss);
-		const processedMarkdown = await compileMarkdownForMarp(originalContent, file, this.app, filesTool, {
-			renderMermaidInline: true,
-			mermaidOptions: {
-				renderOptions: mermaidRenderOptions,
-				autoFit: { enabled: this.settings.MERMAID_AUTO_FIT },
-			},
-			noteWikiLinkMode: 'export',
+		const preparationContext = await loadMarpPreparationContext(this.app, file, originalContent);
+		const preparedDeck = await prepareMarpDeck(originalContent, file, this.app, filesTool, preparationContext, {
+			mode: 'export',
+			mermaidAutoFit: this.settings.MERMAID_AUTO_FIT,
 		});
 		const processedContent = insertMarkdownAfterFrontmatter(
-			processedMarkdown,
-			`${wrapMermaidThemeCss(mermaidThemeCss)}${wrapBuiltinThemeScaleCss()}\n<style>${MARP_EXTENDED_STRUCTURAL_CSS}</style>`,
+			preparedDeck.markdown,
+			serializeMarpDeckStyles(preparedDeck.styles, 'export'),
 		);
 		const needsTemporarySource = processedContent !== originalContent || filesTool.shouldUseRootExportSource(file);
 

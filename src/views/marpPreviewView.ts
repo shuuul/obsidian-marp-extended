@@ -6,12 +6,13 @@ import type { MarpExtendedSettings } from '../utilities/settings'
 import { FilePath } from '../utilities/filePath'
 import { ThemeManager } from '../utilities/themeManager';
 import { createMarpEngine } from '../runtime/marpEngine';
-import { compileMarkdownForMarp } from '../utilities/marpMarkdown';
-import { loadMermaidThemeCssForFile, parseMermaidRenderOptionsFromCss } from '../utilities/mermaidTheme';
-import { BUILTIN_THEME_SCALE_CSS } from '../utilities/builtinThemeScale';
 import { ThemeAssetCache } from '../utilities/themeAssetCache';
 import { exportWithNotice } from '../utilities/marpExport';
-import { MARP_EXTENDED_STRUCTURAL_CSS } from '../utilities/marpExtendedStructuralCss';
+import {
+    loadMarpPreparationContext,
+    prepareMarpDeck,
+    serializeMarpDeckStyles,
+} from '../utilities/marpPreparation';
 import {
     PREVIEW_ZOOM_RESET,
     clampPreviewZoom,
@@ -940,22 +941,17 @@ export class MarpPreviewView extends ItemView  {
                 return;
             }
             const marp = this.getMarpEngine(themeCss);
-            const mermaidThemeCss = await this.measurePreviewStepAsync('loadMermaidThemeCss', () => (
-                loadMermaidThemeCssForFile(this.app, sourceFile, markdownText)
+            const preparationContext = await this.measurePreviewStepAsync('loadMermaidThemeCss', () => (
+                loadMarpPreparationContext(this.app, sourceFile, markdownText)
             ));
             if (displayRevision !== this.displaySlidesRevision) {
                 return;
             }
 
-            const mermaidRenderOptions = parseMermaidRenderOptionsFromCss(mermaidThemeCss);
-            const processedMarkdown = await this.measurePreviewStepAsync('compileMarkdownForMarp', () => (
-                compileMarkdownForMarp(markdownText, sourceFile, this.app, filePath, {
-                    renderMermaidInline: true,
-                    mermaidOptions: {
-                        renderOptions: mermaidRenderOptions,
-                        autoFit: { enabled: this.settings.MERMAID_AUTO_FIT },
-                    },
-                    noteWikiLinkMode: 'preview',
+            const preparedDeck = await this.measurePreviewStepAsync('compileMarkdownForMarp', () => (
+                prepareMarpDeck(markdownText, sourceFile, this.app, filePath, preparationContext, {
+                    mode: 'preview',
+                    mermaidAutoFit: this.settings.MERMAID_AUTO_FIT,
                 })
             ));
             if (displayRevision !== this.displaySlidesRevision) {
@@ -965,7 +961,7 @@ export class MarpPreviewView extends ItemView  {
             this.previewSlideEls = [];
             this.previewMaxSlideWidth = 0;
 
-            const rendered = this.measurePreviewStep('marp.render', () => marp.render(processedMarkdown));
+            const rendered = this.measurePreviewStep('marp.render', () => marp.render(preparedDeck.markdown));
             if (displayRevision !== this.displaySlidesRevision) {
                 return;
             }
@@ -985,7 +981,7 @@ export class MarpPreviewView extends ItemView  {
 <html>
 <head>
 <base href="${previewBaseUrl}">
-<style id="__marp-vscode-style">${css}\n${mermaidThemeCss}\n${BUILTIN_THEME_SCALE_CSS}\n${MARP_EXTENDED_STRUCTURAL_CSS}</style>
+<style id="__marp-vscode-style">${css}\n${serializeMarpDeckStyles(preparedDeck.styles, 'preview')}</style>
 <style id="__marp-extended-preview-style">${PREVIEW_IFRAME_STYLE}</style>
 </head>
 <body>${html}</body>
