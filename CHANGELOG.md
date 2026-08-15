@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Bug Fixes
+
+* **preview:** open sidebar http(s) links in the system browser instead of navigating inside Obsidian
+
 ### Features
 
 * **runtime:** bump shared Marp Core engine pin to `5.0.1` (`next` channel)

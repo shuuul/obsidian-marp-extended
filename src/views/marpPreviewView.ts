@@ -21,6 +21,7 @@ import {
     zoomPreviewByStep,
     zoomPreviewFromWheel,
 } from '../utilities/previewZoom'
+import { handlePreviewLinkActivation } from '../utilities/previewLinks'
 
 export const MARP_PREVIEW_VIEW = 'marp-preview-view';
 const PREVIEW_PROFILE_STORAGE_KEY = 'marp-extended-profile';
@@ -102,6 +103,7 @@ export class MarpPreviewView extends ItemView  {
     private previewMaxSlideWidth = 0;
     private previewResizeObserver: ResizeObserver | undefined;
     private previewIframeZoomDetach: (() => void) | undefined;
+    private previewIframeLinkDetach: (() => void) | undefined;
     private previewZoom = PREVIEW_ZOOM_RESET;
     private previewZoomFitScale = PREVIEW_ZOOM_RESET;
     private zoomLabelEl: HTMLElement | undefined;
@@ -192,6 +194,8 @@ export class MarpPreviewView extends ItemView  {
         }
         this.previewIframeZoomDetach?.();
         this.previewIframeZoomDetach = undefined;
+        this.previewIframeLinkDetach?.();
+        this.previewIframeLinkDetach = undefined;
         this.previewScrollDetach?.();
         this.previewScrollDetach = undefined;
         if (this.previewScrollFrame !== undefined) window.cancelAnimationFrame(this.previewScrollFrame);
@@ -479,6 +483,7 @@ export class MarpPreviewView extends ItemView  {
                 throw new Error('Preview iframe document is unavailable.');
             }
             this.ensureMarpBrowser(loadedDoc);
+            this.registerPreviewIframeLinkHandler();
             return;
         }
 
@@ -490,6 +495,7 @@ export class MarpPreviewView extends ItemView  {
             ...Array.from(parsed.body.childNodes, (node) => node.cloneNode(true)),
         );
         this.ensureMarpBrowser(doc);
+        this.registerPreviewIframeLinkHandler();
     }
 
     private loadPreviewSrcdoc(html: string): Promise<void> {
@@ -502,6 +508,7 @@ export class MarpPreviewView extends ItemView  {
             const onLoad = () => {
                 iframe.removeEventListener('error', onError);
                 this.registerPreviewIframeZoomGesture();
+                this.registerPreviewIframeLinkHandler();
                 resolve();
             };
             const onError = () => {
@@ -741,6 +748,27 @@ export class MarpPreviewView extends ItemView  {
             event.preventDefault();
             this.setPreviewZoom(zoomPreviewFromWheel(this.previewZoom, event.deltaY), event);
         }, { passive: false });
+    }
+
+    private registerPreviewIframeLinkHandler(): void {
+        const doc = this.getPreviewDocument();
+        if (!doc) {
+            return;
+        }
+
+        this.previewIframeLinkDetach?.();
+        this.previewIframeLinkDetach = undefined;
+
+        const handleActivation = (event: Event) => {
+            handlePreviewLinkActivation(event);
+        };
+        const options: AddEventListenerOptions = { capture: true };
+        doc.addEventListener('click', handleActivation, options);
+        doc.addEventListener('auxclick', handleActivation, options);
+        this.previewIframeLinkDetach = () => {
+            doc.removeEventListener('click', handleActivation, options);
+            doc.removeEventListener('auxclick', handleActivation, options);
+        };
     }
 
     private registerPreviewIframeZoomGesture(): void {

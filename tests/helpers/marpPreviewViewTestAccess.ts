@@ -7,6 +7,7 @@ export type MarpPreviewViewTestAccess = {
 	createMarp(): Marp;
 	initializePreviewState(comments: string[][]): void;
 	loadPreviewSrcdoc(html: string): Promise<void>;
+	registerPreviewIframeLinkHandler(): void;
 	registerPreviewScrollTracking(): void;
 	renderPreviewDocument(html: string): Promise<void>;
 	activeSlideIndex: number;

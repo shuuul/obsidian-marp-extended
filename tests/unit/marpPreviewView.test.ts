@@ -172,6 +172,49 @@ test('loadPreviewSrcdoc resolves after iframe load and assigns srcdoc', async ()
 	expect(iframe.srcdoc).toBe(html);
 });
 
+test('preview iframe clicks open http(s) links externally and leave vault links alone', () => {
+	const view = createPreviewView();
+	const access = marpPreviewViewTestAccess(view);
+	const iframe = access.previewIframeEl;
+	if (!iframe) {
+		throw new Error('Preview harness missing iframe');
+	}
+
+	const doc = document.implementation.createHTMLDocument('preview');
+	const base = doc.createElement('base');
+	base.href = 'app://local/slides/';
+	doc.head.appendChild(base);
+	const youtube = doc.createElement('a');
+	youtube.setAttribute('href', 'https://www.youtube.com/watch?v=mGhvK8xJP1w');
+	youtube.textContent = 'video';
+	const vault = doc.createElement('a');
+	vault.setAttribute('href', '../assets/photo.png');
+	vault.textContent = 'photo';
+	doc.body.append(youtube, vault);
+	Object.defineProperty(iframe, 'contentDocument', { configurable: true, value: doc });
+
+	const openWindow = jest.spyOn(window, 'open').mockReturnValue({} as Window);
+
+	access.registerPreviewIframeLinkHandler();
+
+	const youtubeEvent = new MouseEvent('click', { bubbles: true, button: 0, cancelable: true });
+	youtube.dispatchEvent(youtubeEvent);
+	expect(youtubeEvent.defaultPrevented).toBe(true);
+	expect(openWindow).toHaveBeenCalledWith(
+		'https://www.youtube.com/watch?v=mGhvK8xJP1w',
+		'_blank',
+		'noopener,noreferrer',
+	);
+
+	openWindow.mockClear();
+	const vaultEvent = new MouseEvent('click', { bubbles: true, button: 0, cancelable: true });
+	vault.dispatchEvent(vaultEvent);
+	expect(vaultEvent.defaultPrevented).toBe(false);
+	expect(openWindow).not.toHaveBeenCalled();
+
+	openWindow.mockRestore();
+});
+
 test('preview view constructs with ItemView toolbar hooks', () => {
 	const view = createPreviewView();
 
