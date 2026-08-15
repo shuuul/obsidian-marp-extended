@@ -117,6 +117,50 @@ test('default theme refresh writes every packaged default theme', async () => {
 	expect(await adapter.read(`${DEFAULT_THEME_DIRECTORY}/${DEFAULT_THEME_DEFINITIONS[0].fileName}`)).not.toContain('@marp-extended-theme-');
 });
 
+test('default theme refresh skips writes when installed content already matches', async () => {
+	const adapter = new FileSystemAdapter();
+	const manager = new ThemeManager(createApp(adapter));
+
+	await manager.ensureDefaultThemes({ overwrite: true });
+
+	const writeSpy = jest.spyOn(adapter, 'write');
+	const installed = await manager.ensureDefaultThemes({ overwrite: true });
+
+	expect(writeSpy).not.toHaveBeenCalled();
+	expect(installed).toEqual([]);
+});
+
+test('default theme refresh rewrites only files whose content diverged from the package', async () => {
+	const adapter = new FileSystemAdapter();
+	const manager = new ThemeManager(createApp(adapter));
+
+	await manager.ensureDefaultThemes({ overwrite: true });
+	const divergedPath = `${DEFAULT_THEME_DIRECTORY}/${DEFAULT_THEME_DEFINITIONS[0].fileName}`;
+	await adapter.write(divergedPath, '/* @theme kami */\nsection { color: red; }');
+
+	const writeSpy = jest.spyOn(adapter, 'write');
+	const installed = await manager.ensureDefaultThemes({ overwrite: true });
+
+	expect(writeSpy).toHaveBeenCalledTimes(1);
+	expect(writeSpy).toHaveBeenCalledWith(divergedPath, expect.stringContaining('/* @theme kami */'));
+	expect(installed).toEqual([DEFAULT_THEME_DEFINITIONS[0].name]);
+	const packagedCss = DEFAULT_THEME_DEFINITIONS[0].css;
+	expect(await adapter.read(divergedPath)).toBe(packagedCss.endsWith('\n') ? packagedCss : `${packagedCss}\n`);
+});
+
+test('Mermaid default theme refresh skips writes when installed content already matches', async () => {
+	const adapter = new FileSystemAdapter();
+	const manager = new MermaidThemeManager(createApp(adapter));
+
+	await manager.ensureDefaultThemes({ overwrite: true });
+
+	const writeSpy = jest.spyOn(adapter, 'write');
+	const installed = await manager.ensureDefaultThemes({ overwrite: true });
+
+	expect(writeSpy).not.toHaveBeenCalled();
+	expect(installed).toEqual([]);
+});
+
 test('startup default theme ensure always overwrites installed defaults from package CSS', async () => {
 	const adapter = new FileSystemAdapter();
 	await adapter.mkdir('.marp-extended');
