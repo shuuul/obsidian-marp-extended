@@ -1,3 +1,5 @@
+import { closingCodeFence, openingCodeFence, type CodeFence } from '@/utilities/codeFenceScanner';
+
 type MarkerAttributes = {
 	positional: string[];
 	values: Record<string, string>;
@@ -6,19 +8,6 @@ type MarkerAttributes = {
 type BlockName = 'lead' | 'subtitle' | 'metadata' | 'callout' | 'columns' | 'cards';
 
 const BLOCK_NAMES = new Set<BlockName>(['lead', 'subtitle', 'metadata', 'callout', 'columns', 'cards']);
-
-type Fence = { character: '`' | '~'; length: number };
-
-function fenceOpener(line: string): Fence | undefined {
-	const match = line.match(/^ {0,3}(`{3,}|~{3,})/);
-	if (!match) return undefined;
-	return { character: match[1][0] as Fence['character'], length: match[1].length };
-}
-
-function closesFence(line: string, fence: Fence): boolean {
-	const match = line.match(/^ {0,3}(`+|~+)[ \t]*$/);
-	return Boolean(match && match[1][0] === fence.character && match[1].length >= fence.length);
-}
 
 function escapeHtml(value: string): string {
 	return value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -75,11 +64,11 @@ function renderClassBlock(className: string, body: string): string {
 function splitSegments(body: string, separatorNames: string[]): string[] {
 	const segments: string[] = [];
 	let current: string[] = [];
-	let fence: Fence | undefined;
+	let fence: CodeFence | undefined;
 	for (const line of body.split(/\r?\n/)) {
 		if (fence) {
 			current.push(line);
-			if (closesFence(line, fence)) fence = undefined;
+			if (closingCodeFence(line, fence)) fence = undefined;
 			continue;
 		}
 		const separator = line.match(/^%%marp-([a-z]+)%%$/)?.[1];
@@ -89,7 +78,7 @@ function splitSegments(body: string, separatorNames: string[]): string[] {
 			continue;
 		}
 		current.push(line);
-		fence = fenceOpener(line);
+		fence = openingCodeFence(line) ?? undefined;
 	}
 	if (current.join('\n').trim()) segments.push(current.join('\n').trim());
 	return segments;
@@ -157,16 +146,16 @@ export function compileMarpExtendedCommentBlocks(markdown: string): string {
 	const lines = markdown.split(/\r?\n/);
 	const output: string[] = [];
 	let index = 0;
-	let outerFence: Fence | undefined;
+	let outerFence: CodeFence | undefined;
 	while (index < lines.length) {
 		const line = lines[index];
 		if (outerFence) {
 			output.push(line);
-			if (closesFence(line, outerFence)) outerFence = undefined;
+			if (closingCodeFence(line, outerFence)) outerFence = undefined;
 			index += 1;
 			continue;
 		}
-		outerFence = fenceOpener(line);
+		outerFence = openingCodeFence(line) ?? undefined;
 		if (outerFence) { output.push(line); index += 1; continue; }
 		const slideMatch = line.match(/^%%marp-slide(\[[^\]]*\])%%$/);
 		if (slideMatch) {
@@ -184,12 +173,12 @@ export function compileMarpExtendedCommentBlocks(markdown: string): string {
 		const body: string[] = [];
 		const stack: BlockName[] = [];
 		let cursor = index + 1;
-		let fence: Fence | undefined;
+		let fence: CodeFence | undefined;
 		let foundEnd = false;
 		for (; cursor < lines.length; cursor += 1) {
 			const candidate = lines[cursor];
-			if (fence) { body.push(candidate); if (closesFence(candidate, fence)) fence = undefined; continue; }
-			fence = fenceOpener(candidate);
+			if (fence) { body.push(candidate); if (closingCodeFence(candidate, fence)) fence = undefined; continue; }
+			fence = openingCodeFence(candidate) ?? undefined;
 			if (fence) { body.push(candidate); continue; }
 			const nestedMatch = candidate.match(/^%%marp-([a-z]+)(?:\[[^\]]*\])?%%$/);
 			const nested = nestedMatch ? blockName(nestedMatch[1]) : undefined;

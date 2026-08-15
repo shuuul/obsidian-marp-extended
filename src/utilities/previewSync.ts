@@ -1,10 +1,6 @@
-const SLIDE_SEPARATOR_PATTERN = /^ {0,3}---\s*$/;
-const CODE_FENCE_PATTERN = /^ {0,3}(`{3,}|~{3,})/;
+import { closingCodeFence, openingCodeFence, type CodeFence } from '@/utilities/codeFenceScanner';
 
-type CodeFence = {
-	marker: '`' | '~';
-	length: number;
-};
+const SLIDE_SEPARATOR_PATTERN = /^ {0,3}---\s*$/;
 
 type LineReader = (lineNumber: number) => string;
 
@@ -28,13 +24,13 @@ export function getPreviewSlideIndexFromLineReader(
 		const line = getLine(lineNumber);
 
 		if (codeFence) {
-			if (isClosingCodeFence(line, codeFence)) {
+			if (closingCodeFence(line, codeFence)) {
 				codeFence = null;
 			}
 			continue;
 		}
 
-		codeFence = getOpeningCodeFence(line);
+		codeFence = openingCodeFence(line);
 		if (codeFence) {
 			continue;
 		}
@@ -67,27 +63,4 @@ function getFrontmatterEndLine(lineCount: number, getLine: LineReader): number |
 	}
 
 	return null;
-}
-
-function getOpeningCodeFence(line: string): CodeFence | null {
-	const match = line.match(CODE_FENCE_PATTERN);
-	if (!match) {
-		return null;
-	}
-
-	const fence = match[1];
-	return {
-		marker: fence[0] as '`' | '~',
-		length: fence.length,
-	};
-}
-
-function isClosingCodeFence(line: string, fence: CodeFence): boolean {
-	const match = line.match(/^ {0,3}(`+|~+)\s*$/);
-	if (!match) {
-		return false;
-	}
-
-	const closingFence = match[1];
-	return closingFence[0] === fence.marker && closingFence.length >= fence.length;
 }
