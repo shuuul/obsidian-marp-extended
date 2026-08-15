@@ -52,6 +52,34 @@ test('mermaid fence renders an inline beautiful-mermaid SVG with caption', async
 	expect(html).not.toContain('https://kroki.io');
 });
 
+test('tilde mermaid fences render an inline beautiful-mermaid SVG', async () => {
+	const html = await render('~~~mermaid[Tilde flow]\nflowchart LR\n  A --> B\n~~~\n');
+
+	expect(html).toContain('data-mermaid-renderer="beautiful-mermaid"');
+	expect(html).toContain('<figcaption>Tilde flow</figcaption>');
+});
+
+test('long mermaid fences are not closed by shorter nested fences', async () => {
+	const renderMermaidSVGMock = renderMermaidSVG as jest.MockedFunction<typeof renderMermaidSVG>;
+	renderMermaidSVGMock.mockClear();
+	const markdown = [
+		'````mermaid',
+		'flowchart LR',
+		'  A --> B',
+		'```text',
+		'sample',
+		'```',
+		'````',
+		'',
+	].join('\n');
+
+	const processed = await renderMermaidFences(markdown);
+
+	expect(processed).toContain('data-mermaid-renderer="beautiful-mermaid"');
+	expect(processed).not.toContain('```text');
+	expect(renderMermaidSVGMock.mock.calls[0]?.[0]).toContain('```text\nsample\n```');
+});
+
 test('unsupported diagram types fall back to official Mermaid via loadMermaid', async () => {
 	const loadMermaidMock = loadMermaid as jest.MockedFunction<typeof loadMermaid>;
 	loadMermaidMock.mockClear();

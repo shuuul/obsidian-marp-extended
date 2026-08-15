@@ -7,8 +7,10 @@ import {
 	WidgetType,
 } from '@codemirror/view';
 
+import { closingCodeFence, openingCodeFence, type CodeFence } from '../utilities/codeFenceScanner';
+import { parseMermaidFenceInfo } from '../runtime/mermaidShared';
 import type { MarpExtendedSettings } from '../utilities/settings';
-import { parseMermaidFenceInfo, renderMermaidFigure } from '../utilities/mermaid';
+import { renderMermaidFigure } from '../utilities/mermaid';
 import {
 	getMermaidThemeName,
 	loadMermaidThemeCssByName,
@@ -49,29 +51,54 @@ function getFrontmatterEndOffset(markdown: string): number {
 export function findMermaidFenceRanges(markdown: string): MermaidFenceRange[] {
 	const ranges: MermaidFenceRange[] = [];
 	const frontmatterEndOffset = getFrontmatterEndOffset(markdown);
-	const fencePattern = /^```([^\n]*)\n([\s\S]*?)^```[ \t]*$/gm;
-	let match: RegExpExecArray | null;
+	const lines = markdown.split('\n');
+	let offset = 0;
+	let active: {
+		from: number;
+		fence: CodeFence;
+		info: string;
+		sourceFrom: number;
+	} | null = null;
 
-	while ((match = fencePattern.exec(markdown)) !== null) {
-		if (match.index < frontmatterEndOffset) {
+	for (const [index, line] of lines.entries()) {
+		const lineStart = offset;
+		const lineEnd = lineStart + line.length;
+		const hasNewline = index < lines.length - 1;
+
+		if (lineStart < frontmatterEndOffset) {
+			offset = lineEnd + (hasNewline ? 1 : 0);
 			continue;
 		}
 
-		const info = match[1];
-		const { language, alt } = parseMermaidFenceInfo(info);
-		if (language !== 'mermaid') {
-			continue;
+		if (active) {
+			if (closingCodeFence(line, active.fence)) {
+				const { language, alt } = parseMermaidFenceInfo(active.info);
+				if (language === 'mermaid') {
+					ranges.push({
+						from: active.from,
+						to: lineEnd,
+						sourceFrom: active.sourceFrom,
+						info: active.info,
+						source: markdown.slice(active.sourceFrom, lineStart),
+						alt,
+					});
+				}
+				active = null;
+			}
+		} else if (hasNewline) {
+			const opening = openingCodeFence(line);
+			if (opening) {
+				const markerStart = line.indexOf(opening.marker);
+				active = {
+					from: lineStart,
+					fence: opening,
+					info: line.slice(markerStart + opening.length),
+					sourceFrom: lineEnd + 1,
+				};
+			}
 		}
 
-		const sourceFrom = match.index + match[0].indexOf('\n') + 1;
-		ranges.push({
-			from: match.index,
-			to: match.index + match[0].length,
-			sourceFrom,
-			info,
-			source: match[2],
-			alt,
-		});
+		offset = lineEnd + (hasNewline ? 1 : 0);
 	}
 
 	return ranges;

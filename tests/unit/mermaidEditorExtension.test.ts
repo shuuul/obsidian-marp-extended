@@ -29,6 +29,24 @@ test('findMermaidFenceRanges returns bracket-caption alt for mermaid fences', ()
 	expect(ranges[0]?.info).toBe('mermaid[Kami Mermaid]');
 });
 
+test('findMermaidFenceRanges supports indented tilde fences and fence lengths', () => {
+	const markdown = [
+		'  ~~~~mermaid[Flow]',
+		'flowchart LR',
+		'```',
+		'sample',
+		'```',
+		'  ~~~~',
+	].join('\n');
+
+	const ranges = findMermaidFenceRanges(markdown);
+
+	expect(ranges).toHaveLength(1);
+	expect(ranges[0]?.alt).toBe('Flow');
+	expect(ranges[0]?.source).toContain('```');
+	expect(ranges[0]?.source).toContain('sample');
+});
+
 test('findMermaidFenceRanges ignores non-mermaid fences', () => {
 	const markdown = [
 		'```typescript',

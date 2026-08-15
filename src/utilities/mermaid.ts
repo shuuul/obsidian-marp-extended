@@ -1,6 +1,12 @@
 import { loadMermaid } from 'obsidian';
 import { renderMermaidSVG, type RenderOptions } from 'beautiful-mermaid';
 import { mermaidFencePlugin as pureMermaidFencePlugin } from '../runtime/mermaidFallback';
+import {
+	BEAUTIFUL_MERMAID_SUPPORTED_TYPES,
+	DEFAULT_BEAUTIFUL_MERMAID_RENDER_OPTIONS,
+	parseMermaidFenceInfo,
+} from '../runtime/mermaidShared';
+import { closingCodeFence, openingCodeFence, type CodeFence } from './codeFenceScanner';
 
 type MarpMarkdownRenderer = {
 	utils: {
@@ -43,19 +49,6 @@ const DEFAULT_CONTAINER_CLASS = 'mermaid-diagram-container';
 const MERMAID_FIGURE_CACHE_LIMIT = 100;
 const PROFILE_STORAGE_KEY = 'marp-extended-profile';
 
-/** Diagram headers supported by beautiful-mermaid v1.1.x */
-const BEAUTIFUL_MERMAID_TYPES = new Set([
-	'flowchart',
-	'graph',
-	'sequencediagram',
-	'classdiagram',
-	'statediagram',
-	'statediagram-v2',
-	'erdiagram',
-	'xychart',
-	'xychart-beta',
-]);
-
 const mermaidFigureCache = new Map<string, string>();
 let mermaidMeasureCounter = 0;
 let mermaidRenderIdCounter = 0;
@@ -71,58 +64,10 @@ export function resetMermaidState(): void {
 	officialMermaidRenderQueue = Promise.resolve();
 }
 
-export const DEFAULT_MERMAID_RENDER_OPTIONS: RenderOptions = {
-	bg: '#f5f4ed',
-	fg: '#141413',
-	line: '#504e49',
-	accent: '#1B365D',
-	muted: '#6b6a64',
-	surface: '#faf9f5',
-	border: '#e8e6dc',
-	font: 'Charter',
-	transparent: true,
-	padding: 32,
-	nodeSpacing: 32,
-	layerSpacing: 48,
-};
+export { parseMermaidFenceInfo };
 
-export function parseMermaidFenceInfo(info: string): { language: string; alt: string } {
-	if (!info) {
-		return { language: '', alt: '' };
-	}
-
-	const trimmed = info.trim();
-	const languageEnd = /[\s[]/.exec(trimmed);
-	const rawAttributes = trimmed.match(/\[(.*?)]/)?.[1]?.trim() ?? '';
-	const alt = parseMermaidTitle(rawAttributes);
-
-	return {
-		language: languageEnd ? trimmed.substring(0, languageEnd.index) : trimmed,
-		alt,
-	};
-}
-
-function parseMermaidTitle(rawAttributes: string): string {
-	if (!rawAttributes) {
-		return '';
-	}
-
-	if (!rawAttributes.includes('=')) {
-		return rawAttributes;
-	}
-
-	const titleMatch = rawAttributes.match(/(?:^|\s)(?:title|alt)=("[^"]*"|'[^']*'|[^\s]+)/);
-	if (!titleMatch) {
-		return rawAttributes;
-	}
-
-	const value = titleMatch[1];
-	if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
-		return value.slice(1, -1);
-	}
-
-	return value;
-}
+// Keep the historical utility export while sharing the canonical defaults.
+export const DEFAULT_MERMAID_RENDER_OPTIONS = DEFAULT_BEAUTIFUL_MERMAID_RENDER_OPTIONS;
 
 /**
  * Detect the first Mermaid diagram header token, skipping blank lines,
@@ -150,7 +95,7 @@ export function isBeautifulMermaidSupported(diagramType: string | null): boolean
 		return false;
 	}
 
-	return BEAUTIFUL_MERMAID_TYPES.has(diagramType.toLowerCase());
+	return BEAUTIFUL_MERMAID_SUPPORTED_TYPES.has(diagramType.toLowerCase());
 }
 
 function escapeHtml(value: string): string {
@@ -716,34 +661,83 @@ export async function renderMermaidFences(
 	markdown: string,
 	options: MermaidPluginOptions = {},
 ): Promise<string> {
-	const fencePattern = /^```mermaid([^\n]*)\n([\s\S]*?)^```[ \t]*$/gm;
-	const matches = [...markdown.matchAll(fencePattern)];
+	const matches = findMermaidFenceBlocks(markdown)
+		.filter((match) => parseMermaidFenceInfo(match.info).language === 'mermaid');
 	if (matches.length === 0) {
 		return markdown;
 	}
 
 	const replacements = await Promise.all(matches.map(async (match) => {
-		const rawInfo = match[1] ?? '';
-		const source = match[2] ?? '';
-		const { alt } = parseMermaidFenceInfo(`mermaid${rawInfo}`);
+		const { alt } = parseMermaidFenceInfo(match.info);
 
 		try {
-			return await renderMermaidFigure(source, alt, options);
+			return await renderMermaidFigure(match.source, alt, options);
 		} catch {
-			return match[0];
+			return markdown.slice(match.start, match.end);
 		}
 	}));
 
 	let result = '';
 	let lastIndex = 0;
 	matches.forEach((match, index) => {
-		const start = match.index ?? 0;
-		result += markdown.slice(lastIndex, start);
+		result += markdown.slice(lastIndex, match.start);
 		result += replacements[index];
-		lastIndex = start + match[0].length;
+		lastIndex = match.end;
 	});
 	result += markdown.slice(lastIndex);
 	return result;
+}
+
+type MermaidFenceBlock = {
+	start: number;
+	end: number;
+	info: string;
+	source: string;
+};
+
+function findMermaidFenceBlocks(markdown: string): MermaidFenceBlock[] {
+	const blocks: MermaidFenceBlock[] = [];
+	const lines = markdown.split('\n');
+	let offset = 0;
+	let active: {
+		start: number;
+		fence: CodeFence;
+		info: string;
+		sourceStart: number;
+	} | null = null;
+
+	for (const [index, line] of lines.entries()) {
+		const lineStart = offset;
+		const lineEnd = lineStart + line.length;
+		const hasNewline = index < lines.length - 1;
+
+		if (active) {
+			if (closingCodeFence(line, active.fence)) {
+				blocks.push({
+					start: active.start,
+					end: lineEnd,
+					info: active.info,
+					source: markdown.slice(active.sourceStart, lineStart),
+				});
+				active = null;
+			}
+		} else if (hasNewline) {
+			const opening = openingCodeFence(line);
+			if (opening) {
+				const markerStart = line.indexOf(opening.marker);
+				active = {
+					start: lineStart,
+					fence: opening,
+					info: line.slice(markerStart + opening.length),
+					sourceStart: lineEnd + 1,
+				};
+			}
+		}
+
+		offset = lineEnd + (hasNewline ? 1 : 0);
+	}
+
+	return blocks;
 }
 
 export function mermaidFencePlugin(md: MarpMarkdownRenderer, options: MermaidPluginOptions = {}): void {
