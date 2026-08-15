@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+## [0.10.1](https://github.com/shuuul/obsidian-marp-extended/compare/0.10.0...0.10.1) (2026-08-15)
+
+
+### Bug Fixes
+
+* **editor:** clean up Mermaid theme stylesheets ([d9f9e66](https://github.com/shuuul/obsidian-marp-extended/commit/d9f9e66c5963aa1d77612d836dd8bad7a884b626))
+* **export:** preserve theme colors for slide links ([556b948](https://github.com/shuuul/obsidian-marp-extended/commit/556b94853cf89bfeb0056fb39b9c1a884b17bbab))
+* **settings:** index plugin options in Obsidian search ([938cf0b](https://github.com/shuuul/obsidian-marp-extended/commit/938cf0b67d29f13eb4018771639358feab5392f9))
+
 ## [0.10.0](https://github.com/shuuul/obsidian-marp-extended/compare/0.9.0...0.10.0) (2026-08-15)
 
 
