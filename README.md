@@ -115,6 +115,34 @@ Callouts are visible slide content; presenter notes use ordinary Marpit
 [Marp Extended syntax](docs/marp-extended-syntax.md) for every marker, generated
 class, nesting/fence rule, and runtime control.
 
+## Recommended Obsidian workflow with Pivi
+
+For AI-assisted slide authoring inside Obsidian, we recommend using Marp
+Extended together with [Pivi](https://github.com/shuuul/obsidian-pivi). Marp
+Extended previews, presents, and exports the deck; Pivi can work with the open
+note, linked vault context, selected text, and reusable Agent Skills without
+leaving Obsidian.
+
+This repository includes an [`obsidian-marp` Agent
+Skill](skills/obsidian-marp/SKILL.md) that teaches Pivi the supported Marp,
+Marpit, Marp Extended, theme, Mermaid, image, and export conventions. To install
+it:
+
+1. Install [Pivi from Obsidian Community
+   Plugins](https://community.obsidian.md/plugins/pivi) and configure a model.
+2. Open **Settings → Pivi → Agent → Skills**.
+3. Under **Install from remote**, enter
+   `https://github.com/shuuul/obsidian-marp-extended/tree/main/skills/obsidian-marp`
+   and choose **List skills**.
+4. Select **obsidian-marp**, then choose **Install selected skills**.
+
+On the next Pivi chat turn, select `/obsidian-marp` from the slash menu and ask
+it to create, revise, debug, or export the current slide note. For example:
+
+```text
+/obsidian-marp Turn the current note into a concise 10-slide deck using the Kami theme.
+```
+
 ## Getting started
 
 ### Install from Obsidian Community plugins
