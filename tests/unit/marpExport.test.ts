@@ -371,6 +371,61 @@ test('Marp CLI version check can fall back to npx', async () => {
 	expect(spawnMock.mock.calls[1][1]).toEqual(['--yes', '--package', NPX_MARP_CLI_PACKAGE, 'marp', '--version']);
 });
 
+test('Windows npx fallback runs command scripts through cmd.exe', async () => {
+	const platform = Object.getOwnPropertyDescriptor(process, 'platform');
+	const previousComspec = process.env.COMSPEC;
+	const previousPath = process.env.PATH;
+	Object.defineProperty(process, 'platform', { configurable: true, value: 'win32' });
+	process.env.COMSPEC = 'C:\\Windows\\System32\\cmd.exe';
+	process.env.PATH = 'C:\\missing';
+	spawnMock
+		.mockImplementationOnce(() => createMockChildProcess({
+			error: Object.assign(new Error('spawn marp ENOENT'), { code: 'ENOENT' }),
+		}))
+		.mockImplementationOnce(() => createMockChildProcess({ stdout: '4.5.0\n' }));
+
+	try {
+		await expect(MarpExport.getCliVersion({
+			...DEFAULT_SETTINGS,
+			MARP_CLI_USE_NPX: true,
+		})).resolves.toBe('4.5.0');
+
+		expect(spawnMock.mock.calls[1][0]).toBe('C:\\Windows\\System32\\cmd.exe');
+		expect(spawnMock.mock.calls[1][1].slice(0, 3)).toEqual(['/d', '/s', '/c']);
+		expect(spawnMock.mock.calls[1][1][3]).toContain('npx.cmd');
+		expect(spawnMock.mock.calls[1][1][3]).toContain(NPX_MARP_CLI_PACKAGE);
+		expect(spawnMock.mock.calls[1][2].windowsVerbatimArguments).toBe(true);
+	} finally {
+		if (platform) Object.defineProperty(process, 'platform', platform);
+		if (previousComspec === undefined) delete process.env.COMSPEC;
+		else process.env.COMSPEC = previousComspec;
+		if (previousPath === undefined) delete process.env.PATH;
+		else process.env.PATH = previousPath;
+	}
+});
+
+test('Windows configured command script escapes paths and arguments for cmd.exe', async () => {
+	const platform = Object.getOwnPropertyDescriptor(process, 'platform');
+	Object.defineProperty(process, 'platform', { configurable: true, value: 'win32' });
+	spawnMock.mockImplementation(() => createMockChildProcess({ stdout: '4.5.0\n' }));
+	mockSaveDialog({ canceled: false, filePath: 'C:\\Exports & Reviews\\deck.html' });
+
+	try {
+		await new MarpExport({
+			...DEFAULT_SETTINGS,
+			MARP_CLI_PATH: 'C:\\Program Files\\Marp & Tools\\marp.cmd',
+		}).export(createFile(), 'html');
+
+		expect(getLastCliExecutable()).toBe(process.env.COMSPEC || 'cmd.exe');
+		expect(getLastCliArgs().slice(0, 3)).toEqual(['/d', '/s', '/c']);
+		expect(getLastCliArgs()[3]).toContain('C:\\Program^ Files\\Marp^ ^&^ Tools\\marp.cmd');
+		expect(getLastCliArgs()[3]).toContain('^"C:\\Exports^ ^&^ Reviews\\deck.html^"');
+		expect(getLastCliOptions().windowsVerbatimArguments).toBe(true);
+	} finally {
+		if (platform) Object.defineProperty(process, 'platform', platform);
+	}
+});
+
 test('export cancellation does not run Marp CLI', async () => {
 	mockSaveDialog({ canceled: true });
 	const exporter = new MarpExport(DEFAULT_SETTINGS);

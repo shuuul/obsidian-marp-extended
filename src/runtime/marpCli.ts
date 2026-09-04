@@ -41,6 +41,9 @@ const NPX_MARP_CLI_PACKAGE = (packageMetadata as MarpExtendedPackageMetadata).ma
 const MISSING_MARP_CLI_INSTALL_HINT = 'Install it with `npm install -g @marp-team/marp-cli`, set the Marp CLI path, or enable npx fallback in Marp Extended settings.';
 const MISSING_NPX_INSTALL_HINT = 'Install Node.js/npm so npx is available, or set the Marp CLI path in Marp Extended settings.';
 const MARP_CLI_MAX_BUFFER = 10 * 1024 * 1024;
+const WINDOWS_COMMAND_SCRIPT_PATTERN = /\.(?:cmd|bat)$/i;
+const WINDOWS_CMD_META_CHARACTER_PATTERN = /([()\][%!^"`<>&|;, *?])/g;
+const WINDOWS_NODE_MODULES_CMD_SHIM_PATTERN = /node_modules[\\/]\.bin[\\/][^\\/]+\.cmd$/i;
 const marpCliValidationCache = new Map<string, MarpCliInvocation>();
 const COMMON_MARP_CLI_DIRECTORIES = [
 	'/opt/homebrew/bin',
@@ -132,7 +135,7 @@ function uniqueStrings(values: string[]): string[] {
 function getPathSearchDirectories(path: NodePathModule): string[] {
 	return uniqueStrings([
 		...getEnvVar('PATH').split(path.delimiter),
-		...COMMON_MARP_CLI_DIRECTORIES,
+		...(process.platform === 'win32' ? [] : COMMON_MARP_CLI_DIRECTORIES),
 	]);
 }
 
@@ -267,6 +270,41 @@ function getExecErrorExitCode(error: MarpCliExecError): number | null {
 	return typeof error.code === 'number' ? error.code : null;
 }
 
+function escapeWindowsCommand(command: string): string {
+	return command.replace(WINDOWS_CMD_META_CHARACTER_PATTERN, '^$1');
+}
+
+function escapeWindowsArgument(argument: string, doubleEscapeMetaCharacters: boolean): string {
+	let escaped = argument
+		.replace(/(?=(\\+?)?)\1"/g, '$1$1\\"')
+		.replace(/(?=(\\+?)?)\1$/, '$1$1');
+	escaped = `"${escaped}"`.replace(WINDOWS_CMD_META_CHARACTER_PATTERN, '^$1');
+	return doubleEscapeMetaCharacters
+		? escaped.replace(WINDOWS_CMD_META_CHARACTER_PATTERN, '^$1')
+		: escaped;
+}
+
+function getSpawnInvocation(executable: string, args: string[]): {
+	executable: string;
+	args: string[];
+	windowsVerbatimArguments?: boolean;
+} {
+	if (process.platform !== 'win32' || !WINDOWS_COMMAND_SCRIPT_PATTERN.test(executable)) {
+		return { executable, args };
+	}
+
+	const doubleEscapeMetaCharacters = WINDOWS_NODE_MODULES_CMD_SHIM_PATTERN.test(executable);
+	const shellCommand = [
+		escapeWindowsCommand(executable),
+		...args.map((argument) => escapeWindowsArgument(argument, doubleEscapeMetaCharacters)),
+	].join(' ');
+	return {
+		executable: getEnvVar('COMSPEC') || 'cmd.exe',
+		args: ['/d', '/s', '/c', `"${shellCommand}"`],
+		windowsVerbatimArguments: true,
+	};
+}
+
 function execMarpCli(
 	invocation: MarpCliInvocation,
 	args: string[],
@@ -274,11 +312,13 @@ function execMarpCli(
 ): Promise<MarpCliExecResult> {
 	const { spawn } = getNodeChildProcess();
 	const commandArgs = [...invocation.argsPrefix, ...args];
+	const spawnInvocation = getSpawnInvocation(invocation.executable, commandArgs);
 	return new Promise((resolve, reject) => {
-		const child = spawn(invocation.executable, commandArgs, {
+		const child = spawn(spawnInvocation.executable, spawnInvocation.args, {
 			env: getMarpCliEnvironment(settings),
 			stdio: ['ignore', 'pipe', 'pipe'],
 			windowsHide: true,
+			windowsVerbatimArguments: spawnInvocation.windowsVerbatimArguments,
 		});
 		let stdoutText = '';
 		let stderrText = '';
