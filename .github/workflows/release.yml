@@ -201,3 +201,33 @@ jobs:
             "$download_dir/styles.css" \
             "$download_dir/marp-engine.cjs" \
             "$download_dir/$archive"
+
+  # release-please cannot swap this label itself because GitHub release
+  # creation is intentionally delegated to the maintainer-pushed tag workflow.
+  # A leftover pending label makes the next release-please run abort.
+  mark-release-pr-tagged:
+    needs: release
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      GH_REPO: ${{ github.repository }}
+    steps:
+      - name: Mark merged release PR as tagged
+        run: |
+          tag="${GITHUB_REF_NAME}"
+          pr_number="$(gh pr list \
+            --state merged \
+            --label "autorelease: pending" \
+            --search "release ${tag} in:title" \
+            --json number \
+            --jq '.[0].number // empty')"
+          if [ -z "$pr_number" ]; then
+            echo "No pending merged release PR for ${tag} (manual or prerelease path); skipping."
+            exit 0
+          fi
+          gh pr edit "$pr_number" \
+            --remove-label "autorelease: pending" \
+            --add-label "autorelease: tagged"
+          echo "Marked PR #${pr_number} as autorelease: tagged."
