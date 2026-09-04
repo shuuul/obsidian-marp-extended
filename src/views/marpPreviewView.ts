@@ -23,6 +23,7 @@ import {
     zoomPreviewFromWheel,
 } from '../utilities/previewZoom'
 import { handlePreviewLinkActivation } from '../utilities/previewLinks'
+import { getPreviewSlideStartLine, getPreviewSourceRange } from '../utilities/previewSync';
 
 export const MARP_PREVIEW_VIEW = 'marp-preview-view';
 const PREVIEW_PROFILE_STORAGE_KEY = 'marp-extended-profile';
@@ -177,6 +178,7 @@ export class MarpPreviewView extends ItemView  {
     private previewCommitQueue: Promise<void> = Promise.resolve();
     private displaySlidesRevision = 0;
     private previewProfileMeasureCounter = 0;
+    private sourceSelectionFlashTimeout: number | undefined;
     private cachedThemeCss: string[] | undefined;
     private cachedMarp: Marp | undefined;
     private themeAssetCache: ThemeAssetCache;
@@ -279,6 +281,10 @@ export class MarpPreviewView extends ItemView  {
 
     async onClose() {
         this.displaySlidesRevision += 1;
+        if (this.sourceSelectionFlashTimeout !== undefined) {
+            window.clearTimeout(this.sourceSelectionFlashTimeout);
+            this.sourceSelectionFlashTimeout = undefined;
+        }
         this.session.dispose();
         this.previewSlideEls = [];
         this.previewMaxSlideWidth = 0;
@@ -835,9 +841,12 @@ export class MarpPreviewView extends ItemView  {
         }
 
         const handleActivation = (event: Event) => {
-            handlePreviewLinkActivation(event, undefined, (linkpath, newLeaf) => (
+            const handledLink = handlePreviewLinkActivation(event, undefined, (linkpath, newLeaf) => (
                 this.openInternalPreviewLink(linkpath, newLeaf)
             ));
+            if (!handledLink) {
+                this.navigateToPreviewSlideSource(event);
+            }
         };
         const options: AddEventListenerOptions = { capture: true };
         doc.addEventListener('click', handleActivation, options);
@@ -846,6 +855,96 @@ export class MarpPreviewView extends ItemView  {
             doc.removeEventListener('click', handleActivation, options);
             doc.removeEventListener('auxclick', handleActivation, options);
         });
+    }
+
+    private navigateToPreviewSlideSource(event: Event): void {
+        const mouseEvent = event as Partial<MouseEvent>;
+        if (
+            event.defaultPrevented
+            || event.type !== 'click'
+            || (mouseEvent.button ?? 0) !== 0
+            || mouseEvent.altKey
+            || mouseEvent.ctrlKey
+            || mouseEvent.metaKey
+            || mouseEvent.shiftKey
+        ) {
+            return;
+        }
+
+        let target = event.target as Node | null;
+        while (target && typeof (target as Element).closest !== 'function') {
+            target = target.parentNode;
+        }
+        const element = target as Element | null;
+        if (!element || element.closest('a[href]')) {
+            return;
+        }
+
+        const wrapper = element.closest<HTMLElement>('[data-marp-vscode-slide-wrapper]');
+        if (!wrapper) {
+            return;
+        }
+        const slideIndex = this.previewSlideEls.indexOf(wrapper);
+        const sourceView = this.sourceView;
+        if (slideIndex < 0 || !sourceView || sourceView.file?.path !== this.file?.path) {
+            return;
+        }
+
+        const markdown = sourceView.getViewData();
+        const selection = wrapper.ownerDocument.getSelection();
+        const selectedText = selection?.anchorNode
+            && selection.focusNode
+            && wrapper.contains(selection.anchorNode)
+            && wrapper.contains(selection.focusNode)
+            ? selection.toString()
+            : '';
+        const sourceRange = getPreviewSourceRange(markdown, slideIndex, selectedText);
+        if (sourceRange) {
+            const from = sourceView.editor.offsetToPos(sourceRange.fromOffset);
+            const to = sourceView.editor.offsetToPos(sourceRange.toOffset);
+            sourceView.editor.setSelection(from, to);
+            sourceView.editor.scrollIntoView({ from, to }, true);
+            sourceView.editor.focus();
+            this.flashSourceSelection(sourceView, from, to);
+            return;
+        }
+
+        const line = getPreviewSlideStartLine(markdown, slideIndex);
+        if (line == null) {
+            return;
+        }
+
+        if (this.sourceSelectionFlashTimeout !== undefined) {
+            window.clearTimeout(this.sourceSelectionFlashTimeout);
+            this.sourceSelectionFlashTimeout = undefined;
+        }
+        const position = { line, ch: 0 };
+        sourceView.editor.setCursor(position);
+        sourceView.editor.scrollIntoView({ from: position, to: position }, true);
+        sourceView.editor.focus();
+    }
+
+    private flashSourceSelection(
+        sourceView: MarkdownView,
+        from: { line: number; ch: number },
+        to: { line: number; ch: number },
+    ): void {
+        if (this.sourceSelectionFlashTimeout !== undefined) {
+            window.clearTimeout(this.sourceSelectionFlashTimeout);
+        }
+        this.sourceSelectionFlashTimeout = window.setTimeout(() => {
+            this.sourceSelectionFlashTimeout = undefined;
+            const selections = sourceView.editor.listSelections();
+            const selection = selections.length === 1 ? selections[0] : undefined;
+            if (
+                selection?.anchor.line === from.line
+                && selection.anchor.ch === from.ch
+                && selection.head.line === to.line
+                && selection.head.ch === to.ch
+            ) {
+                sourceView.editor.setCursor(to);
+            }
+        }, 700);
     }
 
     private openInternalPreviewLink(linkpath: string, newLeaf: boolean): boolean {

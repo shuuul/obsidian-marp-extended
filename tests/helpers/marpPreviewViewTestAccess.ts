@@ -1,5 +1,5 @@
 import type { Marp } from '@marp-team/marp-core';
-import type { TFile } from 'obsidian';
+import type { MarkdownView, TFile } from 'obsidian';
 
 export type MarpPreviewViewTestAccess = {
 	applyPreviewZoom(): void;
@@ -17,6 +17,7 @@ export type MarpPreviewViewTestAccess = {
 	activeSlideIndex: number;
 	displaySlidesRevision: number;
 	file: TFile | null;
+	sourceView: MarkdownView | undefined;
 	fragmentRevealCounts: number[];
 	fragmentTotals: number[];
 	presenterComments: string[][];

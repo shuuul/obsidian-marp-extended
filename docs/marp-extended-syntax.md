@@ -171,7 +171,12 @@ The command palette exposes one insertion command for each canonical form:
 - **Insert Marp Extended columns block**
 - **Insert Marp Extended 2x2 cards block**
 
-## Fragments and presenter notes in preview
+## Navigation, fragments, and presenter notes in preview
+
+Click a non-link area of any rendered slide to move the Markdown editor to the
+start of that slide and center it in the editor viewport. Selecting rendered
+text before clicking briefly highlights the matching source text. Link clicks
+keep their normal internal or external navigation behavior.
 
 Marpit marks unordered lists using `*` and ordered lists using `1)` as
 fragments:

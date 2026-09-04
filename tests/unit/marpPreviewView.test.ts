@@ -251,6 +251,145 @@ test('preview iframe clicks open http(s) links externally and leave vault links 
 	openWindow.mockRestore();
 });
 
+test('clicking a preview slide moves the matching editor source into view', () => {
+	const view = createPreviewView();
+	const access = marpPreviewViewTestAccess(view);
+	const iframe = access.previewIframeEl;
+	if (!iframe) {
+		throw new Error('Preview harness missing iframe');
+	}
+
+	const file = { path: 'slides/deck.md' } as TFile;
+	const setCursor = jest.fn();
+	const scrollIntoView = jest.fn();
+	const focus = jest.fn();
+	access.file = file;
+	access.sourceView = {
+		file,
+		getViewData: () => '---\ntheme: default\n---\n# First\n```\n---\n```\n---\n# Second',
+		editor: { setCursor, scrollIntoView, focus },
+	} as unknown as MarkdownView;
+
+	const doc = document.implementation.createHTMLDocument('preview');
+	const firstSlide = doc.createElement('div');
+	const secondSlide = doc.createElement('div');
+	const secondSlideContent = doc.createElement('p');
+	firstSlide.setAttribute('data-marp-vscode-slide-wrapper', '');
+	secondSlide.setAttribute('data-marp-vscode-slide-wrapper', '');
+	secondSlide.appendChild(secondSlideContent);
+	doc.body.append(firstSlide, secondSlide);
+	access.previewSlideEls = [firstSlide, secondSlide];
+	Object.defineProperty(iframe, 'contentDocument', { configurable: true, value: doc });
+
+	access.registerPreviewIframeLinkHandler();
+	secondSlideContent.dispatchEvent(new MouseEvent('click', { bubbles: true, button: 0 }));
+
+	expect(setCursor).toHaveBeenCalledWith({ line: 8, ch: 0 });
+	expect(scrollIntoView).toHaveBeenCalledWith({
+		from: { line: 8, ch: 0 },
+		to: { line: 8, ch: 0 },
+	}, true);
+	expect(focus).toHaveBeenCalledTimes(1);
+});
+
+test('selecting preview text briefly highlights and centers the matching source text', () => {
+	jest.useFakeTimers();
+	try {
+		const view = createPreviewView();
+		const access = marpPreviewViewTestAccess(view);
+		const iframe = access.previewIframeEl;
+		if (!iframe) {
+			throw new Error('Preview harness missing iframe');
+		}
+
+		const file = { path: 'slides/deck.md' } as TFile;
+		const markdown = '# First\n---\n# Second title';
+		const from = { line: 2, ch: 2 };
+		const to = { line: 2, ch: 14 };
+		const setCursor = jest.fn();
+		const setSelection = jest.fn();
+		const scrollIntoView = jest.fn();
+		const focus = jest.fn();
+		access.file = file;
+		access.sourceView = {
+			file,
+			getViewData: () => markdown,
+			editor: {
+				focus,
+				listSelections: () => [{ anchor: from, head: to }],
+				offsetToPos: (offset: number) => offset === markdown.indexOf('Second title') ? from : to,
+				scrollIntoView,
+				setCursor,
+				setSelection,
+			},
+		} as unknown as MarkdownView;
+
+		const doc = document.implementation.createHTMLDocument('preview');
+		const firstSlide = doc.createElement('div');
+		const secondSlide = doc.createElement('div');
+		const selectedText = doc.createTextNode('Second title');
+		firstSlide.setAttribute('data-marp-vscode-slide-wrapper', '');
+		secondSlide.setAttribute('data-marp-vscode-slide-wrapper', '');
+		secondSlide.appendChild(selectedText);
+		doc.body.append(firstSlide, secondSlide);
+		access.previewSlideEls = [firstSlide, secondSlide];
+		Object.defineProperty(iframe, 'contentDocument', { configurable: true, value: doc });
+		jest.spyOn(doc, 'getSelection').mockReturnValue({
+			anchorNode: selectedText,
+			focusNode: selectedText,
+			toString: () => 'Second title',
+		} as unknown as Selection);
+
+		access.registerPreviewIframeLinkHandler();
+		secondSlide.dispatchEvent(new MouseEvent('click', { bubbles: true, button: 0 }));
+
+		expect(setSelection).toHaveBeenCalledWith(from, to);
+		expect(scrollIntoView).toHaveBeenCalledWith({ from, to }, true);
+		expect(focus).toHaveBeenCalledTimes(1);
+		expect(setCursor).not.toHaveBeenCalled();
+
+		jest.advanceTimersByTime(700);
+		expect(setCursor).toHaveBeenCalledWith(to);
+	} finally {
+		jest.useRealTimers();
+	}
+});
+
+test('preview source navigation ignores links and modified clicks', () => {
+	const view = createPreviewView();
+	const access = marpPreviewViewTestAccess(view);
+	const iframe = access.previewIframeEl;
+	if (!iframe) {
+		throw new Error('Preview harness missing iframe');
+	}
+
+	const file = { path: 'slides/deck.md' } as TFile;
+	const setCursor = jest.fn();
+	access.file = file;
+	access.sourceView = {
+		file,
+		getViewData: () => '# First',
+		editor: { setCursor, scrollIntoView: jest.fn(), focus: jest.fn() },
+	} as unknown as MarkdownView;
+
+	const doc = document.implementation.createHTMLDocument('preview');
+	const slide = doc.createElement('div');
+	const link = doc.createElement('a');
+	const content = doc.createElement('p');
+	slide.setAttribute('data-marp-vscode-slide-wrapper', '');
+	link.href = '../assets/photo.png';
+	slide.append(link, content);
+	doc.body.appendChild(slide);
+	access.previewSlideEls = [slide];
+	Object.defineProperty(iframe, 'contentDocument', { configurable: true, value: doc });
+
+	access.registerPreviewIframeLinkHandler();
+	link.dispatchEvent(new MouseEvent('click', { bubbles: true, button: 0 }));
+	content.dispatchEvent(new MouseEvent('click', { bubbles: true, button: 0, ctrlKey: true }));
+
+	expect(setCursor).not.toHaveBeenCalled();
+});
+
 test('preview view constructs with ItemView toolbar hooks', () => {
 	const view = createPreviewView();
 
