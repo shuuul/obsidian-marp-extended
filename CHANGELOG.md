@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+## [0.10.2](https://github.com/shuuul/obsidian-marp-extended/compare/0.10.1...0.10.2) (2026-09-04)
+
+
+### Bug Fixes
+
+* **ci:** allow release branch verification ([f4ec3d9](https://github.com/shuuul/obsidian-marp-extended/commit/f4ec3d9ca7cd0c1d0af61d212566bf0d0834914e))
+* **export:** keep preview and export markdown aligned ([280dc7f](https://github.com/shuuul/obsidian-marp-extended/commit/280dc7f9b2fbd13f5f2807f8290950ff9bcbf51a))
+* **release:** complete release PR label lifecycle ([8968ebb](https://github.com/shuuul/obsidian-marp-extended/commit/8968ebb37386a8fdbe9e17678bbccae67a8574b1))
+
 ## [0.10.1](https://github.com/shuuul/obsidian-marp-extended/compare/0.10.0...0.10.1) (2026-08-15)
 
 
