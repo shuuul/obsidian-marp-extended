@@ -2,6 +2,18 @@
 
 ## Unreleased
 
+## [0.11.0](https://github.com/shuuul/obsidian-marp-extended/compare/0.10.2...0.11.0) (2026-09-04)
+
+
+### Features
+
+* **preview:** navigate from slides to source ([ebb9793](https://github.com/shuuul/obsidian-marp-extended/commit/ebb9793b374bfe5daa28a735130f7e5943202be1)), closes [#9](https://github.com/shuuul/obsidian-marp-extended/issues/9)
+
+
+### Bug Fixes
+
+* **export:** support Windows command-script CLIs ([1a83599](https://github.com/shuuul/obsidian-marp-extended/commit/1a835993e9685e3368007b26b8b8e1c5691b0016))
+
 ## [0.10.2](https://github.com/shuuul/obsidian-marp-extended/compare/0.10.1...0.10.2) (2026-09-04)
 
 
