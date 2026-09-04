@@ -516,6 +516,7 @@ test('export compiles Marp Extended comment markers in the temporary markdown fi
 		temporarySourcePath = args[0];
 		const processed = readFileSync(temporarySourcePath, 'utf-8');
 		expect(processed).toContain('<!-- _class: cover -->');
+		expect(processed).toContain('</style>\n<!-- _class: cover -->');
 		expect(processed).toContain('<!-- _paginate: false -->');
 		expect(processed).toContain('<div class="marp-extended-columns marp-extended-columns-2">');
 		expect(processed).toContain(':where(a[href])');
@@ -541,6 +542,42 @@ test('export compiles Marp Extended comment markers in the temporary markdown fi
 	expect(temporarySourcePath).not.toBe('');
 	expect(existsSync(temporarySourcePath)).toBe(false);
 	expect(readFileSync(join(root, 'slides/deck.md'), 'utf-8')).toBe(originalContent);
+});
+
+test('export uses the current editor markdown instead of stale vault content', async () => {
+	const root = mkdtempSync(join(tmpdir(), 'marp-export-editor-buffer-'));
+	tempDirectories.push(root);
+	const savedContent = '---\ntheme: kami\n---\n\n# Stale title\n';
+	const editorContent = '---\ntheme: kami\n---\n\n%%marp-slide[class=cover]%%\n\n# Current title\n';
+	const file = createDiskBackedFile(root, 'slides/deck.md', savedContent);
+	let temporarySourcePath = '';
+
+	mockSaveDialog({ canceled: false, filePath: join(root, 'deck.html') });
+	spawnMock.mockImplementation((_executable, args) => {
+		if (args[args.length - 1] === '--version') return createMockChildProcess({ stdout: '4.5.0\n' });
+		temporarySourcePath = args[0];
+		const processed = readFileSync(temporarySourcePath, 'utf-8');
+		expect(processed).toContain('<!-- _class: cover -->');
+		expect(processed).toContain('# Current title');
+		expect(processed).not.toContain('# Stale title');
+
+		return createMockChildProcess();
+	});
+
+	const app = {
+		vault: file.vault,
+		metadataCache: {
+			getFileCache: jest.fn(() => ({ frontmatter: {} })),
+			getFirstLinkpathDest: jest.fn(() => null),
+		},
+	} as unknown as App;
+	const exporter = new MarpExport(DEFAULT_SETTINGS, app, '.obsidian/plugins/marp-extended');
+
+	await exporter.export(file, 'html', editorContent);
+
+	expect(temporarySourcePath).not.toBe('');
+	expect(existsSync(temporarySourcePath)).toBe(false);
+	expect(readFileSync(join(root, 'slides/deck.md'), 'utf-8')).toBe(savedContent);
 });
 
 test('export falls back to the source path when native save dialog is unavailable', async () => {
@@ -629,7 +666,7 @@ test('exportWithNotice shows progress then success notices when export returns a
 
 	await exportWithNotice(DEFAULT_SETTINGS, app, 'pdf', file);
 
-	expect(exportSpy).toHaveBeenCalledWith(file, 'pdf');
+	expect(exportSpy).toHaveBeenCalledWith(file, 'pdf', undefined);
 	expect(Notice).toHaveBeenCalledWith('Exporting Marp slides as PDF…', 0);
 	expect(Notice).toHaveBeenCalledWith('Exported Marp slides to /tmp/export/deck.pdf', 7000);
 

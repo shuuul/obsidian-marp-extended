@@ -162,7 +162,9 @@ export default class MarpExtended extends Plugin {
 
 	async exportFile(type: string) {
 		const file = this.app.workspace.getActiveFile();
-		await exportWithNotice(this.settings, this.app, type, file, this.manifest.dir);
+		const activeView = this.getActiveMarkdownView();
+		const markdown = activeView && activeView.file?.path === file?.path ? activeView.getViewData() : undefined;
+		await exportWithNotice(this.settings, this.app, type, file, this.manifest.dir, markdown);
 	}
 
 	async showPreviewSlide(){

@@ -4,6 +4,7 @@ import { ItemView, Notice, type MarkdownView, type TFile } from 'obsidian';
 import type { Marp } from '@marp-team/marp-core';
 import { expect, jest, test, beforeEach } from '@jest/globals';
 
+import { exportWithNotice } from '@/utilities/marpExport';
 import { DEFAULT_SETTINGS } from '@/utilities/settings';
 import { loadMermaidThemeCssForFile } from '@/utilities/mermaidTheme';
 import { ThemeManager } from '@/utilities/themeManager';
@@ -125,6 +126,41 @@ test('displaySlides builds preview HTML with base URL, Kami, wiki image, and mer
 	expect(capturedHtml).toContain('data-mermaid-renderer="beautiful-mermaid"');
 
 	renderSpy.mockRestore();
+});
+
+test('preview export reads current editor markdown even before the preview refreshes', async () => {
+	const view = createPreviewView();
+	const access = marpPreviewViewTestAccess(view);
+	const sourceFile = {
+		path: 'slides/deck.md',
+		parent: { path: 'slides' },
+		vault: {
+			adapter: {
+				getResourcePath: (path: string) => `app://local/${path}?id=1`,
+			},
+			getConfig: () => 'relative',
+		},
+	} as unknown as TFile;
+	let currentMarkdown = '# Previous title';
+	const markdownView = {
+		file: sourceFile,
+		getViewData: () => currentMarkdown,
+	} as unknown as MarkdownView;
+	jest.spyOn(access, 'renderPreviewDocument').mockResolvedValue();
+
+	await view.displaySlides(markdownView);
+	currentMarkdown = '%%marp-slide[class=cover]%%\n\n# Current title';
+	await access.exportFile('pdf');
+
+	const exportCalls = (exportWithNotice as unknown as { mock: { calls: unknown[][] } }).mock.calls;
+	expect(exportCalls[0]).toEqual([
+		DEFAULT_SETTINGS,
+		view.app,
+		'pdf',
+		sourceFile,
+		undefined,
+		currentMarkdown,
+	]);
 });
 
 test('applyPreviewZoom sets fit scale CSS variable and iframe width from slide viewBox', () => {

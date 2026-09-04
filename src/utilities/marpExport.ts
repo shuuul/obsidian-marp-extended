@@ -112,7 +112,7 @@ export class MarpExport {
 		this.pluginDir = pluginDir;
 	}
 
-	async export(file: TFile, type: string): Promise<string | null> {
+	async export(file: TFile, type: string, markdownOverride?: string): Promise<string | null> {
 		const fs = getNodeFs();
 		const path = getNodePath();
 		const filesTool = new FilePath(this.settings);
@@ -127,7 +127,7 @@ export class MarpExport {
 		const sourceFilePath = filesTool.getExportFileSystemPath(file);
 		const themePaths = filesTool.getThemePaths(file).filter((themePath) => fs.existsSync(themePath));
 		if (sourceFilePath !== '') {
-			const exportSource = await this.prepareExportSource(file, filesTool, sourceFilePath, fs, path);
+			const exportSource = await this.prepareExportSource(file, filesTool, sourceFilePath, fs, path, markdownOverride);
 			const argv: string[] = [exportSource.path, '--allow-local-files', '--engine', enginePath, '--html'];
 
 			if (themePaths.length > 0) {
@@ -177,6 +177,7 @@ export class MarpExport {
 		sourceFilePath: string,
 		fs: NodeFsModule,
 		path: NodePathModule,
+		markdownOverride?: string,
 	): Promise<ExportSource> {
 		if (!this.app) {
 			await filesTool.removeFileFromRoot(file);
@@ -184,9 +185,9 @@ export class MarpExport {
 			return { path: sourceFilePath, temporaryPath: null };
 		}
 
-		const originalContent = await this.app.vault.cachedRead(file);
-		const preparationContext = await loadMarpPreparationContext(this.app, file, originalContent);
-		const preparedDeck = await prepareMarpDeck(originalContent, file, this.app, filesTool, preparationContext, {
+		const sourceContent = markdownOverride ?? await this.app.vault.cachedRead(file);
+		const preparationContext = await loadMarpPreparationContext(this.app, file, sourceContent);
+		const preparedDeck = await prepareMarpDeck(sourceContent, file, this.app, filesTool, preparationContext, {
 			mode: 'export',
 			mermaidAutoFit: this.settings.MERMAID_AUTO_FIT,
 		});
@@ -194,7 +195,7 @@ export class MarpExport {
 			preparedDeck.markdown,
 			serializeMarpDeckStyles(preparedDeck.styles, 'export'),
 		);
-		const needsTemporarySource = processedContent !== originalContent || filesTool.shouldUseRootExportSource(file);
+		const needsTemporarySource = processedContent !== sourceContent || filesTool.shouldUseRootExportSource(file);
 
 		if (!needsTemporarySource) {
 			return { path: sourceFilePath, temporaryPath: null };
@@ -313,6 +314,7 @@ export async function exportWithNotice(
 	type: string,
 	file: TFile | null,
 	pluginDir?: string,
+	markdownOverride?: string,
 ): Promise<void> {
 	if (!file) {
 		new Notice('Open a Markdown file before exporting Marp slides.', 5000);
@@ -323,7 +325,7 @@ export async function exportWithNotice(
 	try {
 		const marpCli = new MarpExport(settings, app, pluginDir);
 		progressNotice = new Notice(`Exporting Marp slides as ${type.toUpperCase()}…`, 0);
-		const outputPath = await marpCli.export(file, type);
+		const outputPath = await marpCli.export(file, type, markdownOverride);
 		progressNotice.hide();
 		progressNotice = null;
 		if (outputPath) {

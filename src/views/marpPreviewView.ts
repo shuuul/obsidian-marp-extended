@@ -184,6 +184,7 @@ export class MarpPreviewView extends ItemView  {
     private pluginDir: string | undefined;
 
     private file : TFile | null = null;
+    private sourceView: MarkdownView | undefined;
 
     constructor(settings: MarpExtendedSettings, leaf: WorkspaceLeaf, pluginDir?: string) {
         super(leaf);
@@ -920,7 +921,9 @@ export class MarpPreviewView extends ItemView  {
 
     private async exportFile(type: string) {
         const file = this.file ?? this.app.workspace.getActiveFile();
-        await exportWithNotice(this.settings, this.app, type, file, this.pluginDir);
+        const sourceView = this.sourceView;
+        const markdown = sourceView && sourceView.file?.path === file?.path ? sourceView.getViewData() : undefined;
+        await exportWithNotice(this.settings, this.app, type, file, this.pluginDir, markdown);
     }
     
     async displaySlides(view : MarkdownView, markdownOverride?: string) {
@@ -931,11 +934,12 @@ export class MarpPreviewView extends ItemView  {
 
         const displayRevision = ++this.displaySlidesRevision;
         const displayStartMark = this.startPreviewMeasure('displaySlides');
+        const markdownText = markdownOverride ?? view.getViewData();
         this.file = sourceFile;
+        this.sourceView = view;
         try {
             const filePath = new FilePath(this.settings);
             const previewBaseUrl = filePath.getPreviewBaseUrl(sourceFile);
-            const markdownText = markdownOverride ?? view.getViewData();
             const themeCss = await this.measurePreviewStepAsync('loadThemeCss', () => this.getThemeCss());
             if (displayRevision !== this.displaySlidesRevision) {
                 return;

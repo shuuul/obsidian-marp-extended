@@ -123,11 +123,12 @@ export function insertMarkdownAfterFrontmatter(markdown: string, content: string
 	if (!content) {
 		return markdown;
 	}
+	const insertion = content.endsWith('\n') ? content : `${content}\n`;
 
 	const frontmatter = markdown.match(/^(---\s*\n[\s\S]*?\n---\s*(?:\n|$))/);
 	if (!frontmatter) {
-		return `${content}${markdown}`;
+		return `${insertion}${markdown}`;
 	}
 
-	return `${frontmatter[1]}${content}${markdown.slice(frontmatter[1].length)}`;
+	return `${frontmatter[1]}${insertion}${markdown.slice(frontmatter[1].length)}`;
 }

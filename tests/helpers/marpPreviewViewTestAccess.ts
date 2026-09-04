@@ -6,6 +6,7 @@ export type MarpPreviewViewTestAccess = {
 	applyPreviewState(): void;
 	commitPreviewRender(revision: number, html: string, comments: string[][]): Promise<void>;
 	createMarp(): Marp;
+	exportFile(type: string): Promise<void>;
 	initializePreviewState(comments: string[][]): void;
 	invalidatePreviewCaches(): void;
 	loadPreviewSrcdoc(html: string): Promise<void>;
