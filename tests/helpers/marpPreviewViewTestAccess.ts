@@ -22,6 +22,11 @@ export type MarpPreviewViewTestAccess = {
 	fragmentTotals: number[];
 	presenterComments: string[][];
 	presenterNotesEl: HTMLElement | undefined;
+	presenterNotesBodyEl: HTMLElement | undefined;
+	presenterNotesResizeEl: HTMLElement | undefined;
+	presenterNotesHeight: number | undefined;
+	registerPresenterNotesResize(): void;
+	applyPresenterNotesHeight(): void;
 	previewSlideEls: HTMLElement[];
 	previewContainerEl: HTMLElement | undefined;
 	previewIframeEl: HTMLIFrameElement | undefined;

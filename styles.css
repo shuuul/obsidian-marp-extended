@@ -55,12 +55,46 @@ If your plugin does not need CSS, delete this file.
 
 .marp-extended-presenter-notes {
 	background: var(--background-secondary);
-	border-top: 1px solid var(--background-modifier-border);
+	display: flex;
 	flex: 0 0 auto;
-	max-height: 35%;
-	overflow: auto;
-	padding: var(--size-4-3);
+	flex-direction: column;
+	height: var(--marp-extended-presenter-notes-height, auto);
+	min-height: 6rem;
+	overflow: hidden;
+	position: relative;
 	white-space: pre-wrap;
+}
+
+.marp-extended-presenter-notes-resize {
+	background: transparent;
+	cursor: ns-resize;
+	height: 12px;
+	left: 0;
+	position: absolute;
+	right: 0;
+	top: 0;
+	touch-action: none;
+	user-select: none;
+	z-index: 1;
+}
+
+.marp-extended-presenter-notes-body {
+	flex: 1 1 auto;
+	min-height: 0;
+	overflow: auto;
+	padding: var(--size-4-3) var(--size-4-3) calc(var(--size-4-8) + var(--size-4-3));
+}
+
+.marp-extended-presenter-notes-heading {
+	color: var(--text-muted);
+	font-size: var(--font-ui-small);
+	font-weight: var(--font-semibold);
+	margin-bottom: var(--size-2-2);
+}
+
+.marp-extended-presenter-notes ul {
+	margin: 0;
+	padding-inline-start: var(--size-4-4);
 }
 
 .marp-extended-presenter-notes[hidden] { display: none; }

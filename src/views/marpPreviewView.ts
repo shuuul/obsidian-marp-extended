@@ -97,7 +97,7 @@ section .mermaid-diagram-container.mermaid-diagram figcaption {
 }
 `;
 
-type PreviewDetachKey = 'iframeZoom' | 'iframeLink' | 'scroll';
+type PreviewDetachKey = 'iframeZoom' | 'iframeLink' | 'scroll' | 'notesResize';
 type PreviewFrameKey = 'zoomApply' | 'scroll';
 
 /**
@@ -175,6 +175,9 @@ export class MarpPreviewView extends ItemView  {
     private presenterNotesVisible = false;
     private notesToggleButtonEl: HTMLButtonElement | undefined;
     private presenterNotesEl: HTMLElement | undefined;
+    private presenterNotesBodyEl: HTMLElement | undefined;
+    private presenterNotesResizeEl: HTMLElement | undefined;
+    private presenterNotesHeight: number | undefined;
     private previewCommitQueue: Promise<void> = Promise.resolve();
     private displaySlidesRevision = 0;
     private previewProfileMeasureCounter = 0;
@@ -272,6 +275,16 @@ export class MarpPreviewView extends ItemView  {
         this.presenterNotesEl.id = 'marp-extended-presenter-notes';
         this.presenterNotesEl.setAttribute('role', 'region');
         this.presenterNotesEl.setAttribute('aria-label', 'Presenter notes');
+        this.presenterNotesResizeEl = this.presenterNotesEl.createDiv({
+            cls: 'marp-extended-presenter-notes-resize',
+            attr: {
+                role: 'separator',
+                'aria-orientation': 'horizontal',
+                'aria-label': 'Resize presenter notes',
+            },
+        });
+        this.presenterNotesBodyEl = this.presenterNotesEl.createDiv({ cls: 'marp-extended-presenter-notes-body' });
+        this.registerPresenterNotesResize();
         this.registerPreviewScrollTracking();
         this.registerPreviewZoomGesture();
         this.registerPreviewZoomResizeObserver();
@@ -690,17 +703,89 @@ export class MarpPreviewView extends ItemView  {
         this.notesToggleButtonEl?.setAttribute('aria-pressed', String(this.presenterNotesVisible));
         if (this.presenterNotesEl) {
             this.presenterNotesEl.hidden = !this.presenterNotesVisible;
-            this.presenterNotesEl.replaceChildren();
+            this.applyPresenterNotesHeight();
+            const slideNumber = this.activeSlideIndex + 1;
+            this.presenterNotesEl.setAttribute('aria-label', `Presenter notes, slide ${slideNumber}`);
+            const notesBody = this.presenterNotesBodyEl ?? this.presenterNotesEl;
+            notesBody.replaceChildren();
+            notesBody.createDiv({
+                cls: 'marp-extended-presenter-notes-heading',
+                text: `Slide ${slideNumber}`,
+            });
             const comments = this.presenterComments[this.activeSlideIndex] ?? [];
             if (comments.length === 0) {
-                this.presenterNotesEl.createDiv({ text: 'No presenter notes for this slide.' });
+                notesBody.createDiv({ text: 'No presenter notes for this slide.' });
             } else {
-                const list = this.presenterNotesEl.createEl('ol');
+                const list = notesBody.createEl('ul');
                 comments.forEach((comment) => {
                     list.createEl('li', { text: comment });
                 });
             }
         }
+    }
+
+    private presenterNotesHeightBounds(): { min: number; max: number } {
+        const rootHeight = this.contentEl.clientHeight;
+        const min = 96;
+        const max = Math.max(min, Math.floor(rootHeight * 2 / 3));
+        return { min, max };
+    }
+
+    private applyPresenterNotesHeight(): void {
+        const notes = this.presenterNotesEl;
+        if (!notes) {
+            return;
+        }
+        if (!this.presenterNotesVisible || this.presenterNotesHeight === undefined) {
+            notes.style.removeProperty('--marp-extended-presenter-notes-height');
+            return;
+        }
+        const { min, max } = this.presenterNotesHeightBounds();
+        const height = Math.min(max, Math.max(min, this.presenterNotesHeight));
+        this.presenterNotesHeight = height;
+        notes.style.setProperty('--marp-extended-presenter-notes-height', `${height}px`);
+    }
+
+    private registerPresenterNotesResize(): void {
+        const handle = this.presenterNotesResizeEl;
+        const notes = this.presenterNotesEl;
+        if (!handle || !notes) {
+            return;
+        }
+
+        const onPointerDown = (event: PointerEvent) => {
+            if (event.button !== 0 || notes.hidden) {
+                return;
+            }
+            event.preventDefault();
+            const notesBottom = notes.getBoundingClientRect().bottom;
+            handle.classList.add('is-dragging');
+            if (typeof handle.setPointerCapture === 'function' && event.pointerId != null) {
+                handle.setPointerCapture(event.pointerId);
+            }
+
+            const onPointerMove = (moveEvent: PointerEvent) => {
+                this.presenterNotesHeight = notesBottom - moveEvent.clientY;
+                this.applyPresenterNotesHeight();
+            };
+            const onPointerUp = () => {
+                handle.classList.remove('is-dragging');
+                handle.removeEventListener('pointermove', onPointerMove);
+                handle.removeEventListener('pointerup', onPointerUp);
+                handle.removeEventListener('pointercancel', onPointerUp);
+                window.removeEventListener('pointermove', onPointerMove);
+                window.removeEventListener('pointerup', onPointerUp);
+            };
+
+            handle.addEventListener('pointermove', onPointerMove);
+            handle.addEventListener('pointerup', onPointerUp);
+            handle.addEventListener('pointercancel', onPointerUp);
+            window.addEventListener('pointermove', onPointerMove);
+            window.addEventListener('pointerup', onPointerUp);
+        };
+
+        handle.addEventListener('pointerdown', onPointerDown);
+        this.session.setDetach('notesResize', () => handle.removeEventListener('pointerdown', onPointerDown));
     }
 
     private registerPreviewScrollTracking(): void {

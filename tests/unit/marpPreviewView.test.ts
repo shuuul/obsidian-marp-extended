@@ -54,16 +54,17 @@ function createPreviewView(appExtras: Record<string, unknown> = {}): MarpPreview
 
 function addObsidianDomHelpers<T extends HTMLElement>(element: T): T {
 	const extended = element as T & {
-		createDiv(options?: { text?: string }): HTMLDivElement;
-		createEl<K extends keyof HTMLElementTagNameMap>(tag: K, options?: { text?: string }): HTMLElementTagNameMap[K];
+		createDiv(options?: { cls?: string; text?: string }): HTMLDivElement;
+		createEl<K extends keyof HTMLElementTagNameMap>(tag: K, options?: { cls?: string; text?: string }): HTMLElementTagNameMap[K];
 	};
-	extended.createEl = <K extends keyof HTMLElementTagNameMap>(tag: K, options?: { text?: string }) => {
+	extended.createEl = <K extends keyof HTMLElementTagNameMap>(tag: K, options?: { cls?: string; text?: string }) => {
 		const child = addObsidianDomHelpers(element.ownerDocument.createElement(tag));
+		if (options?.cls) child.className = options.cls;
 		if (options?.text != null) child.textContent = options.text;
 		element.appendChild(child);
 		return child;
 	};
-	extended.createDiv = (options?: { text?: string }) => extended.createEl('div', options);
+	extended.createDiv = (options?: { cls?: string; text?: string }) => extended.createEl('div', options);
 	return element;
 }
 
@@ -471,16 +472,61 @@ test('comments map by logical wrapper and presenter notes use literal text with 
 	first.innerHTML = '<section></section><section data-marpit-advanced-background="content"></section>';
 	const second = document.createElement('div');
 	access.previewSlideEls = [first, second];
-	access.presenterNotesEl = addObsidianDomHelpers(document.createElement('div'));
+	const notes = addObsidianDomHelpers(document.createElement('div'));
+	const handle = document.createElement('div');
+	const body = addObsidianDomHelpers(document.createElement('div'));
+	notes.appendChild(handle);
+	notes.appendChild(body);
+	access.presenterNotesEl = notes;
+	access.presenterNotesResizeEl = handle;
+	access.presenterNotesBodyEl = body;
 	access.initializePreviewState([['line one\nline two', '<img src=x onerror=alert(1)>'], []]);
 	view.togglePresenterNotes();
 
-	expect(access.presenterNotesEl.querySelectorAll('li')).toHaveLength(2);
-	expect(access.presenterNotesEl.textContent).toContain('<img src=x onerror=alert(1)>');
-	expect(access.presenterNotesEl.querySelector('img')).toBeNull();
+	expect(notes.contains(handle)).toBe(true);
+	expect(body.querySelector('.marp-extended-presenter-notes-heading')?.textContent).toBe('Slide 1');
+	expect(notes.getAttribute('aria-label')).toBe('Presenter notes, slide 1');
+	expect(body.querySelector('ol')).toBeNull();
+	expect(body.querySelectorAll('li')).toHaveLength(2);
+	expect(body.textContent).toContain('<img src=x onerror=alert(1)>');
+	expect(body.querySelector('img')).toBeNull();
 	access.activeSlideIndex = 1;
 	access.applyPreviewState();
-	expect(access.presenterNotesEl.textContent).toBe('No presenter notes for this slide.');
+	expect(notes.contains(handle)).toBe(true);
+	expect(body.querySelector('.marp-extended-presenter-notes-heading')?.textContent).toBe('Slide 2');
+	expect(notes.getAttribute('aria-label')).toBe('Presenter notes, slide 2');
+	expect(body.textContent).toContain('No presenter notes for this slide.');
+});
+
+test('dragging the presenter notes handle upward increases panel height', () => {
+	const view = createPreviewView();
+	const access = marpPreviewViewTestAccess(view);
+	const notes = addObsidianDomHelpers(document.createElement('div'));
+	const handle = document.createElement('div');
+	const body = addObsidianDomHelpers(document.createElement('div'));
+	notes.appendChild(handle);
+	notes.appendChild(body);
+	view.contentEl.appendChild(notes);
+	Object.defineProperty(view.contentEl, 'clientHeight', { configurable: true, value: 900 });
+	notes.getBoundingClientRect = () => ({ height: 160, bottom: 900 } as DOMRect);
+	access.presenterNotesEl = notes;
+	access.presenterNotesResizeEl = handle;
+	access.presenterNotesBodyEl = body;
+	access.registerPresenterNotesResize();
+	view.togglePresenterNotes();
+
+	const pointerEvent = (type: string, clientY = 0) => {
+		const event = new Event(type, { bubbles: true }) as Event & { button: number; clientY: number };
+		event.button = 0;
+		event.clientY = clientY;
+		return event;
+	};
+	handle.dispatchEvent(pointerEvent('pointerdown', 740));
+	window.dispatchEvent(pointerEvent('pointermove', 300));
+	window.dispatchEvent(pointerEvent('pointerup'));
+
+	expect(access.presenterNotesHeight).toBe(600);
+	expect(notes.style.getPropertyValue('--marp-extended-presenter-notes-height')).toBe('600px');
 });
 
 test('outer preview scrolling selects the nearest slide across iframe coordinates', async () => {
