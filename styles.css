@@ -262,18 +262,19 @@ If your plugin does not need CSS, delete this file.
 	width: max-content;
 }
 
+/* Higher specificity than mermaid theme CSS (section .mermaid-diagram-container...) so overrides win without !important. */
 .marp-extended-editor-mermaid section .marp-extended-mermaid-scroll .mermaid-diagram-container.mermaid-diagram {
 	display: inline-block;
-	max-width: none !important;
-	width: fit-content !important;
+	max-width: none;
+	width: fit-content;
 	transform-origin: center center;
-	margin: 0 !important;
+	margin: 0;
 }
 
 .marp-extended-editor-mermaid section .marp-extended-mermaid-scroll .mermaid-diagram-container.mermaid-diagram svg {
 	display: block;
-	max-width: none !important;
-	max-height: none !important;
+	max-width: none;
+	max-height: none;
 }
 
 .marp-extended-mermaid-controls {
