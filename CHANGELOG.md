@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+## [0.11.1](https://github.com/shuuul/obsidian-marp-extended/compare/0.11.0...0.11.1) (2026-09-06)
+
+
+### Bug Fixes
+
+* **preview:** reveal marpit fragments by default ([d33a490](https://github.com/shuuul/obsidian-marp-extended/commit/d33a490cfe3c848ebd70dc0a5f96f033922a4bc3))
+
 ## [0.11.0](https://github.com/shuuul/obsidian-marp-extended/compare/0.10.2...0.11.0) (2026-09-04)
 
 
