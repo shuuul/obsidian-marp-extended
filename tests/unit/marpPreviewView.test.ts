@@ -551,6 +551,53 @@ test('outer preview scrolling selects the nearest slide across iframe coordinate
 	expect(access.activeSlideIndex).toBe(1);
 });
 
+test('preview scrolling moves reading view to the matching source section', async () => {
+	const view = createPreviewView();
+	const access = marpPreviewViewTestAccess(view);
+	const container = access.previewContainerEl;
+	const iframe = access.previewIframeEl;
+	const first = document.createElement('div');
+	const second = document.createElement('div');
+	if (!container || !iframe) throw new Error('Preview harness missing container or iframe');
+
+	const readingRoot = document.createElement('div');
+	const readingScroller = document.createElement('div');
+	readingScroller.className = 'markdown-preview-view';
+	Object.defineProperty(readingRoot, 'scrollHeight', { value: 200 });
+	Object.defineProperty(readingRoot, 'clientHeight', { value: 200 });
+	const firstSection = document.createElement('div');
+	const secondSection = document.createElement('div');
+	firstSection.setAttribute('data-marp-extended-source-line-start', '3');
+	secondSection.setAttribute('data-marp-extended-source-line-start', '6');
+	readingScroller.append(firstSection, secondSection);
+	readingRoot.appendChild(readingScroller);
+	readingScroller.getBoundingClientRect = () => ({ top: 100 } as DOMRect);
+	firstSection.getBoundingClientRect = () => ({ top: 100 } as DOMRect);
+	secondSection.getBoundingClientRect = () => ({ top: 300 } as DOMRect);
+	readingScroller.scrollTop = 0;
+
+	const file = { path: 'slides/deck.md' } as TFile;
+	access.file = file;
+	access.sourceView = {
+		file,
+		getMode: () => 'preview',
+		getViewData: () => '---\ntheme: default\n---\n# First\n\n---\n\n# Second',
+		previewMode: { containerEl: readingRoot },
+	} as unknown as MarkdownView;
+	access.previewSlideEls = [first, second];
+	container.getBoundingClientRect = () => ({ top: 100 } as DOMRect);
+	iframe.getBoundingClientRect = () => ({ top: -500 } as DOMRect);
+	first.getBoundingClientRect = () => ({ top: 0 } as DOMRect);
+	second.getBoundingClientRect = () => ({ top: 600 } as DOMRect);
+	access.registerPreviewScrollTracking();
+
+	container.dispatchEvent(new Event('scroll'));
+	await new Promise((resolve) => window.requestAnimationFrame(resolve));
+
+	expect(access.activeSlideIndex).toBe(1);
+	expect(readingScroller.scrollTop).toBe(200);
+});
+
 test('serializes preview commits so stale iframe loads cannot initialize newer state', async () => {
 	const view = createPreviewView();
 	const access = marpPreviewViewTestAccess(view);

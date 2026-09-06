@@ -4,10 +4,95 @@ const SLIDE_SEPARATOR_PATTERN = /^ {0,3}---\s*$/;
 
 type LineReader = (lineNumber: number) => string;
 
+export const READING_VIEW_SOURCE_LINE_ATTR = 'data-marp-extended-source-line-start';
+
 export type PreviewSourceRange = {
 	fromOffset: number;
 	toOffset: number;
 };
+
+export type ReadingViewSectionInfo = {
+	lineStart: number;
+};
+
+export function annotateReadingViewSection(
+	el: HTMLElement,
+	info: ReadingViewSectionInfo | null | undefined,
+): void {
+	if (!info || !Number.isFinite(info.lineStart)) {
+		delete el.dataset.marpExtendedSourceLineStart;
+		return;
+	}
+
+	el.dataset.marpExtendedSourceLineStart = String(info.lineStart);
+}
+
+export function getReadingViewScrollContainer(root: HTMLElement): HTMLElement {
+	if (root.scrollHeight > root.clientHeight + 1) {
+		return root;
+	}
+
+	return root.querySelector<HTMLElement>('.markdown-preview-view') ?? root;
+}
+
+export function getReadingViewSourceLine(container: HTMLElement): number | null {
+	const anchor = container.getBoundingClientRect().top + 1;
+	const sections = container.querySelectorAll<HTMLElement>(`[${READING_VIEW_SOURCE_LINE_ATTR}]`);
+	let current: number | null = null;
+
+	for (const section of sections) {
+		const line = Number(section.dataset.marpExtendedSourceLineStart);
+		if (!Number.isFinite(line)) {
+			continue;
+		}
+
+		if (section.getBoundingClientRect().top <= anchor) {
+			current = line;
+			continue;
+		}
+
+		return current ?? line;
+	}
+
+	return current;
+}
+
+export function getReadingViewSectionForSourceLine(
+	container: HTMLElement,
+	sourceLine: number,
+): HTMLElement | null {
+	if (!Number.isFinite(sourceLine)) {
+		return null;
+	}
+
+	const sections = container.querySelectorAll<HTMLElement>(`[${READING_VIEW_SOURCE_LINE_ATTR}]`);
+	let match: HTMLElement | null = null;
+
+	for (const section of sections) {
+		const line = Number(section.dataset.marpExtendedSourceLineStart);
+		if (!Number.isFinite(line) || line > sourceLine) {
+			return match ?? section;
+		}
+		match = section;
+	}
+
+	return match;
+}
+
+export function scrollReadingViewToSourceLine(container: HTMLElement, sourceLine: number): boolean {
+	const section = getReadingViewSectionForSourceLine(container, sourceLine);
+	if (!section) {
+		return false;
+	}
+
+	const delta = section.getBoundingClientRect().top - container.getBoundingClientRect().top;
+	if (Math.abs(delta) < 1) {
+		return false;
+	}
+
+	container.scrollTop += delta;
+	return true;
+}
 
 export function getPreviewSlideIndex(markdown: string, cursorLine: number): number {
 	const lines = markdown.split('\n');

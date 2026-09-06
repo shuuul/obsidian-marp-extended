@@ -8,7 +8,13 @@ import { ensureDefaultThemes } from './utilities/ensureDefaultThemes';
 import { ensureDefaultMermaidThemes } from './utilities/ensureDefaultMermaidThemes';
 import { ThemeManager } from './utilities/themeManager';
 import { ThemePropertyOptions } from './utilities/themePropertyOptions';
-import { getPreviewSlideIndexFromLineReader } from './utilities/previewSync';
+import {
+	annotateReadingViewSection,
+	getPreviewSlideIndex,
+	getPreviewSlideIndexFromLineReader,
+	getReadingViewScrollContainer,
+	getReadingViewSourceLine,
+} from './utilities/previewSync';
 import { exportWithNotice } from './utilities/marpExport';
 import { createMermaidEditorExtension, refreshMermaidEditorDecorations } from './editor/mermaidEditorExtension';
 import { registerMarpCommands } from './commands/registerMarpCommands';
@@ -28,6 +34,8 @@ export default class MarpExtended extends Plugin {
 		timer: number;
 		markdownOverride?: string;
 	}>();
+	private readingViewScrollFrame: number | undefined;
+	private readingViewScrollDetach: (() => void) | undefined;
 
 	async onload() {
 		await this.loadSettings();
@@ -81,10 +89,17 @@ export default class MarpExtended extends Plugin {
 			this.handleEditorUpdate(update);
 		}));
 		this.registerEditorExtension(createMermaidEditorExtension(this.app, this.settings));
+		this.registerMarkdownPostProcessor((el, ctx) => {
+			annotateReadingViewSection(el, ctx.getSectionInfo(el));
+		});
 		this.registerEvent(this.app.workspace.on('active-leaf-change', (leaf) => {
 			if (leaf?.view instanceof MarkdownView) {
 				this.refreshPreviewForEditor(leaf.view);
 			}
+			this.bindReadingViewScroll();
+		}));
+		this.registerEvent(this.app.workspace.on('layout-change', () => {
+			this.bindReadingViewScroll();
 		}));
 
 		this.registerEvent(this.app.vault.on('modify', (file) => this.onChange(file)));
@@ -96,7 +111,9 @@ export default class MarpExtended extends Plugin {
 				window.clearTimeout(pending.timer);
 			}
 			this.pendingPreviewRefreshes.clear();
+			this.unbindReadingViewScroll();
 		});
+		this.bindReadingViewScroll();
 	}
 
 	async loadSettings() {
@@ -197,6 +214,68 @@ export default class MarpExtended extends Plugin {
 		return view;
 	}
 
+	private bindReadingViewScroll(): void {
+		this.unbindReadingViewScroll();
+		const view = this.getActiveMarkdownView();
+		if (!view || view.getMode() !== 'preview') {
+			return;
+		}
+
+		const container = getReadingViewScrollContainer(view.previewMode.containerEl);
+		const onScroll = () => this.scheduleReadingViewScrollSync(view);
+		container.addEventListener('scroll', onScroll, { passive: true });
+		this.readingViewScrollDetach = () => container.removeEventListener('scroll', onScroll);
+		this.scheduleReadingViewScrollSync(view);
+	}
+
+	private unbindReadingViewScroll(): void {
+		if (this.readingViewScrollFrame !== undefined) {
+			window.cancelAnimationFrame(this.readingViewScrollFrame);
+			this.readingViewScrollFrame = undefined;
+		}
+		this.readingViewScrollDetach?.();
+		this.readingViewScrollDetach = undefined;
+	}
+
+	private scheduleReadingViewScrollSync(view: MarkdownView): void {
+		if (this.readingViewScrollFrame !== undefined) {
+			return;
+		}
+
+		this.readingViewScrollFrame = window.requestAnimationFrame(() => {
+			this.readingViewScrollFrame = undefined;
+			this.syncPreviewFromReadingView(view);
+		});
+	}
+
+	private syncPreviewFromReadingView(view: MarkdownView): void {
+		if (view.getMode() !== 'preview' || this.getActiveMarkdownView() !== view) {
+			return;
+		}
+
+		const file = view.file;
+		if (!file) {
+			return;
+		}
+
+		const previewView = this.getPreviewViewForEditorFile(file);
+		if (!previewView?.isSyncPreviewEnabled()) {
+			return;
+		}
+
+		const sourceLine = getReadingViewSourceLine(getReadingViewScrollContainer(view.previewMode.containerEl));
+		if (sourceLine == null) {
+			return;
+		}
+
+		const slideIndex = getPreviewSlideIndex(view.getViewData(), sourceLine);
+		if (slideIndex === previewView.getActiveSlideIndex()) {
+			return;
+		}
+
+		previewView.onLineChanged(slideIndex);
+	}
+
 	private handleEditorUpdate(update: ViewUpdate): void {
 		if (!update.selectionSet && !update.docChanged && !update.focusChanged) {
 			return;
@@ -246,6 +325,7 @@ export default class MarpExtended extends Plugin {
 		if (previewView) {
 			void previewView.displaySlides(view);
 		}
+		this.bindReadingViewScroll();
 		return previewView;
 	}
 

@@ -23,7 +23,14 @@ import {
     zoomPreviewFromWheel,
 } from '../utilities/previewZoom'
 import { handlePreviewLinkActivation } from '../utilities/previewLinks'
-import { getPreviewSlideStartLine, getPreviewSourceRange } from '../utilities/previewSync';
+import {
+	getPreviewSlideIndex,
+	getPreviewSlideStartLine,
+	getPreviewSourceRange,
+	getReadingViewScrollContainer,
+	getReadingViewSourceLine,
+	scrollReadingViewToSourceLine,
+} from '../utilities/previewSync';
 
 export const MARP_PREVIEW_VIEW = 'marp-preview-view';
 const PREVIEW_PROFILE_STORAGE_KEY = 'marp-extended-profile';
@@ -370,6 +377,10 @@ export class MarpPreviewView extends ItemView  {
 
     isSyncPreviewEnabled() {
         return this.syncPreviewEnabled;
+    }
+
+    getActiveSlideIndex(): number {
+        return this.activeSlideIndex;
     }
 
     isDisplayingFile(file: TFile) {
@@ -806,11 +817,37 @@ export class MarpPreviewView extends ItemView  {
                 if (this.previewSlideEls.length > 0 && nearest !== this.activeSlideIndex) {
                     this.activeSlideIndex = nearest;
                     this.applyPreviewState();
+                    this.syncReadingViewToActiveSlide();
                 }
             }));
         };
         container.addEventListener('scroll', onScroll, { passive: true });
         this.session.setDetach('scroll', () => container.removeEventListener('scroll', onScroll));
+    }
+
+    private syncReadingViewToActiveSlide(): void {
+        if (!this.syncPreviewEnabled) {
+            return;
+        }
+
+        const sourceView = this.sourceView;
+        if (!sourceView || sourceView.getMode() !== 'preview' || sourceView.file?.path !== this.file?.path) {
+            return;
+        }
+
+        const markdown = sourceView.getViewData();
+        const sourceLine = getPreviewSlideStartLine(markdown, this.activeSlideIndex);
+        if (sourceLine == null) {
+            return;
+        }
+
+        const container = getReadingViewScrollContainer(sourceView.previewMode.containerEl);
+        const currentLine = getReadingViewSourceLine(container);
+        if (currentLine != null && getPreviewSlideIndex(markdown, currentLine) === this.activeSlideIndex) {
+            return;
+        }
+
+        scrollReadingViewToSourceLine(container, sourceLine);
     }
 
     private isPreviewProfilingEnabled(): boolean {

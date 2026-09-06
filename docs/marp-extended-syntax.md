@@ -173,6 +173,11 @@ The command palette exposes one insertion command for each canonical form:
 
 ## Navigation, fragments, and presenter notes in preview
 
+With **Sync preview** on, the deck preview follows the active Markdown note:
+
+- In edit mode, the cursor line maps to a slide.
+- In reading view, scrolling either pane maps the top reading-view section to a slide.
+
 Click a non-link area of any rendered slide to move the Markdown editor to the
 start of that slide and center it in the editor viewport. Selecting rendered
 text before clicking briefly highlights the matching source text. Link clicks

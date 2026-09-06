@@ -1,9 +1,16 @@
+/** @jest-environment jsdom */
+
 import { expect, test } from '@jest/globals';
 
 import {
+	annotateReadingViewSection,
 	getPreviewSlideIndex,
 	getPreviewSlideStartLine,
 	getPreviewSourceRange,
+	getReadingViewScrollContainer,
+	getReadingViewSourceLine,
+	scrollReadingViewToSourceLine,
+	READING_VIEW_SOURCE_LINE_ATTR,
 } from '@/utilities/previewSync';
 
 test('preview sync maps cursor lines to slide indexes', () => {
@@ -82,4 +89,60 @@ test('preview source navigation finds selected text within only the matching sli
 		toOffset: multilineOffset + 'Alpha\nBeta'.length,
 	});
 	expect(getPreviewSourceRange(markdown, 0, 'Alpha')).toBeNull();
+});
+
+test('reading view annotation stores source line starts and ignores missing info', () => {
+	const section = document.createElement('div');
+	annotateReadingViewSection(section, { lineStart: 4 });
+	expect(section.getAttribute(READING_VIEW_SOURCE_LINE_ATTR)).toBe('4');
+
+	annotateReadingViewSection(section, null);
+	expect(section.hasAttribute(READING_VIEW_SOURCE_LINE_ATTR)).toBe(false);
+});
+
+test('reading view scroll mapping uses the last section at or above the viewport', () => {
+	const container = document.createElement('div');
+	const first = document.createElement('div');
+	const second = document.createElement('div');
+	const third = document.createElement('div');
+	annotateReadingViewSection(first, { lineStart: 0 });
+	annotateReadingViewSection(second, { lineStart: 6 });
+	annotateReadingViewSection(third, { lineStart: 12 });
+	container.append(first, second, third);
+	container.getBoundingClientRect = () => ({ top: 100 } as DOMRect);
+	first.getBoundingClientRect = () => ({ top: 40 } as DOMRect);
+	second.getBoundingClientRect = () => ({ top: 90 } as DOMRect);
+	third.getBoundingClientRect = () => ({ top: 180 } as DOMRect);
+
+	expect(getReadingViewSourceLine(container)).toBe(6);
+});
+
+test('reading view prefers a nested preview scroller when the root does not overflow', () => {
+	const root = document.createElement('div');
+	const nested = document.createElement('div');
+	nested.className = 'markdown-preview-view';
+	root.appendChild(nested);
+	Object.defineProperty(root, 'scrollHeight', { value: 200 });
+	Object.defineProperty(root, 'clientHeight', { value: 200 });
+
+	expect(getReadingViewScrollContainer(root)).toBe(nested);
+});
+
+test('reading view scrolls to the last section at or before the source line', () => {
+	const container = document.createElement('div');
+	const first = document.createElement('div');
+	const second = document.createElement('div');
+	const third = document.createElement('div');
+	annotateReadingViewSection(first, { lineStart: 0 });
+	annotateReadingViewSection(second, { lineStart: 6 });
+	annotateReadingViewSection(third, { lineStart: 12 });
+	container.append(first, second, third);
+	container.getBoundingClientRect = () => ({ top: 100 } as DOMRect);
+	first.getBoundingClientRect = () => ({ top: 100 } as DOMRect);
+	second.getBoundingClientRect = () => ({ top: 260 } as DOMRect);
+	third.getBoundingClientRect = () => ({ top: 420 } as DOMRect);
+	container.scrollTop = 0;
+
+	expect(scrollReadingViewToSourceLine(container, 8)).toBe(true);
+	expect(container.scrollTop).toBe(160);
 });
