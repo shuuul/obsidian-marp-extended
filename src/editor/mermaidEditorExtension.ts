@@ -242,54 +242,44 @@ function enhanceMermaidDiagram(section: HTMLElement, figure: HTMLElement, doc: D
 	}
 }
 
-class MermaidWidget extends WidgetType {
+export type MermaidHostSourceButton = {
+	sourceFrom: number;
+	onShowSource: (event: MouseEvent) => void;
+};
+
+export class MermaidHostRenderer {
 	private renderToken = 0;
 	private themeStyleSheet: CSSStyleSheet | null = null;
 	private themeStyleDocument: Document | null = null;
 
 	constructor(
 		private readonly app: App,
-		private readonly source: string,
-		private readonly alt: string,
-		private readonly themeName: string,
-		private readonly sourceFrom: number,
-		private readonly autoFitEnabled: boolean,
-	) {
-		super();
-	}
+		readonly source: string,
+		readonly alt: string,
+		readonly themeName: string,
+		readonly autoFitEnabled: boolean,
+	) {}
 
-	eq(other: MermaidWidget): boolean {
-		return this.source === other.source
-			&& this.alt === other.alt
-			&& this.themeName === other.themeName
-			&& this.sourceFrom === other.sourceFrom
-			&& this.autoFitEnabled === other.autoFitEnabled;
-	}
-
-	toDOM(view: EditorView): HTMLElement {
-		const doc = view.dom.ownerDocument;
-		const win = doc.win;
+	mount(doc: Document, sourceButton?: MermaidHostSourceButton): HTMLElement {
+		const win = doc.win ?? window;
 		const root = win.createDiv({ cls: 'marp-extended-editor-mermaid' });
-
-		const editButton = win.createEl('button', {
-			cls: 'marp-extended-editor-mermaid-source-button',
-			attr: {
-				type: 'button',
-				'aria-label': 'Show Mermaid source',
-				title: 'Show Mermaid source',
-			}
-		});
-		setIcon(editButton, 'code');
-		editButton.addEventListener('click', (event: MouseEvent) => {
-			event.preventDefault();
-			event.stopPropagation();
-			view.focus();
-			view.dispatch({
-				selection: { anchor: Math.min(this.sourceFrom, view.state.doc.length) },
-				scrollIntoView: true,
+		if (sourceButton) {
+			const editButton = win.createEl('button', {
+				cls: 'marp-extended-editor-mermaid-source-button',
+				attr: {
+					type: 'button',
+					'aria-label': 'Show Mermaid source',
+					title: 'Show Mermaid source',
+				}
 			});
-		});
-		root.appendChild(editButton);
+			setIcon(editButton, 'code');
+			editButton.addEventListener('click', (event: MouseEvent) => {
+				event.preventDefault();
+				event.stopPropagation();
+				sourceButton.onShowSource(event);
+			});
+			root.appendChild(editButton);
+		}
 
 		const section = win.createEl('section', { cls: 'marp-extended-editor-mermaid-scope' });
 		const placeholder = win.createDiv({
@@ -298,11 +288,21 @@ class MermaidWidget extends WidgetType {
 		});
 		section.appendChild(placeholder);
 		root.appendChild(section);
+		this.renderInto(section, doc);
+		return root;
+	}
 
+	destroy(): void {
+		this.renderToken++;
+		this.removeThemeStyleSheet();
+	}
+
+	private renderInto(section: HTMLElement, doc: Document): void {
+		const win = doc.win ?? window;
 		const renderToken = ++this.renderToken;
 		void loadMermaidThemeCssByName(this.app, this.themeName)
 			.then(async (css) => {
-				if (renderToken !== this.renderToken || !section.isConnected) {
+				if (renderToken !== this.renderToken) {
 					return;
 				}
 
@@ -315,7 +315,7 @@ class MermaidWidget extends WidgetType {
 				this.themeStyleDocument = doc;
 				const renderOptions = parseMermaidRenderOptionsFromCss(css);
 				const figureHtml = await renderMermaidFigure(this.source, this.alt, { renderOptions, autoFit: { enabled: this.autoFitEnabled } });
-				if (renderToken !== this.renderToken || !section.isConnected) {
+				if (renderToken !== this.renderToken) {
 					return;
 				}
 
@@ -330,7 +330,7 @@ class MermaidWidget extends WidgetType {
 				}
 			})
 			.catch((error: unknown) => {
-				if (renderToken !== this.renderToken || !section.isConnected) {
+				if (renderToken !== this.renderToken) {
 					return;
 				}
 
@@ -341,13 +341,6 @@ class MermaidWidget extends WidgetType {
 				errorBlock.appendChild(code);
 				section.replaceChildren(errorBlock);
 			});
-
-		return root;
-	}
-
-	destroy(): void {
-		this.renderToken++;
-		this.removeThemeStyleSheet();
 	}
 
 	private removeThemeStyleSheet(): void {
@@ -357,6 +350,47 @@ class MermaidWidget extends WidgetType {
 		}
 		this.themeStyleSheet = null;
 		this.themeStyleDocument = null;
+	}
+}
+
+class MermaidWidget extends WidgetType {
+	private readonly host: MermaidHostRenderer;
+
+	constructor(
+		app: App,
+		source: string,
+		alt: string,
+		themeName: string,
+		private readonly sourceFrom: number,
+		autoFitEnabled: boolean,
+	) {
+		super();
+		this.host = new MermaidHostRenderer(app, source, alt, themeName, autoFitEnabled);
+	}
+
+	eq(other: MermaidWidget): boolean {
+		return this.host.source === other.host.source
+			&& this.host.alt === other.host.alt
+			&& this.host.themeName === other.host.themeName
+			&& this.sourceFrom === other.sourceFrom
+			&& this.host.autoFitEnabled === other.host.autoFitEnabled;
+	}
+
+	toDOM(view: EditorView): HTMLElement {
+		return this.host.mount(view.dom.ownerDocument, {
+			sourceFrom: this.sourceFrom,
+			onShowSource: () => {
+				view.focus();
+				view.dispatch({
+					selection: { anchor: Math.min(this.sourceFrom, view.state.doc.length) },
+					scrollIntoView: true,
+				});
+			},
+		});
+	}
+
+	destroy(): void {
+		this.host.destroy();
 	}
 }
 

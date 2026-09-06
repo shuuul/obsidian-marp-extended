@@ -99,6 +99,17 @@ type MockWorkspaceLeaf = {
 	app: Record<string, unknown>;
 };
 
+export class MarkdownRenderChild {
+	containerEl: HTMLElement;
+
+	constructor(containerEl: HTMLElement) {
+		this.containerEl = containerEl;
+	}
+
+	onload(): void {}
+	onunload(): void {}
+}
+
 export class ItemView {
 	leaf: MockWorkspaceLeaf;
 	app: Record<string, unknown>;

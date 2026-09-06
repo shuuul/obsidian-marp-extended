@@ -17,6 +17,7 @@ import {
 } from './utilities/previewSync';
 import { exportWithNotice } from './utilities/marpExport';
 import { createMermaidEditorExtension, refreshMermaidEditorDecorations } from './editor/mermaidEditorExtension';
+import { createReadingViewMermaidPostProcessor } from './editor/mermaidReadingView';
 import { registerMarpCommands } from './commands/registerMarpCommands';
 import { MarpExtendedSettingTab } from './settings/marpExtendedSettingTab';
 
@@ -92,6 +93,7 @@ export default class MarpExtended extends Plugin {
 		this.registerMarkdownPostProcessor((el, ctx) => {
 			annotateReadingViewSection(el, ctx.getSectionInfo(el));
 		});
+		this.registerMarkdownPostProcessor(createReadingViewMermaidPostProcessor(this));
 		this.registerEvent(this.app.workspace.on('active-leaf-change', (leaf) => {
 			if (leaf?.view instanceof MarkdownView) {
 				this.refreshPreviewForEditor(leaf.view);

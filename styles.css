@@ -198,6 +198,10 @@ If your plugin does not need CSS, delete this file.
 	opacity: 1;
 }
 
+.markdown-preview-view .marp-extended-editor-mermaid-source-button {
+	display: none;
+}
+
 .marp-extended-editor-mermaid-source-button:hover,
 .marp-extended-editor-mermaid-source-button:focus-visible {
 	background: var(--background-modifier-hover);
