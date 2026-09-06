@@ -11,7 +11,7 @@ import {
 	rmSync,
 } from "node:fs";
 import { createHash } from "node:crypto";
-import { gzipSync } from "node:zlib";
+import { brotliCompressSync, constants } from "node:zlib";
 import { loadEnvLocal } from "./scripts/load-env-local.mjs";
 
 loadEnvLocal();
@@ -101,6 +101,20 @@ const engineExternal = [
 	...builtinModules.map((moduleName) => `node:${moduleName}`),
 ];
 
+/**
+ * Marp Core hard-requires three cold MathJax font extensions (bbm, bboldx,
+ * dsfont). Stub them out: same export names, no glyph data. Niche macros
+ * degrade to a console warning; mhchem stays a real dependency.
+ */
+const mathjaxColdFontExtensionStub = {
+	name: "mathjax-cold-font-extension-stub",
+	setup(build) {
+		build.onResolve({ filter: /@mathjax\/mathjax-(?:bbm|bboldx|dsfont)-font-extension\/mjs\/svg\.js$/ }, () => ({
+			path: path.resolve("src/shims/mathjax-cold-font-extensions.cjs"),
+		}));
+	},
+};
+
 function verifyStandaloneEngine() {
 	const enginePath = path.resolve("marp-engine.cjs");
 	const require = createRequire(import.meta.url);
@@ -143,7 +157,7 @@ async function buildEngine() {
 		treeShaking: true,
 		metafile: true,
 		external: engineExternal,
-		plugins: [sourceMapQuickSortShim, marpShikiLangSubsetShim],
+		plugins: [sourceMapQuickSortShim, marpShikiLangSubsetShim, mathjaxColdFontExtensionStub],
 		outfile: "marp-engine.cjs",
 		logLevel: "info",
 	});
@@ -170,8 +184,14 @@ const embeddedEnginePlugin = {
 		}));
 		build.onLoad({ filter: /.*/, namespace: "marp-extended" }, () => {
 			const bytes = readFileSync("marp-engine.cjs");
+			const compressed = brotliCompressSync(bytes, {
+				params: {
+					[constants.BROTLI_PARAM_QUALITY]: constants.BROTLI_MAX_QUALITY,
+					[constants.BROTLI_PARAM_SIZE_HINT]: bytes.length,
+				},
+			});
 			return {
-				contents: `export const gzipBase64=${JSON.stringify(gzipSync(bytes, { level: 9 }).toString("base64"))};export const sha256=${JSON.stringify(createHash("sha256").update(bytes).digest("hex"))};`,
+				contents: `export const brotliBase64=${JSON.stringify(compressed.toString("base64"))};export const sha256=${JSON.stringify(createHash("sha256").update(bytes).digest("hex"))};`,
 				loader: "js",
 			};
 		});
@@ -184,7 +204,7 @@ const context = await esbuild.context({
 	},
 	entryPoints: ["src/main.ts"],
 	bundle: true,
-	plugins: [engineBuildPlugin, sourceMapQuickSortShim, marpShikiLangSubsetShim, embeddedEnginePlugin, copyToObsidian],
+	plugins: [engineBuildPlugin, sourceMapQuickSortShim, marpShikiLangSubsetShim, mathjaxColdFontExtensionStub, embeddedEnginePlugin, copyToObsidian],
 	platform: "node",
 	external: [
 		"obsidian",

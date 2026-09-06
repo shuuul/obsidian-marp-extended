@@ -34,6 +34,7 @@ src/runtime/engineArtifact.ts       # Embedded engine integrity/materialization
 src/runtime/mermaidFallback.ts      # Engine-side Mermaid fence fallback
 src/runtime/mermaidShared.ts        # Shared Mermaid constants and fence-info parsing
 src/shims/marp-shiki.cjs            # Curated Shiki language subset for Core 5
+src/shims/mathjax-cold-font-extensions.cjs # Empty stubs for cold MathJax font extensions (bbm/bboldx/dsfont)
 packages/code-fence-scanner/        # @marp-extended/code-fence-scanner: fence/inline-code scanning primitives
 packages/marp-dsl/                  # @marp-extended/marp-dsl: %%marp-*%% marker compiler
 packages/wiki-links/                # @marp-extended/wiki-links: note wiki-link conversion (preview/export)

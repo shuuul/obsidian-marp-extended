@@ -81,7 +81,7 @@ test('rejects an invalid embedded hash before creating the engine file', async (
 	const app = createApp(root);
 
 	await expect(ensureEngineArtifact(app, '.obsidian/plugins/marp-extended', {
-		gzipBase64: 'H4sIAAAAAAAAA0tMSgYAwkEkNQMAAAA=',
+		brotliBase64: 'CwGAYWJjAw==',
 		sha256: '0'.repeat(64),
 	})).rejects.toThrow('SHA-256 integrity check');
 	expect(existsSync(join(root, '.obsidian/plugins/marp-extended/marp-engine.cjs'))).toBe(false);

@@ -3,10 +3,10 @@ import type * as NodeFs from 'node:fs';
 import type * as NodePath from 'node:path';
 import type * as NodeZlib from 'node:zlib';
 import type * as NodeCrypto from 'node:crypto';
-import { gzipBase64, sha256 as embeddedSha256 } from 'marp-extended:embedded-engine';
+import { brotliBase64, sha256 as embeddedSha256 } from 'marp-extended:embedded-engine';
 import { FilePath } from '../utilities/filePath';
 
-export type EngineArtifactPayload = { gzipBase64: string; sha256: string };
+export type EngineArtifactPayload = { brotliBase64: string; sha256: string };
 export type EngineArtifactDependencies = {
 	fs: typeof NodeFs; path: typeof NodePath; zlib: typeof NodeZlib; crypto: typeof NodeCrypto;
 };
@@ -30,7 +30,7 @@ function hash(bytes: Buffer, crypto: typeof NodeCrypto): string {
 export async function ensureEngineArtifact(
 	app: App,
 	pluginDir: string | undefined,
-	payload: EngineArtifactPayload = { gzipBase64, sha256: embeddedSha256 },
+	payload: EngineArtifactPayload = { brotliBase64, sha256: embeddedSha256 },
 	dependencies: EngineArtifactDependencies = nodeDependencies(),
 ): Promise<string> {
 	if (!pluginDir) throw new Error('Marp Extended cannot locate its installed plugin directory (manifest.dir is unavailable).');
@@ -38,7 +38,7 @@ export async function ensureEngineArtifact(
 	const directory = FilePath.resolveVaultFileSystemPath(app.vault, pluginDir);
 	const releaseTarget = path.resolve(directory, 'marp-engine.cjs');
 	let bytes: Buffer;
-	try { bytes = zlib.gunzipSync(Buffer.from(payload.gzipBase64, 'base64')); }
+	try { bytes = zlib.brotliDecompressSync(Buffer.from(payload.brotliBase64, 'base64')); }
 	catch (error) { throw new Error(`Embedded Marp engine could not be decoded: ${String(error)}`); }
 	if (hash(bytes, crypto) !== payload.sha256) throw new Error('Embedded Marp engine failed its SHA-256 integrity check.');
 	try {
