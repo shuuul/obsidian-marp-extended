@@ -40,14 +40,14 @@ Preview and export slide rendering use Core 5 native Mermaid fence semantics
 keyword, native CSS injection) while keeping fork enhancements: mermaid-autofit,
 figure/figcaption output, existing theme CSS compatibility, and the editor widget path.
 
-- [ ] ` ```mermaid ` fences in preview and export render through the native
+- [x] ` ```mermaid ` fences in preview and export render through the native
   `marp_mermaid` token type with `data-marp-mermaid` on the SVG.
-- [ ] `interactive` fence keyword is honored end to end.
-- [ ] Zigzag autofit still applies to linear LR/TD chains when `MERMAID_AUTO_FIT` is on.
-- [ ] Packaged themes (kami.css) and user custom CSS targeting
+- [x] `interactive` fence keyword is honored end to end.
+- [x] Zigzag autofit still applies to linear LR/TD chains when `MERMAID_AUTO_FIT` is on.
+- [x] Packaged themes (kami.css) and user custom CSS targeting
   `.mermaid-diagram-container` keep working, or a documented migration is provided.
-- [ ] Editor Live-Preview Mermaid widgets (zoom controls, theme injection) unchanged.
-- [ ] `npm test -- --runInBand` passes with updated Mermaid plugin tests.
+- [x] Editor Live-Preview Mermaid widgets (zoom controls, theme injection) unchanged.
+- [x] `npm test -- --runInBand` passes with updated Mermaid plugin tests.
 
 ## Scope and non-goals
 
@@ -126,9 +126,13 @@ Not in scope:
   tests); `docs/custom-css.md` (attribute + keyword docs); `AGENTS.md` (arch line).
 - Evidence: typecheck/lint clean; full suite 258 passed / 1 pre-existing skip;
   existing figure-class and caption assertions unchanged (theme compatibility).
-- Remaining: none for WS-01..WS-03; spec closeout pending final build + reload.
+- Remaining: manual UI smoke from the Verification section (preview a deck with
+  `mermaidTheme` frontmatter, a linear LR chain, an `interactive` fence, and an
+  unsupported diagram type) is pending user confirmation; plugin load smoke passed
+  via `npm run obsidian:reload` with no errors. Committed as 1938ded.
 - Blockers: none.
-- Next action: production build, `obsidian:reload`, archive spec.
+- Next action: after user confirms manual preview/export, complete closeout and
+  archive the spec.
 
 ## Completion summary
 
