@@ -240,8 +240,8 @@ See `specs/README.md` for the full lifecycle.
 - Managed export requires Marp CLI 4.5.0. The pinned npx fallback supplies that version; explicit incompatible CLI paths fail validation.
 - Preview and export share Core 5 semantic options/plugins, but iframe/container/template/browser wrappers remain host-owned and are not expected to be pixel-identical.
 - `MarpExport.export()` writes processed Markdown to the resolved export source before invoking Marp CLI. Be careful with source-file mutation semantics.
-- Preview sync uses an `EditorSuggest` subclass as a cursor listener and counts `---` separators, with a lightweight frontmatter delimiter adjustment.
+- Preview sync is driven by the pane the user is currently using; see `docs/preview_sync.md`. Cursor updates use CodeMirror `ViewUpdate`; reading view uses annotated section line starts. The driver pane must not jump.
 - Runtime dependencies should audit clean with `npm audit --omit=dev`. Full `npm audit` may still report a dev-only `js-yaml` advisory through Jest/coverage tooling.
-- Keep `docs/` limited to short user-facing notes (`custom-css.md` and `marp-extended-syntax.md`). Do not re-add a full documentation site or a `docs/superpowers` tree unless explicitly requested.
+- Keep `docs/` limited to short user-facing notes (`custom-css.md`, `marp-extended-syntax.md`, and `preview_sync.md`). Do not re-add a full documentation site or a `docs/superpowers` tree unless explicitly requested.
 - Release notes live at root `CHANGELOG.md`.
 - Tracked specs live only under `specs/` (and `specs/archive/`).

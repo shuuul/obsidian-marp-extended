@@ -64,7 +64,7 @@ Marp Extended strengthens that for Obsidian.
 - For predictable export, keep local images and theme CSS inside the vault. Export uses Marp CLI with `--allow-local-files`.
 - Themes: Marp Core built-ins `default`, `gaia`, `uncover`, plus packaged custom `kami`. Kami uses Chinese typography by default and English typography with `lang: en`. Add more via vault CSS with `/* @theme name */`. Kami sizes: `kami`, `portfolio`.
 - For math, use `math: mathjax` (or omit; MathJax is the plugin default). **KaTeX is not bundled** in Marp Extended preview.
-- For diagrams, Mermaid fences render as inline SVG via `beautiful-mermaid` (with official Mermaid fallback for unsupported diagram types). Style with `mermaidTheme` / `mermaidFlat`. Caption via ` ```mermaid[Title] `.
+- For diagrams, Mermaid fences render as inline SVG via `beautiful-mermaid` (with official Mermaid fallback for unsupported diagram types). Style with `mermaidTheme` / `mermaidFlat`. Caption via ` ```mermaid[Title] `. The same rendering is used in Live Preview and Reading view; Reading view has no show-source button.
 - For code fences, prefer languages in the curated Shiki subset (e.g. `python`, `ts`/`typescript`, `rust`, `js`, `json`, `yaml`, `bash`/`shellscript`, `go`, `sql`). Unsupported languages fall back to plain text. Line highlight: ` ```ts {1,3-4} `.
 - Theme authors: style syntax highlighting with `--marp-shiki-*` on `section`. Kami code blocks use ivory fill, soft border, mono ~10pt, `width: fit-content; max-width: 100%`.
 - Keep example frontmatter explicit: include `marp`, `theme`, `mermaidTheme`, `mermaidFlat`, `size`, and `paginate`.
@@ -134,7 +134,7 @@ flowchart LR
 Main slide content.
 
 <!--
-These notes appear in the plugin preview notes panel and can be exported with PDF notes.
+These notes appear in the plugin preview notes panel, labeled by slide number, and can be exported with PDF notes. Drag the top edge of the panel to resize it.
 -->
 ````
 

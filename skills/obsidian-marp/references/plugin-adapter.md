@@ -19,7 +19,7 @@ keep this implementation-focused reference aligned with it.
 
 | Surface | Engine |
 | --- | --- |
-| In-Obsidian preview | Shared `@marp-team/marp-core` **5.0.1** factory + `shiki`, `mathjax`, Mermaid fallback |
+| In-Obsidian preview | Shared `@marp-team/marp-core` **5.0.2** factory + `shiki`, `mathjax`, Mermaid fallback |
 | Export host | Exactly `@marp-team/marp-cli@4.5.0` + shipped Core 5 engine through `--engine` |
 | Explicit user CLI path | Accepted only when its reported CLI version is exactly 4.5.0 |
 
@@ -39,7 +39,7 @@ Defined in `src/utilities/settings.ts`:
 | `MARP_CLI_PATH` | `''` | Explicit Marp CLI executable path. |
 | `MARP_CLI_USE_NPX` | `false` | When enabled and no path is set, run pinned `@marp-team/marp-cli@4.5.0` via npx. |
 | `CHROME_PATH` | `''` | Optional browser path for PDF/PPTX export. |
-| `MERMAID_EDITOR_RENDER` | `true` | Live Preview Mermaid decorations in the editor. |
+| `MERMAID_EDITOR_RENDER` | `true` | Live Preview and Reading view Mermaid decorations. Reading view omits the show-source button. |
 | `MERMAID_EDITOR_THEME` | `kami` | Default Mermaid theme name for editor when frontmatter omits `mermaidTheme`. |
 
 There is **no** plugin setting for math engine or HTML export template in the current settings interface. Preview math is fixed to MathJax. HTML export uses the bespoke template path in export code (see `marpExport.ts`).
@@ -180,7 +180,8 @@ rendering. The compiler is implemented in
 - `%%marp-slide[...]%%` metadata becomes Marp spot directives such as `<!-- _class: cover -->`.
 - `lead`, `subtitle`, `metadata`, `callout[variant=...]`, `columns`/`column`, and `cards[columns=N]` forms emit stable `marp-extended-*` classes.
 - Backtick/tilde CommonMark fences and nested blocks are preserved and processed by their later pipeline stages.
-- `%%marp-callout[variant=note]%%` is a visible block; presenter notes use ordinary Marpit HTML comments.
+- `%%marp-callout[variant=note]%%` is a visible block; presenter notes use ordinary Marpit HTML comments. The preview notes panel is labeled by slide number and can be resized from its top edge.
+- **Sync preview** (on by default) follows the pane the user is currently using. See `docs/preview_sync.md`. While sync is on, clicking a slide without a text selection does not jump the editor.
 
 ## Themes in this repo
 

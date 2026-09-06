@@ -227,7 +227,6 @@ export default class MarpExtended extends Plugin {
 		const onScroll = () => this.scheduleReadingViewScrollSync(view);
 		container.addEventListener('scroll', onScroll, { passive: true });
 		this.readingViewScrollDetach = () => container.removeEventListener('scroll', onScroll);
-		this.scheduleReadingViewScrollSync(view);
 	}
 
 	private unbindReadingViewScroll(): void {
@@ -261,7 +260,7 @@ export default class MarpExtended extends Plugin {
 		}
 
 		const previewView = this.getPreviewViewForEditorFile(file);
-		if (!previewView?.isSyncPreviewEnabled()) {
+		if (!previewView?.isSyncPreviewEnabled() || previewView.isIgnoringFollowerSync()) {
 			return;
 		}
 
@@ -279,7 +278,7 @@ export default class MarpExtended extends Plugin {
 	}
 
 	private handleEditorUpdate(update: ViewUpdate): void {
-		if (!update.selectionSet && !update.docChanged && !update.focusChanged) {
+		if (!update.selectionSet && !update.docChanged) {
 			return;
 		}
 
@@ -294,7 +293,7 @@ export default class MarpExtended extends Plugin {
 		}
 
 		const previewView = this.getPreviewViewForEditorFile(file);
-		if (!previewView?.isSyncPreviewEnabled()) {
+		if (!previewView?.isSyncPreviewEnabled() || previewView.isIgnoringFollowerSync()) {
 			return;
 		}
 

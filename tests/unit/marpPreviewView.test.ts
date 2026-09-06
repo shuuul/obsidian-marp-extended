@@ -255,6 +255,7 @@ test('preview iframe clicks open http(s) links externally and leave vault links 
 test('clicking a preview slide moves the matching editor source into view', () => {
 	const view = createPreviewView();
 	const access = marpPreviewViewTestAccess(view);
+	access.syncPreviewEnabled = false;
 	const iframe = access.previewIframeEl;
 	if (!iframe) {
 		throw new Error('Preview harness missing iframe');
@@ -572,6 +573,7 @@ test('preview scrolling moves reading view to the matching source section', asyn
 	readingScroller.append(firstSection, secondSection);
 	readingRoot.appendChild(readingScroller);
 	readingScroller.getBoundingClientRect = () => ({ top: 100 } as DOMRect);
+	Object.defineProperty(readingScroller, 'clientHeight', { value: 200 });
 	firstSection.getBoundingClientRect = () => ({ top: 100 } as DOMRect);
 	secondSection.getBoundingClientRect = () => ({ top: 300 } as DOMRect);
 	readingScroller.scrollTop = 0;

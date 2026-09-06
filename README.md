@@ -18,9 +18,10 @@ Marp Extended is an Obsidian plugin for creating, previewing, presenting, and ex
 - Add custom Marp themes by pasting CSS in plugin settings.
 - Convert Obsidian image wiki-links to standard Markdown image links for preview/export.
 - Convert note wiki-links (`[[path|alias]]`) to clickable internal links in the preview sidebar; exports keep only the display text.
-- Built-in Mermaid diagrams rendered with `beautiful-mermaid` and official Mermaid, featuring an interactive zooming and panning frame in the editor Live Preview (can be toggled in settings).
+- Built-in Mermaid diagrams rendered with `beautiful-mermaid` and official Mermaid, featuring zoom and pan in Live Preview and Reading view (can be toggled in settings). Reading view omits the show-source button.
 - Auto-fit long linear `flowchart LR` / `TD` / `TB` chains into compact zigzag bands so slide scaling keeps node text readable. Turn this off in **Settings → Auto-fit wide Mermaid flowcharts**.
-- Use standard Marpit fragments and presenter comments in preview, with fragment commands and a notes panel.
+- Use standard Marpit fragments and presenter comments in preview, with fragment commands and a resizable notes panel labeled by slide.
+- Keep the Markdown note and Deck preview in sync while **Sync preview** is on: the pane you are using drives the other pane. See [preview sync](docs/preview_sync.md).
 - Add theme-independent Marp Extended comment markers for slide metadata, semantic text, callouts, 1–6 columns, and configurable card grids.
 - Keep preview and managed exports on the same shipped Marp Core 5 semantic engine.
 
@@ -113,7 +114,9 @@ A themeable callout.
 Callouts are visible slide content; presenter notes use ordinary Marpit
 `<!-- comments -->`. See
 [Marp Extended syntax](docs/marp-extended-syntax.md) for every marker, generated
-class, nesting/fence rule, and runtime control.
+class, nesting/fence rule, and runtime control, and
+[preview sync](docs/preview_sync.md) for how the note and Deck preview follow
+each other.
 
 ## Recommended Obsidian workflow with Pivi
 

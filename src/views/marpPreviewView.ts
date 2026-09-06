@@ -1,4 +1,5 @@
 import { ItemView, Notice, parseLinktext, setIcon, type WorkspaceLeaf, type MarkdownView, type TFile } from 'obsidian';
+import { EditorView } from '@codemirror/view';
 import type { Marp } from '@marp-team/marp-core'
 import { browser, type MarpCoreBrowser } from '@marp-team/marp-core/browser'
 
@@ -24,11 +25,11 @@ import {
 } from '../utilities/previewZoom'
 import { handlePreviewLinkActivation } from '../utilities/previewLinks'
 import {
-	getPreviewSlideIndex,
+	alignScrollerToScreenY,
+	getPreviewSlideAlignLine,
 	getPreviewSlideStartLine,
 	getPreviewSourceRange,
 	getReadingViewScrollContainer,
-	getReadingViewSourceLine,
 	scrollReadingViewToSourceLine,
 } from '../utilities/previewSync';
 
@@ -185,6 +186,7 @@ export class MarpPreviewView extends ItemView  {
     private presenterNotesBodyEl: HTMLElement | undefined;
     private presenterNotesResizeEl: HTMLElement | undefined;
     private presenterNotesHeight: number | undefined;
+    private ignoreFollowerSyncUntil = 0;
     private previewCommitQueue: Promise<void> = Promise.resolve();
     private displaySlidesRevision = 0;
     private previewProfileMeasureCounter = 0;
@@ -327,6 +329,7 @@ export class MarpPreviewView extends ItemView  {
 
         this.activeSlideIndex = targetSlideIndex;
         this.applyPreviewState();
+        this.ignoreFollowerSync();
         this.revealPreviewSlide(slide);
     }
 
@@ -377,6 +380,10 @@ export class MarpPreviewView extends ItemView  {
 
     isSyncPreviewEnabled() {
         return this.syncPreviewEnabled;
+    }
+
+    isIgnoringFollowerSync(): boolean {
+        return this.shouldIgnoreFollowerSync();
     }
 
     getActiveSlideIndex(): number {
@@ -814,10 +821,14 @@ export class MarpPreviewView extends ItemView  {
                     const nextDistance = Math.abs(iframeTop + slide.getBoundingClientRect().top - containerTop);
                     if (nextDistance < distance) { distance = nextDistance; nearest = index; }
                 });
-                if (this.previewSlideEls.length > 0 && nearest !== this.activeSlideIndex) {
-                    this.activeSlideIndex = nearest;
-                    this.applyPreviewState();
-                    this.syncReadingViewToActiveSlide();
+                if (this.previewSlideEls.length > 0) {
+                    if (nearest !== this.activeSlideIndex) {
+                        this.activeSlideIndex = nearest;
+                        this.applyPreviewState();
+                    }
+                    if (!this.shouldIgnoreFollowerSync()) {
+                        this.syncReadingViewToActiveSlide();
+                    }
                 }
             }));
         };
@@ -831,23 +842,71 @@ export class MarpPreviewView extends ItemView  {
         }
 
         const sourceView = this.sourceView;
-        if (!sourceView || sourceView.getMode() !== 'preview' || sourceView.file?.path !== this.file?.path) {
+        if (!sourceView || sourceView.file?.path !== this.file?.path) {
             return;
         }
 
         const markdown = sourceView.getViewData();
-        const sourceLine = getPreviewSlideStartLine(markdown, this.activeSlideIndex);
+        const sourceLine = getPreviewSlideAlignLine(markdown, this.activeSlideIndex);
         if (sourceLine == null) {
             return;
         }
 
-        const container = getReadingViewScrollContainer(sourceView.previewMode.containerEl);
-        const currentLine = getReadingViewSourceLine(container);
-        if (currentLine != null && getPreviewSlideIndex(markdown, currentLine) === this.activeSlideIndex) {
+        const targetScreenY = this.getActiveSlideScreenY();
+        if (targetScreenY == null) {
             return;
         }
 
-        scrollReadingViewToSourceLine(container, sourceLine);
+        if (sourceView.getMode() === 'source') {
+            const cm = this.getSourceEditorView(sourceView);
+            if (!cm) {
+                return;
+            }
+            const line = cm.state.doc.line(Math.min(sourceLine + 1, cm.state.doc.lines));
+            const coords = cm.coordsAtPos(line.from);
+            if (!coords) {
+                return;
+            }
+            this.ignoreFollowerSync();
+            alignScrollerToScreenY(cm.scrollDOM, coords.top, targetScreenY);
+            return;
+        }
+
+        if (sourceView.getMode() !== 'preview') {
+            return;
+        }
+
+        const container = getReadingViewScrollContainer(sourceView.previewMode.containerEl);
+        this.ignoreFollowerSync();
+        scrollReadingViewToSourceLine(container, sourceLine, targetScreenY);
+    }
+
+    private ignoreFollowerSync(): void {
+        this.ignoreFollowerSyncUntil = performance.now() + 80;
+    }
+
+    private shouldIgnoreFollowerSync(): boolean {
+        return performance.now() < this.ignoreFollowerSyncUntil;
+    }
+
+    private getActiveSlideScreenY(): number | null {
+        const iframe = this.previewIframeEl;
+        const slide = this.previewSlideEls[this.activeSlideIndex];
+        if (!iframe || !slide) {
+            return null;
+        }
+
+        return iframe.getBoundingClientRect().top + slide.getBoundingClientRect().top;
+    }
+
+    private getSourceEditorView(sourceView: MarkdownView): EditorView | null {
+        const fromEditor = (sourceView.editor as { cm?: EditorView }).cm;
+        if (fromEditor instanceof EditorView) {
+            return fromEditor;
+        }
+
+        const editorEl = sourceView.contentEl.querySelector('.cm-editor');
+        return editorEl instanceof HTMLElement ? EditorView.findFromDOM(editorEl) : null;
     }
 
     private isPreviewProfilingEnabled(): boolean {
@@ -1026,10 +1085,15 @@ export class MarpPreviewView extends ItemView  {
         if (sourceRange) {
             const from = sourceView.editor.offsetToPos(sourceRange.fromOffset);
             const to = sourceView.editor.offsetToPos(sourceRange.toOffset);
+            this.ignoreFollowerSync();
             sourceView.editor.setSelection(from, to);
             sourceView.editor.scrollIntoView({ from, to }, true);
             sourceView.editor.focus();
             this.flashSourceSelection(sourceView, from, to);
+            return;
+        }
+
+        if (this.syncPreviewEnabled) {
             return;
         }
 

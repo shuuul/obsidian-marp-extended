@@ -79,19 +79,40 @@ export function getReadingViewSectionForSourceLine(
 	return match;
 }
 
-export function scrollReadingViewToSourceLine(container: HTMLElement, sourceLine: number): boolean {
+export function alignScrollerToScreenY(
+	scroller: HTMLElement,
+	currentScreenY: number,
+	targetScreenY: number,
+): boolean {
+	const delta = currentScreenY - targetScreenY;
+	if (!Number.isFinite(delta) || Math.abs(delta) < 1) {
+		return false;
+	}
+
+	const nextScrollTop = Math.max(0, scroller.scrollTop + delta);
+	if (nextScrollTop === scroller.scrollTop) {
+		return false;
+	}
+
+	scroller.scrollTop = nextScrollTop;
+	return true;
+}
+
+export function scrollReadingViewToSourceLine(
+	container: HTMLElement,
+	sourceLine: number,
+	targetScreenY?: number,
+): boolean {
 	const section = getReadingViewSectionForSourceLine(container, sourceLine);
 	if (!section) {
 		return false;
 	}
 
-	const delta = section.getBoundingClientRect().top - container.getBoundingClientRect().top;
-	if (Math.abs(delta) < 1) {
-		return false;
-	}
-
-	container.scrollTop += delta;
-	return true;
+	return alignScrollerToScreenY(
+		container,
+		section.getBoundingClientRect().top,
+		targetScreenY ?? container.getBoundingClientRect().top,
+	);
 }
 
 export function getPreviewSlideIndex(markdown: string, cursorLine: number): number {
@@ -134,6 +155,27 @@ export function getPreviewSlideStartLine(markdown: string, slideIndex: number): 
 		startLine = Math.min(lineNumber + 1, lines.length - 1);
 		return false;
 	});
+	return startLine;
+}
+
+const SLIDE_ALIGN_SKIP_PATTERN = /^(?:%%marp-slide\b.*%%|<!--[\s\S]*-->)\s*$/;
+
+export function getPreviewSlideAlignLine(markdown: string, slideIndex: number): number | null {
+	const startLine = getPreviewSlideStartLine(markdown, slideIndex);
+	if (startLine == null) {
+		return null;
+	}
+
+	const lines = markdown.split('\n');
+	const nextSlideStartLine = getPreviewSlideStartLine(markdown, slideIndex + 1) ?? lines.length;
+	for (let lineNumber = startLine; lineNumber < nextSlideStartLine; lineNumber++) {
+		const line = lines[lineNumber] ?? '';
+		if (line.trim() === '' || SLIDE_ALIGN_SKIP_PATTERN.test(line.trim())) {
+			continue;
+		}
+		return lineNumber;
+	}
+
 	return startLine;
 }
 

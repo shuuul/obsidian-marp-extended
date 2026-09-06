@@ -4,6 +4,7 @@ import { expect, test } from '@jest/globals';
 
 import {
 	annotateReadingViewSection,
+	getPreviewSlideAlignLine,
 	getPreviewSlideIndex,
 	getPreviewSlideStartLine,
 	getPreviewSourceRange,
@@ -75,6 +76,23 @@ test('preview source navigation rejects invalid slide indexes', () => {
 	expect(getPreviewSlideStartLine(markdown, 2)).toBeNull();
 });
 
+test('preview slide align line skips marp-slide markers and blank lines', () => {
+	const markdown = [
+		'---',
+		'theme: default',
+		'---',
+		'# First',
+		'',
+		'---',
+		'',
+		'%%marp-slide[header="21"]%%',
+		'',
+		'## Second',
+	].join('\n');
+
+	expect(getPreviewSlideAlignLine(markdown, 1)).toBe(9);
+});
+
 test('preview source navigation finds selected text within only the matching slide', () => {
 	const markdown = '# Repeated title\n---\n# Repeated title\n\nAlpha\nBeta';
 	const secondTitleOffset = markdown.lastIndexOf('Repeated title');
@@ -138,6 +156,7 @@ test('reading view scrolls to the last section at or before the source line', ()
 	annotateReadingViewSection(third, { lineStart: 12 });
 	container.append(first, second, third);
 	container.getBoundingClientRect = () => ({ top: 100 } as DOMRect);
+	Object.defineProperty(container, 'clientHeight', { value: 200 });
 	first.getBoundingClientRect = () => ({ top: 100 } as DOMRect);
 	second.getBoundingClientRect = () => ({ top: 260 } as DOMRect);
 	third.getBoundingClientRect = () => ({ top: 420 } as DOMRect);
@@ -145,4 +164,20 @@ test('reading view scrolls to the last section at or before the source line', ()
 
 	expect(scrollReadingViewToSourceLine(container, 8)).toBe(true);
 	expect(container.scrollTop).toBe(160);
+});
+
+test('reading view can align a source section to a matching viewport offset', () => {
+	const container = document.createElement('div');
+	const first = document.createElement('div');
+	const second = document.createElement('div');
+	annotateReadingViewSection(first, { lineStart: 0 });
+	annotateReadingViewSection(second, { lineStart: 6 });
+	container.append(first, second);
+	container.getBoundingClientRect = () => ({ top: 100 } as DOMRect);
+	first.getBoundingClientRect = () => ({ top: 100 } as DOMRect);
+	second.getBoundingClientRect = () => ({ top: 260 } as DOMRect);
+	container.scrollTop = 0;
+
+	expect(scrollReadingViewToSourceLine(container, 6, 140)).toBe(true);
+	expect(container.scrollTop).toBe(120);
 });

@@ -13,6 +13,7 @@ export type MarpPreviewViewTestAccess = {
 	openInternalPreviewLink(linkpath: string, newLeaf: boolean): boolean;
 	registerPreviewIframeLinkHandler(): void;
 	registerPreviewScrollTracking(): void;
+	syncPreviewEnabled: boolean;
 	renderPreviewDocument(html: string): Promise<void>;
 	activeSlideIndex: number;
 	displaySlidesRevision: number;

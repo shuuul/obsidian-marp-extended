@@ -173,15 +173,14 @@ The command palette exposes one insertion command for each canonical form:
 
 ## Navigation, fragments, and presenter notes in preview
 
-With **Sync preview** on, the deck preview follows the active Markdown note:
+With **Sync preview** on, the pane you are using drives the other pane. See
+[preview sync](preview_sync.md).
 
-- In edit mode, the cursor line maps to a slide.
-- In reading view, scrolling either pane maps the top reading-view section to a slide.
-
-Click a non-link area of any rendered slide to move the Markdown editor to the
-start of that slide and center it in the editor viewport. Selecting rendered
-text before clicking briefly highlights the matching source text. Link clicks
-keep their normal internal or external navigation behavior.
+Selecting rendered text, then clicking the slide, briefly highlights the matching
+source text in the editor. With **Sync preview** off, a click with no selection
+jumps the editor to the start of that slide. With sync on, a click with no
+selection does not jump. Link clicks keep their normal internal or external
+navigation behavior.
 
 Marpit marks unordered lists using `*` and ordered lists using `1)` as
 fragments:
