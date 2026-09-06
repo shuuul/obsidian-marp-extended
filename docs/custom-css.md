@@ -99,10 +99,26 @@ Marp Extended renders Mermaid fences with `beautiful-mermaid` as inline SVG:
 
 ```html
 <figure class="mermaid-diagram-container mermaid-diagram mermaid-diagram-svg" data-mermaid-renderer="beautiful-mermaid">
-  <svg>...</svg>
+  <svg data-marp-mermaid>...</svg>
   <figcaption>Diagram title</figcaption>
 </figure>
 ```
+
+The `data-marp-mermaid` attribute follows Marp Core 5's native Mermaid
+integration. Marp Extended injects the same native default CSS
+(`:where(svg[data-marp-mermaid]) { display: block; width: fit-content; max-width: 100%; height: auto; }`),
+so themes can target that attribute and override it with higher-specificity
+selectors.
+
+Add the `interactive` keyword after the fence language to request an
+interactive diagram (supported diagram types only):
+
+````md
+```mermaid interactive
+flowchart LR
+  A --> B
+```
+````
 
 Theme CSS should style the outer container, the inline SVG, and the optional caption:
 

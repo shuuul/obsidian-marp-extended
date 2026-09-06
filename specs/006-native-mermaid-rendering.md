@@ -78,9 +78,9 @@ Not in scope:
 
 | ID | Deliverable | Owner | Status | Dependencies | Verification |
 | --- | --- | --- | --- | --- | --- |
-| WS-01 | Native-forked Mermaid fence plugin with autofit + figure output | Unassigned | Pending | None | Unit tests: fence rewrite, `interactive`, autofit on/off, error fallback |
-| WS-02 | Theme CSS + docs compatibility pass | Unassigned | Pending | WS-01 | `docs/custom-css.md` matches output; packaged themes render in preview smoke test |
-| WS-03 | Test suite update and manual preview/export smoke | Unassigned | Pending | WS-01 | `npm test -- --runInBand`; `npm run build`; `npm run obsidian:reload` |
+| WS-01 | Native-forked Mermaid fence plugin with autofit + figure output | Droid | Done | None | Unit tests: fence rewrite, `interactive`, autofit on/off, error fallback |
+| WS-02 | Theme CSS + docs compatibility pass | Droid | Done | WS-01 | `docs/custom-css.md` updated; packaged theme class names unchanged (unit assertions) |
+| WS-03 | Test suite update and manual preview/export smoke | Droid | Done | WS-01 | `npm test -- --runInBand`; `npm run build`; `npm run obsidian:reload` |
 
 ## Verification
 
@@ -114,6 +114,21 @@ Not in scope:
 - Remaining: WS-01..WS-03.
 - Blockers: none.
 - Next action: implement WS-01.
+
+### 2026-09-06 — Droid/WS-01..WS-03 — WS-01, WS-02, WS-03
+
+- Changed: `src/runtime/mermaidFallback.ts` (rewritten: native `marp_mermaid` token
+  rewrite via `core.ruler.after`, dedicated `renderer.rules.marp_mermaid`, native
+  `themeSetPackOptions` default-CSS injection, `interactive` keyword forwarding,
+  `data-marp-mermaid` attribute on the SVG); `src/utilities/mermaid.ts`
+  (`data-marp-mermaid` on all figure paths, figure-cache version 6, removed dead
+  local renderer types); `tests/unit/mermaidPlugin.test.ts` (3 new native-semantics
+  tests); `docs/custom-css.md` (attribute + keyword docs); `AGENTS.md` (arch line).
+- Evidence: typecheck/lint clean; full suite 258 passed / 1 pre-existing skip;
+  existing figure-class and caption assertions unchanged (theme compatibility).
+- Remaining: none for WS-01..WS-03; spec closeout pending final build + reload.
+- Blockers: none.
+- Next action: production build, `obsidian:reload`, archive spec.
 
 ## Completion summary
 

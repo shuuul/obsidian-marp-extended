@@ -221,3 +221,37 @@ test('mermaid figure rendering reuses cached SVG output', async () => {
 	expect(firstRender).toBe(secondRender);
 	expect(renderMermaidSVGMock).toHaveBeenCalledTimes(1);
 });
+
+test('fence plugin rewrites mermaid fences to native marp_mermaid tokens with data-marp-mermaid', () => {
+	const renderMermaidSVGMock = renderMermaidSVG as jest.MockedFunction<typeof renderMermaidSVG>;
+	renderMermaidSVGMock.mockClear();
+	const marp = new Marp({ html: true }).use(mermaidFencePlugin);
+
+	const { html } = marp.render('```mermaid\nflowchart LR\n  TokenA --> TokenB\n```');
+
+	expect(html).toContain('<svg data-marp-mermaid');
+	expect(html).toContain('data-mermaid-renderer="beautiful-mermaid"');
+	expect(html).not.toContain('language-mermaid');
+});
+
+test('theme pack injects the native mermaid default CSS', () => {
+	const marp = new Marp({ html: true }).use(mermaidFencePlugin);
+
+	const { css } = marp.render('```mermaid\nflowchart LR\n  A --> B\n```');
+
+	expect(css).toContain(':where(svg[data-marp-mermaid])');
+});
+
+test('interactive fence keyword is forwarded to beautiful-mermaid render options', () => {
+	const renderMermaidSVGMock = renderMermaidSVG as jest.MockedFunction<typeof renderMermaidSVG>;
+	renderMermaidSVGMock.mockClear();
+	const marp = new Marp({ html: true }).use(mermaidFencePlugin);
+
+	marp.render('```mermaid interactive\nflowchart LR\n  A --> B\n```');
+	expect(renderMermaidSVGMock.mock.calls[0]?.[1]?.interactive).toBe(true);
+
+	renderMermaidSVGMock.mockClear();
+	marp.render('```mermaid\nflowchart LR\n  A --> B\n```');
+	// Native semantics always pass a boolean; no keyword means non-interactive.
+	expect(renderMermaidSVGMock.mock.calls[0]?.[1]?.interactive).toBe(false);
+});

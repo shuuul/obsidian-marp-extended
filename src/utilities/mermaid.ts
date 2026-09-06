@@ -9,31 +9,6 @@ import {
 } from '../runtime/mermaidShared';
 import { closingCodeFence, openingCodeFence, type CodeFence } from '@marp-extended/code-fence-scanner';
 
-type MarpMarkdownRenderer = {
-	utils: {
-		escapeHtml(value: string): string;
-		unescapeAll(value: string): string;
-	};
-	renderer: {
-		rules: {
-			fence?: MarpFenceRenderer;
-		};
-	};
-};
-
-type MarpFenceRenderer = (
-	tokens: MarpFenceToken[],
-	idx: number,
-	options: unknown,
-	env: unknown,
-	self: unknown,
-) => string;
-
-type MarpFenceToken = {
-	info: string;
-	content: string;
-};
-
 export type MermaidPluginOptions = {
 	containerClass?: string;
 	renderOptions?: RenderOptions;
@@ -123,7 +98,7 @@ function mergeRenderOptions(renderOptions: RenderOptions | undefined): RenderOpt
 	};
 }
 
-const MERMAID_FIGURE_CACHE_VERSION = 5;
+const MERMAID_FIGURE_CACHE_VERSION = 6;
 
 function getMermaidFigureCacheKey(
 	source: string,
@@ -214,9 +189,11 @@ function buildMermaidFigure(
 	containerClass: string,
 	renderer: MermaidRendererName,
 ): string {
+	// Native Marp Core 5 attribute: shared CSS hook for mermaid diagrams.
+	const markedSvg = /^<svg\b/i.test(svg) ? svg.replace(/^<svg\b/i, '<svg data-marp-mermaid') : svg;
 	const classAttribute = escapeHtml(buildContainerClass(containerClass));
 	const caption = alt ? `<figcaption>${escapeHtml(alt)}</figcaption>` : '';
-	return `<figure class="${classAttribute}" data-mermaid-renderer="${renderer}">${svg}${caption}</figure>`;
+	return `<figure class="${classAttribute}" data-mermaid-renderer="${renderer}">${markedSvg}${caption}</figure>`;
 }
 
 function renderBeautifulMermaidSvg(source: string, renderOptions: RenderOptions, autoFit: MermaidAutoFitOptions | undefined): string {
@@ -745,6 +722,6 @@ function findMermaidFenceBlocks(markdown: string): MermaidFenceBlock[] {
 	return blocks;
 }
 
-export function mermaidFencePlugin(md: MarpMarkdownRenderer, options: MermaidPluginOptions = {}): void {
+export function mermaidFencePlugin(md: Parameters<typeof pureMermaidFencePlugin>[0], options: MermaidPluginOptions = {}): void {
 	pureMermaidFencePlugin(md, options);
 }
