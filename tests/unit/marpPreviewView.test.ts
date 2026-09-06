@@ -397,7 +397,7 @@ test('preview view constructs with ItemView toolbar hooks', () => {
 	expect(view.contentEl.querySelector('iframe')).not.toBeNull();
 });
 
-test('fragment actions follow numeric order, stop at boundaries, and cursor sync preserves progress', () => {
+test('fragments start fully revealed, step in numeric order, and reset rewinds', () => {
 	const view = createPreviewView();
 	const access = marpPreviewViewTestAccess(view);
 	const wrapper = document.createElement('div');
@@ -405,17 +405,38 @@ test('fragment actions follow numeric order, stop at boundaries, and cursor sync
 	access.previewSlideEls = [wrapper];
 	access.initializePreviewState([[]]);
 
+	// Fragments render fully revealed so the preview matches the exported deck.
+	expect(access.fragmentRevealCounts).toEqual([2]);
+	expect(wrapper.querySelector('[data-marpit-fragment="1"]')?.getAttribute('aria-hidden')).toBe('false');
+	expect(wrapper.querySelector('[data-marpit-fragment="2"]')?.getAttribute('aria-hidden')).toBe('false');
+
+	// Stepping forward at the end is a no-op.
+	view.nextFragment();
+	expect(access.fragmentRevealCounts).toEqual([2]);
+
+	// Stepping backward hides fragments in reverse numeric order.
+	view.previousFragment();
+	expect(access.fragmentRevealCounts).toEqual([1]);
+	expect(wrapper.querySelector('[data-marpit-fragment="1"]')?.getAttribute('aria-hidden')).toBe('false');
+	expect(wrapper.querySelector('[data-marpit-fragment="2"]')?.getAttribute('aria-hidden')).toBe('true');
+
+	// Reset rewinds the active slide for a fresh fragment run.
+	view.resetActiveSlideFragments();
+	expect(access.fragmentRevealCounts).toEqual([0]);
+	expect(wrapper.querySelector('[data-marpit-fragment="1"]')?.getAttribute('aria-hidden')).toBe('true');
+	expect(wrapper.querySelector('[data-marpit-fragment="2"]')?.getAttribute('aria-hidden')).toBe('true');
+
+	// Stepping forward from the rewind reveals in numeric order and stops at the end.
 	view.nextFragment();
 	expect(wrapper.querySelector('[data-marpit-fragment="1"]')?.getAttribute('aria-hidden')).toBe('false');
 	expect(wrapper.querySelector('[data-marpit-fragment="2"]')?.getAttribute('aria-hidden')).toBe('true');
 	view.nextFragment();
 	view.nextFragment();
 	expect(access.fragmentRevealCounts).toEqual([2]);
+
+	// Cursor sync preserves reveal progress.
 	view.onLineChanged(0);
 	expect(access.fragmentRevealCounts).toEqual([2]);
-	view.previousFragment();
-	view.resetActiveSlideFragments();
-	expect(access.fragmentRevealCounts).toEqual([0]);
 });
 
 test('cursor sync keeps a visible slide in place and clamps scrolling for a hidden slide', () => {

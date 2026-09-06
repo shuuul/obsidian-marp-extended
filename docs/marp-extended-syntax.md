@@ -190,11 +190,13 @@ fragments:
 ```
 
 The Marp Extended preview adds the runtime behavior that Marpit intentionally
-leaves to its host application. Use the command palette or bind these commands:
+leaves to its host application. Fragments start fully revealed so the preview
+matches the exported deck. Use the command palette or bind these commands:
 
-- **Next preview fragment**
-- **Previous preview fragment**
-- **Reset preview fragments**
+- **Next preview fragment** — reveal the next fragment of the active slide
+- **Previous preview fragment** — hide the last revealed fragment of the active slide
+- **Reset preview fragments** — rewind the active slide so no fragment is revealed,
+  ready for a fresh step-through
 - **Toggle preview presenter notes**
 
 An ordinary comment becomes a presenter note for its slide:

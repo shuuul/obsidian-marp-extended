@@ -581,7 +581,7 @@ Rendering notes:
 
 - HTML structure matches normal lists; items get `data-marpit-fragment="N"`.
 - The slide `<section>` gets `data-marpit-fragments` with the fragment count.
-- The plugin preview tracks each logical slide independently and exposes previous, next, and reset fragment controls plus keyboard-bindable commands.
+- The plugin preview tracks each logical slide independently and exposes previous, next, and reset fragment controls plus keyboard-bindable commands. Fragments start fully revealed so the preview matches export; use reset to rewind before stepping.
 - Marp CLI **bespoke** HTML has its own fragment runtime for exported presentations.
 
 ## Presenter notes

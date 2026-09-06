@@ -670,7 +670,9 @@ export class MarpPreviewView extends ItemView  {
                 .filter((value) => Number.isFinite(value) && value > 0);
             return values.length === 0 ? 0 : Math.max(...values);
         });
-        this.fragmentRevealCounts = this.fragmentTotals.map(() => 0);
+        // Fragments start fully revealed so the preview matches the exported
+        // deck; use "Reset preview fragments" to rewind before stepping.
+        this.fragmentRevealCounts = this.fragmentTotals.map((total) => total);
         this.presenterComments = this.previewSlideEls.map((_, index) => comments[index] ?? []);
         this.applyPreviewState();
     }
