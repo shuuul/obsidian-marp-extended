@@ -260,7 +260,7 @@ Useful scripts:
 Developer guidance lives in [`AGENTS.md`](AGENTS.md). Release notes live in [`CHANGELOG.md`](CHANGELOG.md).
 
 Current Marp-related runtime dependencies center on `@marp-team/marp-core`
-`5.0.1` (npm `next` channel; `latest` remains 4.x) with curated plugins (Shiki,
+`5.0.2` (npm `next` channel; `latest` remains 4.x) with curated plugins (Shiki,
 MathJax) plus `beautiful-mermaid` for the custom Mermaid stack. Preview and
 export both instantiate the shipped Core 5 engine; export uses Marp CLI 4.5.0
 only as the host for templates, browser-backed formats, and file orchestration.
