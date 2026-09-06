@@ -14,7 +14,6 @@ Copy [000-template.md](000-template.md) to start a spec.
 
 | Spec | Status | Outcome |
 | --- | --- | --- |
-| [006-native-mermaid-rendering.md](006-native-mermaid-rendering.md) | Active | Align preview/export Mermaid fences with Marp Core 5 native plugin semantics while keeping autofit, figure output, and theme compatibility. |
 
 ## Archived specs
 
@@ -25,6 +24,7 @@ Copy [000-template.md](000-template.md) to start a spec.
 | [003-marp-extended-language-and-runtime.md](archive/003-marp-extended-language-and-runtime.md) | 2026-08-09 | Canonical Extended language, shared preview/export Core 5 engine, fragments, and presenter notes. |
 | [004-link-hardening-and-architecture-cleanup.md](archive/004-link-hardening-and-architecture-cleanup.md) | 2026-08-15 | Fixed subpath/inline-code/parens/fence link defects; unified fence scanning, Mermaid shared module, and theme-manager base; debounced preview refreshes with cached theme CSS/engine; cached CLI version checks. |
 | [005-mermaid-autofit-and-packages.md](archive/005-mermaid-autofit-and-packages.md) | 2026-08-15 | packages/ workspace with mermaid-autofit zigzag auto-layout for linear LR/TD Mermaid chains behind MERMAID_AUTO_FIT; extracted code-fence-scanner, marp-dsl, wiki-links packages. |
+| [006-native-mermaid-rendering.md](archive/006-native-mermaid-rendering.md) | 2026-09-06 | Native marp_mermaid tokens with fork figure/autofit; dual-write --bg/--fg onto --marp-mermaid-*; engine failure delegates to the original fence. |
 | [007-bundle-size-reduction.md](archive/007-bundle-size-reduction.md) | 2026-09-06 | main.js 9.75 → 7.70 MiB: Brotli embedded engine payload, Shiki shim trimmed 75 → ~43 grammars, cold MathJax font extensions stubbed (mhchem kept). |
 
 ## Numbering and files
@@ -74,3 +74,4 @@ npm test -- --runInBand tests/unit/scripts/checkSpecs.test.ts
 
 The check validates filenames, numbering, flat frontmatter, required sections, lifecycle
 placement, and index coverage. It cannot prove that prose matches the implementation.
+

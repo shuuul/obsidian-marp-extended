@@ -1,4 +1,4 @@
-import { expect, test, beforeEach } from '@jest/globals';
+import { expect, test, beforeEach, jest } from '@jest/globals';
 import { Marp } from '@marp-team/marp-core';
 import { renderMermaidSVG } from 'beautiful-mermaid';
 import { loadMermaid } from 'obsidian';
@@ -240,6 +240,19 @@ test('theme pack injects the native mermaid default CSS', () => {
 	const { css } = marp.render('```mermaid\nflowchart LR\n  A --> B\n```');
 
 	expect(css).toContain(':where(svg[data-marp-mermaid])');
+	expect(css).toContain('--marp-mermaid-background: var(--bg)');
+});
+
+test('engine mermaid plugin falls back to the original fence on render failure', () => {
+	const warn = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
+	const marp = new Marp({ html: true }).use(mermaidFencePlugin);
+
+	const { html } = marp.render('```mermaid\npie\n  "A": 1\n```');
+
+	expect(html).toContain('language-mermaid');
+	expect(html).not.toContain('mermaid-diagram-container');
+	expect(warn).toHaveBeenCalled();
+	warn.mockRestore();
 });
 
 test('interactive fence keyword is forwarded to beautiful-mermaid render options', () => {

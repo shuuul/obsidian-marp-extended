@@ -6,6 +6,17 @@ const MERMAID_THEME_PROPERTY = 'mermaidTheme';
 const MERMAID_FLAT_PROPERTY = 'mermaidFlat';
 const MERMAID_RENDER_OPTION_KEYS = ['bg', 'surface', 'fg', 'line', 'accent', 'muted', 'border'] as const;
 
+/** Core 5 native CSS custom properties mapped onto beautiful-mermaid RenderOptions keys. */
+const MERMAID_NATIVE_CSS_VAR_NAMES = {
+	bg: 'background',
+	fg: 'foreground',
+	line: 'line',
+	accent: 'accent',
+	muted: 'muted',
+	surface: 'surface',
+	border: 'border',
+} as const;
+
 const MERMAID_FLAT_CSS = `section .mermaid-diagram-container.mermaid-diagram {
   background: transparent !important;
   border-color: transparent !important;
@@ -15,6 +26,7 @@ const MERMAID_FLAT_CSS = `section .mermaid-diagram-container.mermaid-diagram {
 
 section .mermaid-diagram-container.mermaid-diagram svg {
   --bg: var(--surface, transparent) !important;
+  --marp-mermaid-background: var(--bg) !important;
 }
 
 section .mermaid-diagram-container.mermaid-diagram svg .edge-label rect {
@@ -98,9 +110,24 @@ export function wrapMermaidThemeCss(css: string): string {
 	return css.trim() ? `<style class="marp-extended-mermaid-theme">\n${css.trim()}\n</style>\n` : '';
 }
 
+function firstCssCustomProperty(css: string, names: readonly string[]): string | undefined {
+	for (const name of names) {
+		const match = css.match(new RegExp(`(?:^|[^\\w-])--${name}\\s*:\\s*([^;]+);`));
+		const value = match?.[1]?.trim();
+		// Skip `var(...)` aliases so `--marp-mermaid-background: var(--bg)` does not
+		// hide the concrete `--bg` hex that the Node renderer actually needs.
+		if (value && !/^var\(/i.test(value)) {
+			return value;
+		}
+	}
+
+	return undefined;
+}
+
 /**
  * Read beautiful-mermaid render colors from a theme CSS blob.
  * Themes declare vars on `section ... svg { --bg: ...; --fg: ...; }`.
+ * `--marp-mermaid-*` (Core 5 native) wins over the short `--bg`/`--fg` aliases.
  */
 export function parseMermaidRenderOptionsFromCss(css: string): RenderOptions {
 	if (!css.trim()) {
@@ -109,8 +136,10 @@ export function parseMermaidRenderOptionsFromCss(css: string): RenderOptions {
 
 	const options: RenderOptions = {};
 	for (const key of MERMAID_RENDER_OPTION_KEYS) {
-		const match = css.match(new RegExp(`--${key}\\s*:\\s*([^;]+);`));
-		const value = match?.[1]?.trim();
+		const value = firstCssCustomProperty(css, [
+			`marp-mermaid-${MERMAID_NATIVE_CSS_VAR_NAMES[key]}`,
+			key,
+		]);
 		if (value) {
 			options[key] = value;
 		}

@@ -106,9 +106,9 @@ Marp Extended renders Mermaid fences with `beautiful-mermaid` as inline SVG:
 
 The `data-marp-mermaid` attribute follows Marp Core 5's native Mermaid
 integration. Marp Extended injects the same native default CSS
-(`:where(svg[data-marp-mermaid]) { display: block; width: fit-content; max-width: 100%; height: auto; }`),
-so themes can target that attribute and override it with higher-specificity
-selectors.
+(`:where(svg[data-marp-mermaid]) { display: block; width: fit-content; max-width: 100%; height: auto; }`)
+and aliases `--bg`/`--fg` onto `--marp-mermaid-*`, so existing theme CSS keeps
+working and Core 5 variable names are available as an optional override.
 
 Add the `interactive` keyword after the fence language to request an
 interactive diagram (supported diagram types only):
@@ -175,6 +175,13 @@ section .mermaid-diagram-container.mermaid-diagram svg {
   --accent: var(--slide-accent) !important;
   --muted: var(--slide-muted, #6b6a64) !important;
   --border: var(--slide-border) !important;
+  --marp-mermaid-background: var(--bg);
+  --marp-mermaid-surface: var(--surface);
+  --marp-mermaid-foreground: var(--fg);
+  --marp-mermaid-line: var(--line);
+  --marp-mermaid-accent: var(--accent);
+  --marp-mermaid-muted: var(--muted);
+  --marp-mermaid-border: var(--border);
 }
 
 section .mermaid-diagram-container svg rect,
@@ -293,7 +300,7 @@ When adding or reviewing a custom theme, include:
 - `.mermaid-diagram-container.mermaid-diagram` styling
 - `.mermaid-diagram-container.mermaid-diagram svg` sizing
 - `.mermaid-diagram-container.mermaid-diagram figcaption` caption styling if you use fence alt text
-- Mermaid SVG variable overrides: `--bg`, `--surface`, `--fg`, `--line`, `--accent`, `--muted`, `--border`
+- Mermaid SVG variable overrides: `--bg`, `--surface`, `--fg`, `--line`, `--accent`, `--muted`, `--border` (optional Core 5 aliases: `--marp-mermaid-background` and the matching `--marp-mermaid-*` names)
 - optional inline SVG refinements for Mermaid shapes/text
 - at least one Mermaid test slide in a sample deck
 

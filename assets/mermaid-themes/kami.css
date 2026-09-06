@@ -24,6 +24,13 @@ section .mermaid-diagram-container.mermaid-diagram svg {
   --accent: #1B365D;
   --muted: #6b6a64;
   --border: #e8e6dc;
+  --marp-mermaid-background: var(--bg);
+  --marp-mermaid-surface: var(--surface);
+  --marp-mermaid-foreground: var(--fg);
+  --marp-mermaid-line: var(--line);
+  --marp-mermaid-accent: var(--accent);
+  --marp-mermaid-muted: var(--muted);
+  --marp-mermaid-border: var(--border);
   display: block;
   height: auto;
   max-height: 430px;

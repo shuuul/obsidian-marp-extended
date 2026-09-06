@@ -1,7 +1,7 @@
 ---
 id: "006"
 title: "Native Marp Core 5 Mermaid rendering with fork enhancements"
-status: Active
+status: Completed
 created: 2026-09-06
 updated: 2026-09-06
 coordinator: "Droid"
@@ -73,6 +73,8 @@ Not in scope:
 | --- | --- | --- | --- |
 | 2026-09-06 | Fork the native plugin instead of wrapping `renderer.rules.fence` | Same kernel (`beautiful-mermaid`); native token semantics, CSS variables, `interactive`, and default-CSS injection come free; upstream improvements track automatically | WS-01 |
 | 2026-09-06 | Keep figure/figcaption output and existing theme class names | Packaged/user theme CSS targets `.mermaid-diagram-container`; migration is optional follow-up, not a blocker | WS-01, WS-02 |
+| 2026-09-06 | Dual-write `--bg/--fg` and `--marp-mermaid-*` | Existing themes keep working; Core 5 variable names are available as an optional override. Parser prefers a concrete `--marp-mermaid-*` hex and skips `var()` aliases so Node render still sees the short-name hex. | WS-02 |
+| 2026-09-06 | Engine-plugin failure delegates to the original fence | Matches Core 5 (`console.warn` + `self.rules.fence`). Async `renderMermaidFences` still falls back to official Mermaid for unsupported types. | WS-01 |
 
 ## Workstreams
 
@@ -134,6 +136,28 @@ Not in scope:
 - Next action: after user confirms manual preview/export, complete closeout and
   archive the spec.
 
+### 2026-09-06 — grok-4-6 — WS-01, WS-02 closeout
+
+- Changed: engine plugin failure now `console.warn`s and delegates to the original
+  fence (Core 5); theme CSS dual-writes `--bg/--fg` onto `--marp-mermaid-*`
+  (packaged kami, injected default CSS, `mermaidFlat`); parser prefers concrete
+  `--marp-mermaid-*` and skips `var()` aliases; settings/docs recipes updated;
+  `npm run sync:themes`.
+- Evidence: typecheck/lint/`check:specs` clean; full suite 263 passed / 1
+  pre-existing skip (was 258). New tests: native fence fallback, `--marp-mermaid-*`
+  precedence, `var()` skip, `--border` vs `--marp-mermaid-border`.
+- Remaining: Core 5.0.1 → 5.0.2 bump is a separate chore, not this spec.
+- Blockers: none.
+- Next action: archive.
+
 ## Completion summary
 
-Not yet complete.
+Spec 006 aligned the shared Mermaid fence plugin with Core 5 native token
+semantics while keeping fork enhancements. Fences rewrite to `marp_mermaid`
+tokens with `data-marp-mermaid`, `interactive` is forwarded, native default CSS
+is injected, and figure/figcaption plus mermaid-autofit remain. Theme CSS
+dual-writes `--bg/--fg` onto `--marp-mermaid-*` so existing kami/user themes
+keep working. Engine-plugin render failure now warns and delegates to the
+original fence. Durable docs: `docs/custom-css.md`, settings placeholder,
+`AGENTS.md`. Automated gates green; `npm run build` and `obsidian:reload` clean.
+Core 5.0.2 bump is out of scope.

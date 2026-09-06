@@ -8,12 +8,14 @@ import {
 
 type FenceToken = { type: string; tag: string; info: string; content: string };
 
+type FenceSelf = { rules: Record<string, FenceRenderer | undefined> };
+
 type FenceRenderer = (
 	tokens: FenceToken[],
 	index: number,
 	options: unknown,
 	env: unknown,
-	self: unknown,
+	self: FenceSelf,
 ) => string;
 
 type CoreState = { tokens: FenceToken[] };
@@ -45,6 +47,13 @@ const MERMAID_DEFAULT_CSS = `:where(svg[data-marp-mermaid]) {
   width: fit-content;
   max-width: 100%;
   height: auto;
+  --marp-mermaid-background: var(--bg);
+  --marp-mermaid-foreground: var(--fg);
+  --marp-mermaid-line: var(--line);
+  --marp-mermaid-accent: var(--accent);
+  --marp-mermaid-muted: var(--muted);
+  --marp-mermaid-surface: var(--surface);
+  --marp-mermaid-border: var(--border);
 }
 `;
 
@@ -93,7 +102,7 @@ export function mermaidFencePlugin(md: MarkdownRenderer, options: MermaidFallbac
 		}
 	});
 
-	md.renderer.rules.marp_mermaid = (tokens, index) => {
+	md.renderer.rules.marp_mermaid = (tokens, index, renderOptions, env, self) => {
 		const token = tokens[index];
 		const info = md.utils.unescapeAll(token.info ?? '');
 		const { alt } = parseMermaidFenceInfo(info);
@@ -101,7 +110,9 @@ export function mermaidFencePlugin(md: MarkdownRenderer, options: MermaidFallbac
 		try {
 			return renderMermaidFallbackFigure(token.content, alt, { ...options, interactive });
 		} catch (error) {
-			return `<pre class="mermaid-render-error"><code>${md.utils.escapeHtml(error instanceof Error ? error.message : String(error))}</code></pre>`;
+			console.warn(error);
+			const fence = self.rules.fence ?? md.renderer.rules.fence;
+			return fence ? fence(tokens, index, renderOptions, env, self) : '';
 		}
 	};
 

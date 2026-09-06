@@ -31,7 +31,7 @@ src/runtime/marpEngine.ts           # Shared Core 5 semantic engine factory
 src/runtime/cliEngine.ts            # Standalone CLI engine entry point
 src/runtime/marpCli.ts               # Marp CLI discovery, validation, process execution, fallback
 src/runtime/engineArtifact.ts       # Embedded engine integrity/materialization
-src/runtime/mermaidFallback.ts      # Shared Mermaid fence plugin (native marp_mermaid token semantics)
+src/runtime/mermaidFallback.ts      # Shared Mermaid fence plugin (native marp_mermaid tokens, figure output, --bg/--marp-mermaid-* dual CSS)
 src/runtime/mermaidShared.ts        # Shared Mermaid constants and fence-info parsing
 src/shims/marp-shiki.cjs            # Curated Shiki language subset for Core 5
 src/shims/mathjax-cold-font-extensions.cjs # Empty stubs for cold MathJax font extensions (bbm/bboldx/dsfont)
