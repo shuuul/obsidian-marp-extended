@@ -2,6 +2,28 @@
 
 ## Unreleased
 
+## [0.12.0](https://github.com/shuuul/obsidian-marp-extended/compare/0.11.1...0.12.0) (2026-09-06)
+
+
+### Features
+
+* **editor:** render Mermaid in reading view without source button ([c5ea434](https://github.com/shuuul/obsidian-marp-extended/commit/c5ea434cbda2b71d166fcb7cce8616621df768b9))
+* **mermaid:** adopt Marp Core 5 native mermaid token semantics ([1938ded](https://github.com/shuuul/obsidian-marp-extended/commit/1938ded76bd0ce71bb41f704041aad833ad26e01))
+* **mermaid:** dual-write Core 5 CSS vars and native fence fallback ([b2e6d3c](https://github.com/shuuul/obsidian-marp-extended/commit/b2e6d3cbd2dbf038b231d57b4bb426b779479993))
+* **preview:** drive sync from the active pane without jumps ([50985a0](https://github.com/shuuul/obsidian-marp-extended/commit/50985a0210fca053d720c1dc8922007d00fa5ab7))
+* **preview:** sync reading view and deck preview by slide ([0f2ff46](https://github.com/shuuul/obsidian-marp-extended/commit/0f2ff463612876e98d11262aaba8e2527ff7dd5d))
+
+
+### Bug Fixes
+
+* **preview:** label presenter notes by slide and allow resizing ([320dd3c](https://github.com/shuuul/obsidian-marp-extended/commit/320dd3c2358af596709703c0783978382cb3ec4c))
+* **styles:** replace !important with selector specificity in editor mermaid rules ([2f81bd7](https://github.com/shuuul/obsidian-marp-extended/commit/2f81bd72384379684bc494657d95e7c9f2663f2a))
+
+
+### Performance Improvements
+
+* **bundle:** reduce main.js from 9.75 to 7.70 MiB ([b805ee8](https://github.com/shuuul/obsidian-marp-extended/commit/b805ee88536e611908d7e2a5776777bc2813a6d4))
+
 ## [0.11.1](https://github.com/shuuul/obsidian-marp-extended/compare/0.11.0...0.11.1) (2026-09-06)
 
 
